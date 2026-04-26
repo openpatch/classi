@@ -75,7 +75,7 @@ jobs:
         run: fastforge package --platform android --targets apk
 
       - name: Upload Android artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: classi-android-apk
           path: dist/**/*.apk
@@ -117,7 +117,7 @@ jobs:
         run: fastforge package --platform linux --targets appimage
 
       - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: classi-linux-appimage
           path: dist/**/*.AppImage
@@ -151,7 +151,7 @@ jobs:
         run: fastforge package --platform macos --targets dmg
 
       - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: classi-macos-dmg
           path: dist/**/*.dmg
@@ -185,7 +185,7 @@ jobs:
         run: fastforge package --platform windows --targets exe
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: classi-windows-exe
           path: dist/**/*.exe
