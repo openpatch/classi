@@ -1,0 +1,9 @@
+app_id: A3F7B2C1-8D4E-4F6A-9B3C-2E1D5F7A8B9C
+publisher: OpenPatch
+publisher_url: https://github.com/openpatch/classi
+display_name: Classi
+create_desktop_icon: true
+setup_icon_file: windows\runner\resources\app_icon.ico
+locales:
+  - en
+  - de
