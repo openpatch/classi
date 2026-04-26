@@ -37,47 +37,64 @@ class GroupsScreen extends ConsumerStatefulWidget {
   ConsumerState<GroupsScreen> createState() => _GroupsScreenState();
 }
 
-class _GroupsScreenState extends ConsumerState<GroupsScreen> {
-  int _currentTab = 0;
+class _GroupsScreenState extends ConsumerState<GroupsScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  int _tabIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      final newIndex = _tabController.index;
+      if (newIndex != _tabIndex) {
+        setState(() => _tabIndex = newIndex);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('groups'.tr()),
-          bottom: TabBar(
-            onTap: (index) => setState(() => _currentTab = index),
-            tabs: [
-              Tab(text: 'active'.tr()),
-              Tab(text: 'archived'.tr()),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            _GroupsList(
-              provider: activeGroupsProvider,
-              emptyKey: 'empty_groups',
-              archived: false,
-            ),
-            _GroupsList(
-              provider: archivedGroupsProvider,
-              emptyKey: 'empty_archived_groups',
-              archived: true,
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('groups'.tr()),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: 'active'.tr()),
+            Tab(text: 'archived'.tr()),
           ],
         ),
-        floatingActionButton: _currentTab == 0
-            ? FloatingActionButton.extended(
-                onPressed: _addGroup,
-                icon: const Icon(Icons.add),
-                label: Text('add_group'.tr()),
-              )
-            : null,
       ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _GroupsList(
+            provider: activeGroupsProvider,
+            emptyKey: 'empty_groups',
+            archived: false,
+          ),
+          _GroupsList(
+            provider: archivedGroupsProvider,
+            emptyKey: 'empty_archived_groups',
+            archived: true,
+          ),
+        ],
+      ),
+      floatingActionButton: _tabIndex == 0
+          ? FloatingActionButton.extended(
+              onPressed: _addGroup,
+              icon: const Icon(Icons.add),
+              label: Text('add_group'.tr()),
+            )
+          : null,
     );
   }
 
