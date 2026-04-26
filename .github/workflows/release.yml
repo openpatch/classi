@@ -18,7 +18,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+          # Value already defaults to true, but `persist-credentials` is required to push new commits to the repository.
+          persist-credentials: true
+          
 
       - name: Generate changelog
         id: git_cliff
@@ -34,7 +37,7 @@ jobs:
           args: --output CHANGELOG.md
 
       - name: Commit CHANGELOG.md
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore(release): update CHANGELOG.md for ${{ github.ref_name }}"
           file_pattern: CHANGELOG.md
