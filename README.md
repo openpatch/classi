@@ -60,11 +60,20 @@ macOS desktop builds require Xcode on a Mac with command-line tools installed.
 
 ## Release builds
 
+Releases are packaged with [Fastforge](https://fastforge.dev/):
+
 ```bash
-flutter build apk --release
-flutter build macos --release
-flutter build windows --release
-flutter build linux --release
+dart pub global activate fastforge
+fastforge package --platform android --targets apk
+fastforge package --platform linux   --targets appimage
+fastforge package --platform macos   --targets dmg
+fastforge package --platform windows --targets exe
+```
+
+Or run all platforms at once using the project release config:
+
+```bash
+fastforge release --name release
 ```
 
 ## Contributing
@@ -81,7 +90,8 @@ Two workflows are included:
   executes the test suite.
 - `release.yml` — triggered by version tags (`v*`). It generates a changelog
   with `git-cliff`, commits an updated `CHANGELOG.md`, builds release artifacts
-  for Android, macOS, Windows, and Linux, and publishes a GitHub Release with
+  for Android (APK), Linux (AppImage), macOS (DMG), and Windows (EXE installer)
+  using [Fastforge](https://fastforge.dev/), and publishes a GitHub Release with
   all artifacts attached.
 
 The Android release build currently uses the debug signing config, which keeps

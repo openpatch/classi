@@ -58,52 +58,23 @@ jobs:
           flutter-version: '3.41.7'
           cache: true
 
+      - name: Install Fastforge
+        run: dart pub global activate fastforge
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build Android release APK
-        run: flutter build apk --release
+      - name: Package APK
+        run: fastforge package --platform android --targets apk
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v4
         with:
           name: classi-android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-
-  build-windows:
-    name: Build Windows
-    runs-on: windows-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.7'
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Generate code
-        run: dart run build_runner build --delete-conflicting-outputs
-
-      - name: Build Windows release bundle
-        run: flutter build windows --release
-
-      - name: Archive Windows release bundle
-        shell: pwsh
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath build/windows/classi-windows.zip
-
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: classi-windows-bundle
-          path: build/windows/classi-windows.zip
+          path: dist/**/*.apk
 
   build-linux:
     name: Build Linux
@@ -115,7 +86,13 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libssl-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libssl-dev locate
+
+      - name: Install appimagetool
+        run: |
+          wget -q -O appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          sudo mv appimagetool /usr/local/bin/
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -123,23 +100,23 @@ jobs:
           flutter-version: '3.41.7'
           cache: true
 
+      - name: Install Fastforge
+        run: dart pub global activate fastforge
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build Linux release bundle
-        run: flutter build linux --release
-
-      - name: Archive Linux release bundle
-        run: tar -C build/linux/x64/release/bundle -czf build/linux/classi-linux.tar.gz .
+      - name: Package AppImage
+        run: fastforge package --platform linux --targets appimage
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
-          name: classi-linux-bundle
-          path: build/linux/classi-linux.tar.gz
+          name: classi-linux-appimage
+          path: dist/**/*.AppImage
 
   build-macos:
     name: Build macOS
@@ -148,11 +125,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Install appdmg
+        run: npm install -g appdmg
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.7'
           cache: true
+
+      - name: Install Fastforge
+        run: dart pub global activate fastforge
 
       - name: Install dependencies
         run: flutter pub get
@@ -160,21 +143,52 @@ jobs:
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build macOS release app
-        run: flutter build macos --release
-
-      - name: Archive macOS release app
-        run: ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/Classi.app build/macos/classi-macos.zip
+      - name: Package DMG
+        run: fastforge package --platform macos --targets dmg
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: classi-macos-app
-          path: build/macos/classi-macos.zip
+          name: classi-macos-dmg
+          path: dist/**/*.dmg
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.7'
+          cache: true
+
+      - name: Install Fastforge
+        run: dart pub global activate fastforge
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Package EXE
+        run: fastforge package --platform windows --targets exe
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: classi-windows-exe
+          path: dist/**/*.exe
 
   release:
     name: Create GitHub Release
-    needs: [changelog, build-android, build-windows, build-linux, build-macos]
+    needs: [changelog, build-android, build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -187,7 +201,7 @@ jobs:
         with:
           body: ${{ needs.changelog.outputs.release_body }}
           files: |
-            artifacts/classi-android-apk/app-release.apk
-            artifacts/classi-windows-bundle/classi-windows.zip
-            artifacts/classi-linux-bundle/classi-linux.tar.gz
-            artifacts/classi-macos-app/classi-macos.zip
+            artifacts/classi-android-apk/**/*.apk
+            artifacts/classi-linux-appimage/**/*.AppImage
+            artifacts/classi-macos-dmg/**/*.dmg
+            artifacts/classi-windows-exe/**/*.exe

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Classi
+Comment=Local-first teacher desk for groups, grades, notes, and checklists
+Exec=classi
+Icon=classi
+Type=Application
+Categories=Education;
+StartupWMClass=classi
