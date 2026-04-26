@@ -1,4 +1,4 @@
-import 'package:clari/features/students/student_import_parser.dart';
+import 'package:classi/features/students/student_import_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

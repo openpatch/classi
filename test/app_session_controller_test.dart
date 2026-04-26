@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:clari/core/security/key_service.dart';
-import 'package:clari/core/security/security_preferences_service.dart';
-import 'package:clari/core/session/app_session_controller.dart';
-import 'package:clari/core/storage/database_path_service.dart';
-import 'package:clari/core/storage/library_backup_preferences_service.dart';
-import 'package:clari/core/storage/library_backup_service.dart';
+import 'package:classi/core/security/key_service.dart';
+import 'package:classi/core/security/security_preferences_service.dart';
+import 'package:classi/core/session/app_session_controller.dart';
+import 'package:classi/core/storage/database_path_service.dart';
+import 'package:classi/core/storage/library_backup_preferences_service.dart';
+import 'package:classi/core/storage/library_backup_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +19,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     tempDirectory = await Directory.systemTemp.createTemp(
-      'clari-session-controller',
+      'classi-session-controller',
     );
     controller = AppSessionController(
       keyService: KeyService(),

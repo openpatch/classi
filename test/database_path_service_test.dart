@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:clari/core/storage/database_path_service.dart';
+import 'package:classi/core/storage/database_path_service.dart';
 
 void main() {
   test(

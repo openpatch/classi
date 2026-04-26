@@ -56,9 +56,7 @@ class _ClassiAppState extends ConsumerState<ClassiApp> {
   }
 
   ThemeData _buildTheme(Brightness brightness) {
-    final baseColor = brightness == Brightness.light
-        ? const Color(0xFF3366CC)
-        : const Color(0xFF7BA8FF);
+    const baseColor = Color(0xFF017460); // OpenPatch Green
 
     final colorScheme = ColorScheme.fromSeed(
       seedColor: baseColor,

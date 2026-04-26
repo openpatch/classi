@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:clari/core/storage/library_backup_preferences_service.dart';
+import 'package:classi/core/storage/library_backup_preferences_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

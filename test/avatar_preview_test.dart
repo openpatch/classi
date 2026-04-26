@@ -1,4 +1,4 @@
-import 'package:clari/shared/utils/avatar_preview.dart';
+import 'package:classi/shared/utils/avatar_preview.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

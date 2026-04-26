@@ -1,5 +1,5 @@
-import 'package:clari/core/database/app_database.dart';
-import 'package:clari/features/lessons/lesson_support.dart';
+import 'package:classi/core/database/app_database.dart';
+import 'package:classi/features/lessons/lesson_support.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

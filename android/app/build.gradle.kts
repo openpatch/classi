@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.openpatch.clari"
+    namespace = "org.openpatch.classi"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.openpatch.clari"
+        applicationId = "org.openpatch.classi"
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

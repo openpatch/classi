@@ -52,7 +52,7 @@ String? avatarSvgFromJson(String? avatarJson) {
   } on FormatException catch (error, stackTrace) {
     developer.log(
       'Invalid avatar JSON format.',
-      name: 'clari.avatar',
+      name: 'classi.avatar',
       error: error,
       stackTrace: stackTrace,
     );
@@ -60,7 +60,7 @@ String? avatarSvgFromJson(String? avatarJson) {
   } on StateError catch (error, stackTrace) {
     developer.log(
       'Stored avatar options could not be restored.',
-      name: 'clari.avatar',
+      name: 'classi.avatar',
       error: error,
       stackTrace: stackTrace,
     );

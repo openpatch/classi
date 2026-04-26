@@ -1,8 +1,8 @@
-import 'package:clari/core/database/app_database.dart';
-import 'package:clari/features/groups/group_repository.dart';
-import 'package:clari/features/students/student_repository.dart';
-import 'package:clari/shared/utils/grade_categories.dart';
-import 'package:clari/shared/utils/formatting.dart';
+import 'package:classi/core/database/app_database.dart';
+import 'package:classi/features/groups/group_repository.dart';
+import 'package:classi/features/students/student_repository.dart';
+import 'package:classi/shared/utils/grade_categories.dart';
+import 'package:classi/shared/utils/formatting.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 

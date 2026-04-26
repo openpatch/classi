@@ -341,7 +341,7 @@ class KeyService {
     List<int> databaseKey,
   ) async {
     final mac = await Hmac.sha256().calculateMac(
-      utf8.encode('clari-integrity'),
+      utf8.encode('classi-integrity'),
       secretKey: SecretKey(databaseKey),
     );
     return mac.bytes;
