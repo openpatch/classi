@@ -1,0 +1,284 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/database/app_database.dart';
+import '../../core/providers/app_providers.dart';
+import '../../shared/utils/grade_categories.dart';
+import '../../shared/utils/formatting.dart';
+import '../../shared/widgets/confirm_dialog.dart';
+import '../../shared/widgets/empty_state.dart';
+import 'group_form.dart';
+
+final activeGroupsProvider = StreamProvider<List<Group>>(
+  (ref) => ref.watch(groupRepositoryProvider).watchActiveGroups(),
+);
+
+final archivedGroupsProvider = StreamProvider<List<Group>>(
+  (ref) => ref.watch(groupRepositoryProvider).watchArchivedGroups(),
+);
+
+final groupStudentCountsProvider = StreamProvider<Map<int, int>>(
+  (ref) =>
+      ref.watch(studentRepositoryProvider).watchAllStudents().map((students) {
+        final counts = <int, int>{};
+        for (final student in students) {
+          counts[student.groupId] = (counts[student.groupId] ?? 0) + 1;
+        }
+        return counts;
+      }),
+);
+
+class GroupsScreen extends ConsumerStatefulWidget {
+  const GroupsScreen({super.key});
+
+  @override
+  ConsumerState<GroupsScreen> createState() => _GroupsScreenState();
+}
+
+class _GroupsScreenState extends ConsumerState<GroupsScreen> {
+  int _currentTab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('groups'.tr()),
+          bottom: TabBar(
+            onTap: (index) => setState(() => _currentTab = index),
+            tabs: [
+              Tab(text: 'active'.tr()),
+              Tab(text: 'archived'.tr()),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _GroupsList(
+              provider: activeGroupsProvider,
+              emptyKey: 'empty_groups',
+              archived: false,
+            ),
+            _GroupsList(
+              provider: archivedGroupsProvider,
+              emptyKey: 'empty_archived_groups',
+              archived: true,
+            ),
+          ],
+        ),
+        floatingActionButton: _currentTab == 0
+            ? FloatingActionButton.extended(
+                onPressed: _addGroup,
+                icon: const Icon(Icons.add),
+                label: Text('add_group'.tr()),
+              )
+            : null,
+      ),
+    );
+  }
+
+  Future<void> _addGroup() async {
+    final gradeSystems = ref.read(gradeSystemControllerProvider).systems;
+    if (gradeSystems.isEmpty) {
+      return;
+    }
+
+    final result = await showGroupFormSheet(
+      context: context,
+      gradeSystems: gradeSystems,
+    );
+    if (result == null) {
+      return;
+    }
+
+    await ref
+        .read(groupRepositoryProvider)
+        .createGroup(
+          name: result.name,
+          colorHex: result.colorHex,
+          gradeScale: result.gradeScale,
+          gradeCategories: result.gradeCategories,
+        );
+  }
+}
+
+class _GroupsList extends ConsumerWidget {
+  const _GroupsList({
+    required this.provider,
+    required this.emptyKey,
+    required this.archived,
+  });
+
+  final StreamProvider<List<Group>> provider;
+  final String emptyKey;
+  final bool archived;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupsValue = ref.watch(provider);
+    final studentCountsValue = ref.watch(groupStudentCountsProvider);
+
+    return groupsValue.when(
+      data: (groups) {
+        if (groups.isEmpty) {
+          return EmptyState(
+            icon: archived ? Icons.archive_outlined : Icons.groups_outlined,
+            title: emptyKey.tr(),
+          );
+        }
+        final studentCounts = studentCountsValue.value ?? const <int, int>{};
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: groups.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final group = groups[index];
+            final groupColor = colorFromHex(group.colorHex);
+            final studentCount = studentCounts[group.id] ?? 0;
+            return Card(
+              child: ListTile(
+                onTap: () => context.go('/groups/${group.id}'),
+                leading: CircleAvatar(
+                  radius: 12,
+                  backgroundColor: groupColor.withValues(alpha: 0.18),
+                  child: CircleAvatar(radius: 5, backgroundColor: groupColor),
+                ),
+                title: Text('${group.name} ($studentCount)'),
+                trailing: PopupMenuButton<_GroupAction>(
+                  onSelected: (action) => _handleAction(
+                    context: context,
+                    ref: ref,
+                    group: group,
+                    action: action,
+                  ),
+                  itemBuilder: (context) => [
+                    if (!archived)
+                      PopupMenuItem(
+                        value: _GroupAction.edit,
+                        child: Text('edit'.tr()),
+                      ),
+                    if (!archived)
+                      PopupMenuItem(
+                        value: _GroupAction.clone,
+                        child: Text('clone_group'.tr()),
+                      ),
+                    PopupMenuItem(
+                      value: archived
+                          ? _GroupAction.unarchive
+                          : _GroupAction.archive,
+                      child: Text(
+                        archived
+                            ? 'unarchive_group'.tr()
+                            : 'archive_group'.tr(),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _GroupAction.delete,
+                      child: Text('delete'.tr()),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+      error: (error, _) => Center(child: Text(error.toString())),
+      loading: () => const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Future<void> _handleAction({
+    required BuildContext context,
+    required WidgetRef ref,
+    required Group group,
+    required _GroupAction action,
+  }) async {
+    final repository = ref.read(groupRepositoryProvider);
+
+    switch (action) {
+      case _GroupAction.edit:
+        final systemsForEdit = ref.read(gradeSystemControllerProvider).systems;
+        if (systemsForEdit.isEmpty) {
+          return;
+        }
+        final result = await showGroupFormSheet(
+          context: context,
+          gradeSystems: systemsForEdit,
+          initialName: group.name,
+          initialGroupColorHex: group.colorHex,
+          initialGradeScale: parseGradeScaleEntries(group.gradeScaleJson),
+          initialGradeCategories: parseGradeCategories(
+            group.gradeCategoriesJson,
+          ),
+          title: 'edit'.tr(),
+        );
+        if (result != null) {
+          await repository.updateGroup(
+            id: group.id,
+            name: result.name,
+            colorHex: result.colorHex,
+            gradeScale: result.gradeScale,
+            gradeCategories: result.gradeCategories,
+          );
+        }
+        return;
+      case _GroupAction.clone:
+        final systemsForClone = ref.read(gradeSystemControllerProvider).systems;
+        if (systemsForClone.isEmpty) {
+          return;
+        }
+        final result = await showGroupFormSheet(
+          context: context,
+          gradeSystems: systemsForClone,
+          initialName: '${group.name} Copy',
+          initialGroupColorHex: group.colorHex,
+          initialGradeScale: parseGradeScaleEntries(group.gradeScaleJson),
+          initialGradeCategories: parseGradeCategories(
+            group.gradeCategoriesJson,
+          ),
+          title: 'clone_group'.tr(),
+        );
+        if (result != null) {
+          await repository.cloneGroup(
+            sourceGroupId: group.id,
+            newName: result.name,
+            colorHex: result.colorHex,
+            gradeScale: result.gradeScale,
+            gradeCategories: result.gradeCategories,
+          );
+        }
+        return;
+      case _GroupAction.archive:
+        final confirmed = await showConfirmDialog(
+          context: context,
+          title: 'confirm_archive_group'.tr(namedArgs: {'name': group.name}),
+          body: 'confirm_archive_group_body'.tr(),
+          confirmKey: 'archive_group',
+        );
+        if (confirmed) {
+          await repository.archiveGroup(group.id);
+        }
+        return;
+      case _GroupAction.unarchive:
+        await repository.unarchiveGroup(group.id);
+        return;
+      case _GroupAction.delete:
+        final confirmed = await showConfirmDialog(
+          context: context,
+          title: 'confirm_delete'.tr(namedArgs: {'name': group.name}),
+          body: 'confirm_delete_group_body'.tr(),
+        );
+        if (confirmed) {
+          await repository.deleteGroup(group.id);
+        }
+        return;
+    }
+  }
+}
+
+enum _GroupAction { edit, clone, archive, unarchive, delete }
