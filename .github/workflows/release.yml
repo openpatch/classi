@@ -16,7 +16,7 @@ jobs:
       release_body: ${{ steps.git_cliff.outputs.content }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -78,7 +78,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Linux build dependencies
         run: |
@@ -146,7 +146,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
