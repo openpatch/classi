@@ -18,10 +18,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.head_ref }}
-          # Value already defaults to true, but `persist-credentials` is required to push new commits to the repository.
+          ref: main
+          fetch-depth: 0
+          # `persist-credentials` is required to push new commits to the repository.
           persist-credentials: true
-          
+
 
       - name: Generate changelog
         id: git_cliff
