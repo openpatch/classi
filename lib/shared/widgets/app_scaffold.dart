@@ -1,0 +1,112 @@
+import 'dart:io';
+
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+class AppScaffold extends StatelessWidget {
+  const AppScaffold({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isWide = MediaQuery.sizeOf(context).width > 700 || Platform.isWindows;
+    final selectedIndex = _selectedIndex(context);
+    final destinations = [
+      _NavigationItem(
+        path: '/groups',
+        icon: Icons.groups_outlined,
+        selectedIcon: Icons.groups,
+        label: 'groups',
+      ),
+      _NavigationItem(
+        path: '/lists',
+        icon: Icons.checklist_outlined,
+        selectedIcon: Icons.checklist,
+        label: 'lists',
+      ),
+      _NavigationItem(
+        path: '/notes',
+        icon: Icons.sticky_note_2_outlined,
+        selectedIcon: Icons.sticky_note_2,
+        label: 'notes',
+      ),
+      _NavigationItem(
+        path: '/settings',
+        icon: Icons.settings_outlined,
+        selectedIcon: Icons.settings,
+        label: 'settings',
+      ),
+    ];
+
+    if (isWide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: selectedIndex,
+              labelType: NavigationRailLabelType.all,
+              onDestinationSelected: (index) =>
+                  context.go(destinations[index].path),
+              destinations: [
+                for (final destination in destinations)
+                  NavigationRailDestination(
+                    icon: Icon(destination.icon),
+                    selectedIcon: Icon(destination.selectedIcon),
+                    label: Text(destination.label.tr()),
+                  ),
+              ],
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(child: child),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (index) => context.go(destinations[index].path),
+        destinations: [
+          for (final destination in destinations)
+            NavigationDestination(
+              icon: Icon(destination.icon),
+              selectedIcon: Icon(destination.selectedIcon),
+              label: destination.label.tr(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  int _selectedIndex(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
+    if (location.startsWith('/lists')) {
+      return 1;
+    }
+    if (location.startsWith('/notes')) {
+      return 2;
+    }
+    if (location.startsWith('/settings')) {
+      return 3;
+    }
+    return 0;
+  }
+}
+
+class _NavigationItem {
+  const _NavigationItem({
+    required this.path,
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+  });
+
+  final String path;
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+}
