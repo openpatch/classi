@@ -42,7 +42,7 @@ class GradeEntryScreen extends ConsumerStatefulWidget {
 }
 
 class _GradeEntryScreenState extends ConsumerState<GradeEntryScreen> {
-  static const String _noGradeSelectionValue = '__clari_no_grade__';
+  static const String _noGradeSelectionValue = '__classi_no_grade__';
 
   late final TextEditingController _sessionController;
   DateTime _selectedDate = DateUtils.dateOnly(DateTime.now());

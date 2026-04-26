@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:clari/core/security/key_service.dart';
+import 'package:classi/core/security/key_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -12,8 +12,8 @@ void main() {
   late KeyService keyService;
 
   setUp(() async {
-    tempDirectory = await Directory.systemTemp.createTemp('clari-key-service');
-    dbFile = File('${tempDirectory.path}/clari.db');
+    tempDirectory = await Directory.systemTemp.createTemp('classi-key-service');
+    dbFile = File('${tempDirectory.path}/classi.db');
     await dbFile.writeAsString('seed');
     keyService = KeyService();
   });

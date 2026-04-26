@@ -1,16 +1,16 @@
 import 'dart:async';
 
-import 'package:clari/core/database/app_database.dart';
-import 'package:clari/features/attendance/attendance_repository.dart';
-import 'package:clari/features/grades/grade_repository.dart';
-import 'package:clari/features/groups/group_repository.dart';
-import 'package:clari/features/homework/homework_repository.dart';
-import 'package:clari/features/lists/list_repository.dart';
-import 'package:clari/features/material_tracking/material_repository.dart';
-import 'package:clari/features/students/student_repository.dart';
-import 'package:clari/features/students/student_sorting.dart';
-import 'package:clari/shared/utils/grade_categories.dart';
-import 'package:clari/shared/utils/formatting.dart';
+import 'package:classi/core/database/app_database.dart';
+import 'package:classi/features/attendance/attendance_repository.dart';
+import 'package:classi/features/grades/grade_repository.dart';
+import 'package:classi/features/groups/group_repository.dart';
+import 'package:classi/features/homework/homework_repository.dart';
+import 'package:classi/features/lists/list_repository.dart';
+import 'package:classi/features/material_tracking/material_repository.dart';
+import 'package:classi/features/students/student_repository.dart';
+import 'package:classi/features/students/student_sorting.dart';
+import 'package:classi/shared/utils/grade_categories.dart';
+import 'package:classi/shared/utils/formatting.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 

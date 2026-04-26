@@ -1,4 +1,4 @@
-import 'package:clari/shared/utils/formatting.dart';
+import 'package:classi/shared/utils/formatting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

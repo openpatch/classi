@@ -1,4 +1,4 @@
-package com.openpatch.clari
+package org.openpatch.classi
 
 import io.flutter.embedding.android.FlutterActivity
 

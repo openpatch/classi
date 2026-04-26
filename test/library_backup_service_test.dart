@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:clari/core/storage/library_backup_service.dart';
+import 'package:classi/core/storage/library_backup_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -13,7 +13,7 @@ void main() {
   late LibraryBackupService service;
 
   setUp(() async {
-    tempDirectory = await Directory.systemTemp.createTemp('clari-backup-test');
+    tempDirectory = await Directory.systemTemp.createTemp('classi-backup-test');
     sourceLibraryDirectory = Directory('${tempDirectory.path}/source.classi');
     exportDirectory = Directory('${tempDirectory.path}/exports');
     await sourceLibraryDirectory.create(recursive: true);

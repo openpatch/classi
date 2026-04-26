@@ -1,5 +1,7 @@
 # Classi
 
+<img src=".github/logo.png" alt="Classi logo" width="120" />
+
 Classi is a local-first Flutter app for teachers. It stores groups, students,
 grades, notes, checklists, and material tracking data in encrypted `.classi`
 libraries, with portable `.classi-backup` export/import for sync.
@@ -65,27 +67,6 @@ flutter build windows --release
 flutter build linux --release
 ```
 
-## App logos and icons
-
-Replace the platform icon files with your own square logo assets, then rebuild:
-
-- **Android:** `android/app/src/main/res/mipmap-*/ic_launcher.png`
-- **Windows:** `windows/runner/resources/app_icon.ico`
-- **macOS:** `macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_*.png`
-
-For macOS, provide each required size in the app icon set:
-
-- `app_icon_16.png`
-- `app_icon_32.png`
-- `app_icon_64.png`
-- `app_icon_128.png`
-- `app_icon_256.png`
-- `app_icon_512.png`
-- `app_icon_1024.png`
-
-After replacing icons, rebuild the affected platform so the new logo is bundled
-into the app artifact.
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, pull request
@@ -95,10 +76,13 @@ expectations, and release hygiene.
 
 Two workflows are included:
 
-- `ci.yml` runs dependency resolution, Drift code generation, analysis, and
-  tests on pushes and pull requests.
-- `build.yml` builds release artifacts for Android, macOS, Windows, and Linux,
-  then uploads them as workflow artifacts.
+- `ci.yml` — runs on every push to `main`/`master` and on pull requests. It
+  installs dependencies, runs Drift code generation, analyzes the code, and
+  executes the test suite.
+- `release.yml` — triggered by version tags (`v*`). It generates a changelog
+  with `git-cliff`, commits an updated `CHANGELOG.md`, builds release artifacts
+  for Android, macOS, Windows, and Linux, and publishes a GitHub Release with
+  all artifacts attached.
 
 The Android release build currently uses the debug signing config, which keeps
 CI buildable out of the box. Replace that with your real signing setup before

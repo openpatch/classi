@@ -39,7 +39,7 @@ class LessonModeScreen extends ConsumerStatefulWidget {
 }
 
 class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
-  static const String _noGradeSelectionValue = '__clari_no_grade__';
+  static const String _noGradeSelectionValue = '__classi_no_grade__';
 
   late final TextEditingController _sessionController;
   late DateTime _selectedDate;
