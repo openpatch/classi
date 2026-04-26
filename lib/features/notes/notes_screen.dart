@@ -77,7 +77,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               )
             : null,
         body: TabBarView(
-          physics: const NeverScrollableScrollPhysics(),
           children: [
             _NotesList(provider: allNotesProvider, emptyKey: 'empty_notes'),
             _NotesList(provider: todoNotesProvider, emptyKey: 'empty_notes'),
