@@ -1,14 +1,30 @@
 name: Build PR
 
 on:
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        type: choice
+        options:
+          - android
+          - linux
+          - macos
+          - windows
+      pr_number:
+        description: 'Pull request number to post the artifact link to (leave empty to skip)'
+        required: false
+        type: string
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   build-android:
     name: Build Android
+    if: inputs.platform == 'android'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,11 +57,25 @@ jobs:
       - name: Upload Android artifact
         uses: actions/upload-artifact@v7
         with:
-          name: classi-android-apk-pr${{ github.event.pull_request.number }}
+          name: classi-android-apk-pr${{ inputs.pr_number || 'manual' }}
           path: dist/**/*.apk
+
+      - name: Comment on PR
+        if: inputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ inputs.pr_number }},
+              body: `### 📦 Android build ready\n\nThe APK artifact has been built. Download it from the [Actions run](${runUrl}) — expand the **Artifacts** section at the bottom of the page.`,
+            });
 
   build-linux:
     name: Build Linux
+    if: inputs.platform == 'linux'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -83,11 +113,25 @@ jobs:
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v7
         with:
-          name: classi-linux-appimage-pr${{ github.event.pull_request.number }}
+          name: classi-linux-appimage-pr${{ inputs.pr_number || 'manual' }}
           path: dist/**/*.AppImage
+
+      - name: Comment on PR
+        if: inputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ inputs.pr_number }},
+              body: `### 📦 Linux build ready\n\nThe AppImage artifact has been built. Download it from the [Actions run](${runUrl}) — expand the **Artifacts** section at the bottom of the page.`,
+            });
 
   build-macos:
     name: Build macOS
+    if: inputs.platform == 'macos'
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -117,11 +161,25 @@ jobs:
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v7
         with:
-          name: classi-macos-dmg-pr${{ github.event.pull_request.number }}
+          name: classi-macos-dmg-pr${{ inputs.pr_number || 'manual' }}
           path: dist/**/*.dmg
+
+      - name: Comment on PR
+        if: inputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ inputs.pr_number }},
+              body: `### 📦 macOS build ready\n\nThe DMG artifact has been built. Download it from the [Actions run](${runUrl}) — expand the **Artifacts** section at the bottom of the page.`,
+            });
 
   build-windows:
     name: Build Windows
+    if: inputs.platform == 'windows'
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -151,5 +209,18 @@ jobs:
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v7
         with:
-          name: classi-windows-exe-pr${{ github.event.pull_request.number }}
+          name: classi-windows-exe-pr${{ inputs.pr_number || 'manual' }}
           path: dist/**/*.exe
+
+      - name: Comment on PR
+        if: inputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ inputs.pr_number }},
+              body: `### 📦 Windows build ready\n\nThe EXE installer artifact has been built. Download it from the [Actions run](${runUrl}) — expand the **Artifacts** section at the bottom of the page.`,
+            });

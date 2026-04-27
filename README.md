@@ -88,11 +88,13 @@ Three workflows are included:
 - `ci.yml` — runs on every push to `main`/`master` and on pull requests. It
   installs dependencies, runs Drift code generation, analyzes the code, and
   executes the test suite.
-- `build-pr.yml` — runs on every pull request. It builds downloadable binaries
-  for Android (APK), Linux (AppImage), macOS (DMG), and Windows (EXE installer)
-  using [Fastforge](https://fastforge.dev/) and uploads them as GitHub Actions
-  artifacts. Reviewers can download and test these binaries directly from the
-  **Actions** tab of the pull request to verify the change works as expected.
+- `build-pr.yml` — triggered manually via **Actions → Build PR → Run workflow**.
+  Choose a platform (`android`, `linux`, `macos`, or `windows`) and, optionally,
+  a pull request number. Only the selected platform is built using
+  [Fastforge](https://fastforge.dev/) and the artifact is uploaded to the run.
+  When a PR number is provided, the workflow posts a comment on that pull request
+  with a direct link to the artifact so reviewers can download and test the
+  binary without leaving the pull request.
 - `release.yml` — triggered by version tags (`v*`). It generates a changelog
   with `git-cliff`, commits an updated `CHANGELOG.md`, builds release artifacts
   for Android (APK), Linux (AppImage), macOS (DMG), and Windows (EXE installer)
