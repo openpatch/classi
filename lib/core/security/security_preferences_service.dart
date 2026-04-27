@@ -5,6 +5,7 @@ class SecurityPreferencesService {
   static const String _inactivityTimeoutSecondsKey =
       'security.inactivity_timeout_seconds';
   static const String _sessionDirtyKey = 'security.session_dirty';
+  static const String _biometricEnabledKey = 'security.biometric_enabled';
 
   static const Duration defaultInactivityTimeout = Duration(minutes: 5);
 
@@ -43,5 +44,15 @@ class SecurityPreferencesService {
   Future<void> setSessionDirty(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_sessionDirtyKey, value);
+  }
+
+  Future<bool> biometricEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_biometricEnabledKey) ?? false;
+  }
+
+  Future<void> setBiometricEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_biometricEnabledKey, value);
   }
 }

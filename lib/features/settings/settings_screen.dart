@@ -422,6 +422,8 @@ class _SecuritySection extends ConsumerWidget {
           },
         ),
         const SizedBox(height: 12),
+        _BiometricToggle(session: session),
+        const SizedBox(height: 12),
         Align(
           alignment: Alignment.centerRight,
           child: OutlinedButton.icon(
@@ -431,6 +433,44 @@ class _SecuritySection extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _BiometricToggle extends ConsumerStatefulWidget {
+  const _BiometricToggle({required this.session});
+
+  final AppSessionController session;
+
+  @override
+  ConsumerState<_BiometricToggle> createState() => _BiometricToggleState();
+}
+
+class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
+  bool _available = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAvailability();
+  }
+
+  Future<void> _checkAvailability() async {
+    final available =
+        await ref.read(appSessionProvider).isBiometricAvailable();
+    if (mounted) setState(() => _available = available);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_available) return const SizedBox.shrink();
+    return SwitchListTile.adaptive(
+      contentPadding: EdgeInsets.zero,
+      title: Text('biometric_unlock'.tr()),
+      subtitle: Text('biometric_unlock_hint'.tr()),
+      value: widget.session.biometricEnabled,
+      onChanged: (value) =>
+          ref.read(appSessionProvider).setBiometricEnabled(value),
     );
   }
 }

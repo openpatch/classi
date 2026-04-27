@@ -16,6 +16,7 @@ class KeyService {
   );
 
   static const String _legacyStorageKey = 'db_passphrase';
+  static const String _biometricPassphrasePrefix = 'biometric.passphrase.';
   static const int _defaultIterations = 310000;
   static const int _defaultKeyBytes = 32;
   static const int _saltBytes = 16;
@@ -34,6 +35,26 @@ class KeyService {
 
   Future<void> clearLegacyPassphrase() =>
       _storage.delete(key: _legacyStorageKey);
+
+  String _biometricPassphraseKey(File dbFile) =>
+      '$_biometricPassphrasePrefix${dbFile.path}';
+
+  /// Stores [passphrase] in secure storage so that a successful biometric
+  /// authentication can retrieve it and unlock the database without re-typing.
+  Future<void> saveBiometricPassphrase(File dbFile, String passphrase) =>
+      _storage.write(
+        key: _biometricPassphraseKey(dbFile),
+        value: passphrase,
+      );
+
+  /// Returns the passphrase previously saved for biometric unlock, or `null`
+  /// when none has been stored.
+  Future<String?> getBiometricPassphrase(File dbFile) =>
+      _storage.read(key: _biometricPassphraseKey(dbFile));
+
+  /// Removes the stored biometric passphrase for [dbFile].
+  Future<void> clearBiometricPassphrase(File dbFile) =>
+      _storage.delete(key: _biometricPassphraseKey(dbFile));
 
   Future<SecurityBootstrapResult> bootstrapSecurity({
     required File dbFile,
