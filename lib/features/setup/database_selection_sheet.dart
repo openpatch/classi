@@ -137,95 +137,92 @@ Future<String?> _showCreateDatabaseDialog({
   String selectedFolder = initialFolder;
   final nameController = TextEditingController(text: initialName);
 
-  return showDialog<String>(
-    context: context,
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setState) {
-          final resolvedName = nameController.text.trim().isEmpty
-              ? 'classi'
-              : nameController.text.trim();
-          final fullPath = p.join(
-            selectedFolder,
-            DatabasePathService.normalizeDatabasePackageName(resolvedName),
-          );
+  try {
+    return await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final resolvedName = nameController.text.trim().isEmpty
+                ? 'classi'
+                : nameController.text.trim();
+            final fullPath = p.join(
+              selectedFolder,
+              DatabasePathService.normalizeDatabasePackageName(resolvedName),
+            );
 
-          return AlertDialog(
-            title: Text('create_another_database'.tr()),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'database_folder'.tr(),
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        selectedFolder,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'choose_library_folder'.tr(),
-                      onPressed: () async {
-                        final folder = await FilePicker.getDirectoryPath(
-                          initialDirectory: selectedFolder,
-                          dialogTitle: 'choose_library_folder'.tr(),
-                        );
-                        if (folder != null) {
-                          setState(() => selectedFolder = folder);
-                        }
-                      },
-                      icon: const Icon(Icons.folder_open_outlined),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'database_name'.tr(),
-                    hintText: 'database_name_hint'.tr(),
-                    suffixText: '.classi',
+            return AlertDialog(
+              title: Text('create_another_database'.tr()),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'database_folder'.tr(),
+                    style: Theme.of(context).textTheme.labelSmall,
                   ),
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  fullPath,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('cancel'.tr()),
-              ),
-              FilledButton(
-                onPressed: nameController.text.trim().isEmpty
-                    ? null
-                    : () => Navigator.of(context).pop(
-                        p.join(
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
                           selectedFolder,
-                          DatabasePathService.normalizeDatabasePackageName(
-                            nameController.text.trim(),
-                          ),
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
-                child: Text('create_database'.tr()),
+                      IconButton(
+                        tooltip: 'choose_library_folder'.tr(),
+                        onPressed: () async {
+                          final folder = await FilePicker.getDirectoryPath(
+                            initialDirectory: selectedFolder,
+                            dialogTitle: 'choose_library_folder'.tr(),
+                          );
+                          if (folder != null) {
+                            setState(() => selectedFolder = folder);
+                          }
+                        },
+                        icon: const Icon(Icons.folder_open_outlined),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: 'database_name'.tr(),
+                      hintText: 'database_name_hint'.tr(),
+                      suffixText: '.classi',
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    fullPath,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
-            ],
-          );
-        },
-      );
-    },
-  );
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('cancel'.tr()),
+                ),
+                FilledButton(
+                  onPressed: nameController.text.trim().isEmpty
+                      ? null
+                      : () => Navigator.of(context).pop(fullPath),
+                  child: Text('create_database'.tr()),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  } finally {
+    nameController.dispose();
+  }
 }
 
 Future<void> _applyDatabaseSelection({
