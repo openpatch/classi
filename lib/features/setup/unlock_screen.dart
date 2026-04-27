@@ -19,6 +19,19 @@ class UnlockScreen extends ConsumerStatefulWidget {
 class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   final _controller = TextEditingController();
   bool _isUnlocking = false;
+  bool _biometricAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricAvailability();
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    final available =
+        await ref.read(appSessionProvider).isBiometricAvailable();
+    if (mounted) setState(() => _biometricAvailable = available);
+  }
 
   @override
   void dispose() {
@@ -29,6 +42,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(appSessionProvider);
+    final showBiometric = _biometricAvailable && session.biometricEnabled;
 
     return Scaffold(
       body: SafeArea(
@@ -74,7 +88,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                             TextField(
                               controller: _controller,
                               obscureText: true,
-                              autofocus: true,
+                              autofocus: !showBiometric,
                               onSubmitted: (_) => _submit(),
                               decoration: InputDecoration(
                                 labelText: 'setup_passphrase'.tr(),
@@ -110,6 +124,19 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                                     : Text('unlock'.tr()),
                               ),
                             ),
+                            if (showBiometric) ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: _isUnlocking
+                                      ? null
+                                      : _unlockWithBiometrics,
+                                  icon: const Icon(Icons.fingerprint),
+                                  label: Text('unlock_with_biometrics'.tr()),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 12),
                             FutureBuilder<bool>(
                               future: ref
@@ -183,6 +210,22 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       if (mounted) {
         setState(() => _isUnlocking = false);
       }
+    }
+  }
+
+  Future<void> _unlockWithBiometrics() async {
+    setState(() => _isUnlocking = true);
+    try {
+      final success = await ref
+          .read(appSessionProvider)
+          .unlockWithBiometrics(
+            localizedReason: 'biometric_reason'.tr(),
+          );
+      if (!mounted) return;
+      if (!success) return;
+      context.go('/groups');
+    } finally {
+      if (mounted) setState(() => _isUnlocking = false);
     }
   }
 }
