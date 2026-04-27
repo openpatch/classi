@@ -233,5 +233,9 @@
   "unknown_group": "Unknown group",
   "unknown_student": "Unknown student",
   "version": "Version",
-  "library_package_required": "Choose a .classi library folder."
+  "library_package_required": "Choose a .classi library folder.",
+  "biometric_unlock": "Unlock with biometrics",
+  "biometric_unlock_hint": "Use fingerprint or face recognition instead of your passphrase.",
+  "biometric_reason": "Confirm your identity to unlock Classi.",
+  "unlock_with_biometrics": "Use biometrics"
 }

@@ -41,6 +41,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   // Step 3: App lock preferences with recommended defaults.
   bool _lockOnBackground = true;
+  bool _biometricEnabled = false;
+  bool _biometricAvailable = false;
   Duration _inactivityTimeout =
       SecurityPreferencesService.defaultInactivityTimeout;
 
@@ -52,6 +54,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   void initState() {
     super.initState();
     _loadDefaultPath();
+    _checkBiometricAvailability();
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    final available =
+        await ref.read(appSessionProvider).isBiometricAvailable();
+    if (mounted) setState(() => _biometricAvailable = available);
   }
 
   Future<void> _loadDefaultPath() async {
@@ -123,6 +132,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
       await session.setLockOnBackground(_lockOnBackground);
       await session.setInactivityTimeout(_inactivityTimeout);
+      await session.setBiometricEnabled(_biometricEnabled);
 
       if (_autoExportEnabled && _autoExportFolderPath != null) {
         await session.setAutoExportFolderPath(_autoExportFolderPath);
@@ -277,10 +287,14 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           lockOnBackground: _lockOnBackground,
           inactivityTimeout: _inactivityTimeout,
           timeoutOptions: _timeoutOptions,
+          biometricAvailable: _biometricAvailable,
+          biometricEnabled: _biometricEnabled,
           onLockOnBackgroundChanged: (value) =>
               setState(() => _lockOnBackground = value),
           onInactivityTimeoutChanged: (value) =>
               setState(() => _inactivityTimeout = value),
+          onBiometricEnabledChanged: (value) =>
+              setState(() => _biometricEnabled = value),
         );
       case 3:
         return _BackupStep(
@@ -467,15 +481,21 @@ class _LockingStep extends StatelessWidget {
     required this.lockOnBackground,
     required this.inactivityTimeout,
     required this.timeoutOptions,
+    required this.biometricAvailable,
+    required this.biometricEnabled,
     required this.onLockOnBackgroundChanged,
     required this.onInactivityTimeoutChanged,
+    required this.onBiometricEnabledChanged,
   });
 
   final bool lockOnBackground;
   final Duration inactivityTimeout;
   final Map<int, Duration> timeoutOptions;
+  final bool biometricAvailable;
+  final bool biometricEnabled;
   final ValueChanged<bool> onLockOnBackgroundChanged;
   final ValueChanged<Duration> onInactivityTimeoutChanged;
+  final ValueChanged<bool> onBiometricEnabledChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -510,6 +530,16 @@ class _LockingStep extends StatelessWidget {
             if (value != null) onInactivityTimeoutChanged(value);
           },
         ),
+        if (biometricAvailable) ...[
+          const SizedBox(height: 12),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: Text('biometric_unlock'.tr()),
+            subtitle: Text('biometric_unlock_hint'.tr()),
+            value: biometricEnabled,
+            onChanged: onBiometricEnabledChanged,
+          ),
+        ],
       ],
     );
   }

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../database/app_database.dart';
+import '../security/biometric_service.dart';
 import '../security/key_service.dart';
 import '../security/security_preferences_service.dart';
 import '../storage/database_path_service.dart';
@@ -33,17 +34,20 @@ class AppSessionController extends ChangeNotifier {
     required SecurityPreferencesService securityPreferencesService,
     required LibraryBackupPreferencesService libraryBackupPreferencesService,
     required LibraryBackupService libraryBackupService,
+    required BiometricService biometricService,
   }) : _keyService = keyService,
        _databasePathService = databasePathService,
        _securityPreferencesService = securityPreferencesService,
        _libraryBackupPreferencesService = libraryBackupPreferencesService,
-       _libraryBackupService = libraryBackupService;
+       _libraryBackupService = libraryBackupService,
+       _biometricService = biometricService;
 
   final KeyService _keyService;
   final DatabasePathService _databasePathService;
   final SecurityPreferencesService _securityPreferencesService;
   final LibraryBackupPreferencesService _libraryBackupPreferencesService;
   final LibraryBackupService _libraryBackupService;
+  final BiometricService _biometricService;
 
   AppDatabase? _database;
   AppSessionStatus _status = AppSessionStatus.loading;
@@ -51,6 +55,7 @@ class AppSessionController extends ChangeNotifier {
   DateTime? _openedAt;
   bool _isBusy = false;
   bool _lockOnBackground = true;
+  bool _biometricEnabled = false;
   Duration _inactivityTimeout =
       SecurityPreferencesService.defaultInactivityTimeout;
   Timer? _inactivityTimer;
@@ -69,6 +74,7 @@ class AppSessionController extends ChangeNotifier {
   AppSessionErrorCode? get errorCode => _errorCode;
   String? get errorMessage => _errorCode?.translationKey;
   bool get lockOnBackground => _lockOnBackground;
+  bool get biometricEnabled => _biometricEnabled;
   Duration get inactivityTimeout => _inactivityTimeout;
   String? get pendingRecoveryKey => _pendingRecoveryKey;
   bool get autoExportEnabled => _autoExportEnabled;
@@ -115,6 +121,9 @@ class AppSessionController extends ChangeNotifier {
       passphrase: passphrase,
     );
     await _openDatabase(passphrase);
+    if (_biometricEnabled) {
+      await _keyService.saveBiometricPassphrase(dbFile, passphrase);
+    }
     _pendingRecoveryKey = bootstrapResult.recoveryKey;
     _pendingAutoImportBackupPath = null;
     _errorCode = null;
@@ -170,6 +179,9 @@ class AppSessionController extends ChangeNotifier {
         passphrase: passphrase,
       );
       await _securityPreferencesService.setSessionDirty(true);
+      if (_biometricEnabled) {
+        await _keyService.saveBiometricPassphrase(dbFile, passphrase);
+      }
       _status = AppSessionStatus.ready;
       _resetInactivityTimer();
       return true;
@@ -324,6 +336,9 @@ class AppSessionController extends ChangeNotifier {
       passphrase: newPassphrase,
     );
     await _securityPreferencesService.setSessionDirty(true);
+    if (_biometricEnabled) {
+      await _keyService.saveBiometricPassphrase(dbFile, newPassphrase);
+    }
     return true;
   }
 
@@ -405,6 +420,45 @@ class AppSessionController extends ChangeNotifier {
     await _securityPreferencesService.setInactivityTimeout(value);
     _resetInactivityTimer();
     notifyListeners();
+  }
+
+  /// Returns `true` when biometric hardware is present and at least one
+  /// credential is enrolled on this device.
+  Future<bool> isBiometricAvailable() => _biometricService.isAvailable();
+
+  /// Enables or disables biometric unlock.
+  ///
+  /// When disabling, the stored biometric passphrase is erased from secure
+  /// storage.  When enabling, the passphrase is saved the next time the user
+  /// unlocks successfully with their passphrase.
+  Future<void> setBiometricEnabled(bool value) async {
+    _biometricEnabled = value;
+    await _securityPreferencesService.setBiometricEnabled(value);
+    if (!value) {
+      final dbFile = await _databasePathService.getDatabaseFile();
+      await _keyService.clearBiometricPassphrase(dbFile);
+    }
+    notifyListeners();
+  }
+
+  /// Presents the system biometric prompt and, on success, retrieves the
+  /// stored passphrase and unlocks the database.
+  ///
+  /// Returns `true` on success, `false` when authentication failed or the
+  /// biometric passphrase has not been stored yet.
+  Future<bool> unlockWithBiometrics({required String localizedReason}) async {
+    if (!_biometricEnabled) return false;
+
+    final authenticated = await _biometricService.authenticate(
+      localizedReason: localizedReason,
+    );
+    if (!authenticated) return false;
+
+    final dbFile = await _databasePathService.getDatabaseFile();
+    final passphrase = await _keyService.getBiometricPassphrase(dbFile);
+    if (passphrase == null) return false;
+
+    return unlock(passphrase);
   }
 
   Future<void> setAutoExportEnabled(bool value) async {
@@ -649,6 +703,7 @@ class AppSessionController extends ChangeNotifier {
   Future<void> _loadSecurityPreferences() async {
     _lockOnBackground = await _securityPreferencesService.lockOnBackground();
     _inactivityTimeout = await _securityPreferencesService.inactivityTimeout();
+    _biometricEnabled = await _securityPreferencesService.biometricEnabled();
   }
 
   Future<void> _loadBackupPreferences() async {
