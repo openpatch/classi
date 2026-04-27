@@ -2,25 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.2] - 2026-04-27
+
+### Bug Fixes
+
+- *(ci)* Wait for changelog before building, fix release body linebreaks
+
+
 ## [1.1.1] - 2026-04-27
 
 ### Bug Fixes
 
-- *(ci)* Bump pubspec.yaml version on release- PR builds use .pr applicationId suffix to avoid overwriting the real app
+- *(ci)* Bump pubspec.yaml version on release
+- PR builds use .pr applicationId suffix to avoid overwriting the real app
+
 
 ## [1.1.0] - 2026-04-27
 
 ### Bug Fixes
 
-- Enable swipe between tabs in Notes and Groups screens- *(setup)* Dispose nameController and deduplicate path in dialog- *(ci)* Use actions/upload-artifact@v7 to match release.yml- *(setup)* Use descriptive validator error messages in wizard steps
+- Enable swipe between tabs in Notes and Groups screens
+- *(setup)* Dispose nameController and deduplicate path in dialog
+- *(ci)* Use actions/upload-artifact@v7 to match release.yml
+- *(setup)* Use descriptive validator error messages in wizard steps
+
 
 ### Features
 
-- *(setup)* Allow folder and name selection when creating a database- *(ci)* On-demand per-platform PR builds with artifact comment- *(ci)* Trigger per-platform builds via PR comment with direct artifact link- *(setup)* Convert SetupScreen into a 4-step database creation wizard- *(ci)* On-demand per-platform PR builds with artifact comment- *(ci)* Trigger per-platform builds via PR comment with direct artifact link
+- *(setup)* Allow folder and name selection when creating a database
+- *(ci)* On-demand per-platform PR builds with artifact comment
+- *(ci)* Trigger per-platform builds via PR comment with direct artifact link
+- *(setup)* Convert SetupScreen into a 4-step database creation wizard
+- *(ci)* On-demand per-platform PR builds with artifact comment
+- *(ci)* Trigger per-platform builds via PR comment with direct artifact link
+
 
 ### Miscellaneous Tasks
 
-- *(ci)* Update upload artifact to v7- *(ci)* Add PR build workflow for downloadable binaries
+- *(ci)* Update upload artifact to v7
+- *(ci)* Add PR build workflow for downloadable binaries
+
 
 ## [1.0.0] - 2026-04-26
 
