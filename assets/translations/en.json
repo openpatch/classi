@@ -207,6 +207,8 @@
   "setup_locking_intro": "Classi locks automatically to protect your data. These are the recommended settings — you can adjust them later in Settings.",
   "setup_backup_intro": "Regular backups protect against accidental data loss. You can change these settings later in Settings.",
   "wizard_step_counter": "Step {current} of {total}",
+  "database_name_required": "Please enter a library name.",
+  "passphrase_required": "Please enter a passphrase.",
   "setup_intro": "Choose a passphrase to encrypt your library. You will need the same passphrase on each device.",
   "setup_passphrase": "Passphrase",
   "setup_title": "Welcome to Classi",

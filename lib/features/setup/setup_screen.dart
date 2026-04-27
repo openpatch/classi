@@ -390,7 +390,7 @@ class _LibraryStep extends StatelessWidget {
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'database_name'.tr();
+                return 'database_name_required'.tr();
               }
               return null;
             },
@@ -437,7 +437,7 @@ class _SecurityStep extends StatelessWidget {
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'setup_passphrase'.tr();
+                return 'passphrase_required'.tr();
               }
               return null;
             },
