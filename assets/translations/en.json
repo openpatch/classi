@@ -233,6 +233,8 @@
   "unknown_group": "Unknown group",
   "unknown_student": "Unknown student",
   "version": "Version",
+  "app_version": "App version",
+  "build_commit": "Build commit",
   "library_package_required": "Choose a .classi library folder.",
   "biometric_unlock": "Unlock with biometrics",
   "biometric_unlock_hint": "Use fingerprint or face recognition instead of your passphrase.",
