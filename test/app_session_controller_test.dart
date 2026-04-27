@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:classi/core/security/biometric_service.dart';
 import 'package:classi/core/security/key_service.dart';
 import 'package:classi/core/security/security_preferences_service.dart';
 import 'package:classi/core/session/app_session_controller.dart';
@@ -29,6 +30,7 @@ void main() {
       securityPreferencesService: SecurityPreferencesService(),
       libraryBackupPreferencesService: LibraryBackupPreferencesService(),
       libraryBackupService: LibraryBackupService(),
+      biometricService: BiometricService(),
     );
   });
 
