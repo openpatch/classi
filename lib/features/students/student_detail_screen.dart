@@ -19,6 +19,7 @@ import '../../shared/utils/grade_categories.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/theme/app_ui.dart';
 import '../../shared/widgets/app_bar_title.dart';
+import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_avatar.dart';
@@ -161,8 +162,7 @@ class StudentDetailScreen extends ConsumerWidget {
           ),
         );
       },
-      error: (error, _) =>
-          Scaffold(body: Center(child: Text(error.toString()))),
+      error: (error, _) => const AppErrorScaffold(),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
@@ -338,7 +338,7 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
           ],
         );
       },
-      error: (error, _) => Center(child: Text(error.toString())),
+      error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
@@ -1042,7 +1042,7 @@ class _MaterialTab extends ConsumerWidget {
           ],
         );
       },
-      error: (error, _) => Center(child: Text(error.toString())),
+      error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
@@ -1220,7 +1220,7 @@ class _HomeworkTab extends ConsumerWidget {
           ],
         );
       },
-      error: (error, _) => Center(child: Text(error.toString())),
+      error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
@@ -1472,7 +1472,7 @@ class _StudentNotesTab extends ConsumerWidget {
           ],
         );
       },
-      error: (error, _) => Center(child: Text(error.toString())),
+      error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
