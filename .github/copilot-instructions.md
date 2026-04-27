@@ -1,3 +1,12 @@
+# Commit Message Rules
+- Follow Conventional Commits: `type(scope): description`
+- Types: feat, fix, doc, style, refactor, perf, test, chore, security, revert, chore(release), chore(deps), chore,ci
+- Keep the first line under 72 characters.
+- Use imperative, present tense: "change" not "changed".
+- Do not end the description with a period.
+- Provide a body for complex changes to explain *why* it was done.
+- Reference the GitHub issue, when the commit is related to one.
+
 # AI rules for Flutter
 
 You are an expert in Flutter and Dart development. Your goal is to build
