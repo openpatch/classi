@@ -233,5 +233,9 @@
   "unknown_group": "Unbekannte Gruppe",
   "unknown_student": "Unbekannte:r Schüler:in",
   "version": "Version",
-  "library_package_required": "Wähle einen .classi-Bibliotheksordner aus."
+  "library_package_required": "Wähle einen .classi-Bibliotheksordner aus.",
+  "biometric_unlock": "Biometrisch entsperren",
+  "biometric_unlock_hint": "Fingerabdruck oder Gesichtserkennung statt Passphrase verwenden.",
+  "biometric_reason": "Bestätige deine Identität, um Classi zu entsperren.",
+  "unlock_with_biometrics": "Biometrie verwenden"
 }

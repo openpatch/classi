@@ -16,6 +16,7 @@ import '../../features/settings/student_sort_controller.dart';
 import '../../features/students/student_repository.dart';
 import '../../features/students/student_sorting.dart';
 import '../database/app_database.dart';
+import '../security/biometric_service.dart';
 import '../security/key_service.dart';
 import '../security/security_preferences_service.dart';
 import '../session/app_session_controller.dart';
@@ -42,6 +43,10 @@ final libraryBackupServiceProvider = Provider<LibraryBackupService>(
   (ref) => LibraryBackupService(),
 );
 
+final biometricServiceProvider = Provider<BiometricService>(
+  (ref) => BiometricService(),
+);
+
 final appSessionProvider = ChangeNotifierProvider<AppSessionController>((ref) {
   final controller = AppSessionController(
     keyService: ref.watch(keyServiceProvider),
@@ -51,6 +56,7 @@ final appSessionProvider = ChangeNotifierProvider<AppSessionController>((ref) {
       libraryBackupPreferencesServiceProvider,
     ),
     libraryBackupService: ref.watch(libraryBackupServiceProvider),
+    biometricService: ref.watch(biometricServiceProvider),
   );
   unawaited(controller.initialize());
   return controller;
