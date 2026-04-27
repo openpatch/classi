@@ -12,8 +12,6 @@ jobs:
   changelog:
     name: Generate changelog
     runs-on: ubuntu-latest
-    outputs:
-      release_body: ${{ steps.git_cliff.outputs.content }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -23,13 +21,17 @@ jobs:
           # `persist-credentials` is required to push new commits to the repository.
           persist-credentials: true
 
-
       - name: Generate changelog
-        id: git_cliff
         uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
-          args: --latest --strip header
+          args: --latest --strip header --output release-body.md
+
+      - name: Upload release body artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-body
+          path: release-body.md
 
       - name: Update CHANGELOG.md
         uses: orhun/git-cliff-action@v4
@@ -55,10 +57,13 @@ jobs:
 
   build-android:
     name: Build Android
+    needs: [changelog]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: main
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -92,10 +97,13 @@ jobs:
 
   build-linux:
     name: Build Linux
+    needs: [changelog]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: main
 
       - name: Install Linux build dependencies
         run: |
@@ -134,10 +142,13 @@ jobs:
 
   build-macos:
     name: Build macOS
+    needs: [changelog]
     runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: main
 
       - name: Install appdmg
         run: npm install -g appdmg
@@ -168,10 +179,13 @@ jobs:
 
   build-windows:
     name: Build Windows
+    needs: [changelog]
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: main
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
@@ -213,7 +227,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          body: ${{ needs.changelog.outputs.release_body }}
+          body_path: artifacts/release-body/release-body.md
           files: |
             artifacts/classi-android-apk/**/*.apk
             artifacts/classi-linux-appimage/**/*.AppImage
