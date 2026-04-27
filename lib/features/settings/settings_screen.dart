@@ -125,15 +125,23 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _AppInfoSection extends StatelessWidget {
+class _AppInfoSection extends StatefulWidget {
   const _AppInfoSection();
 
+  @override
+  State<_AppInfoSection> createState() => _AppInfoSectionState();
+}
+
+class _AppInfoSectionState extends State<_AppInfoSection> {
   static const String _kGitHash = String.fromEnvironment('GIT_HASH');
+
+  late final Future<PackageInfo> _packageInfoFuture =
+      PackageInfo.fromPlatform();
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<PackageInfo>(
-      future: PackageInfo.fromPlatform(),
+      future: _packageInfoFuture,
       builder: (context, snapshot) {
         final info = snapshot.data;
         return Column(
