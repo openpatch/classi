@@ -124,6 +124,8 @@
   "group_name": "Group name",
   "groups": "Groups",
   "group_color": "Group color",
+  "generic_error": "Something went wrong.",
+  "generic_error_hint": "Please try again.",
   "had_homework": "Had homework",
   "had_material": "Had material",
   "homework": "Homework",

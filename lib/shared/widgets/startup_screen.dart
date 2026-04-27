@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/app_providers.dart';
 import '../../core/session/app_session_controller.dart';
+import 'app_error_state.dart';
 
 class StartupScreen extends ConsumerWidget {
   const StartupScreen({super.key});
@@ -11,14 +12,18 @@ class StartupScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(appSessionProvider);
+    final errorText =
+        session.errorCode?.translationKey.tr() ?? 'generic_error'.tr();
 
-    final message = switch (session.status) {
-      AppSessionStatus.loading => 'loading_app'.tr(),
-      AppSessionStatus.error => session.errorMessage ?? 'generic_error'.tr(),
-      AppSessionStatus.needsSetup => 'loading_app'.tr(),
-      AppSessionStatus.locked => 'loading_app'.tr(),
-      AppSessionStatus.ready => 'loading_app'.tr(),
-    };
+    if (session.status == AppSessionStatus.error) {
+      return AppErrorScaffold(
+        title: errorText,
+        action: FilledButton(
+          onPressed: () => ref.read(appSessionProvider).initialize(),
+          child: Text('retry'.tr()),
+        ),
+      );
+    }
 
     return Scaffold(
       body: Center(
@@ -29,14 +34,7 @@ class StartupScreen extends ConsumerWidget {
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 20),
-              Text(message, textAlign: TextAlign.center),
-              if (session.status == AppSessionStatus.error) ...[
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => ref.read(appSessionProvider).initialize(),
-                  child: Text('retry'.tr()),
-                ),
-              ],
+              Text('loading_app'.tr(), textAlign: TextAlign.center),
             ],
           ),
         ),

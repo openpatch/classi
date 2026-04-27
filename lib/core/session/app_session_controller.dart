@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -11,6 +12,19 @@ import '../storage/library_backup_preferences_service.dart';
 import '../storage/library_backup_service.dart';
 
 enum AppSessionStatus { loading, needsSetup, locked, ready, error }
+
+enum AppSessionErrorCode {
+  generic('generic_error'),
+  errorLoadingDatabase('error_loading_database'),
+  invalidPassphrase('invalid_passphrase'),
+  integrityCheckFailed('integrity_check_failed'),
+  invalidRecoveryKey('invalid_recovery_key'),
+  recoveryNotAvailable('recovery_not_available');
+
+  const AppSessionErrorCode(this.translationKey);
+
+  final String translationKey;
+}
 
 class AppSessionController extends ChangeNotifier {
   AppSessionController({
@@ -33,7 +47,7 @@ class AppSessionController extends ChangeNotifier {
 
   AppDatabase? _database;
   AppSessionStatus _status = AppSessionStatus.loading;
-  String? _errorMessage;
+  AppSessionErrorCode? _errorCode;
   DateTime? _openedAt;
   bool _isBusy = false;
   bool _lockOnBackground = true;
@@ -52,7 +66,8 @@ class AppSessionController extends ChangeNotifier {
 
   AppSessionStatus get status => _status;
   AppDatabase? get database => _database;
-  String? get errorMessage => _errorMessage;
+  AppSessionErrorCode? get errorCode => _errorCode;
+  String? get errorMessage => _errorCode?.translationKey;
   bool get lockOnBackground => _lockOnBackground;
   Duration get inactivityTimeout => _inactivityTimeout;
   String? get pendingRecoveryKey => _pendingRecoveryKey;
@@ -80,10 +95,13 @@ class AppSessionController extends ChangeNotifier {
       await _loadSecurityPreferences();
       await _loadBackupPreferences();
       await _resolveCurrentDatabaseState();
-    } catch (error) {
-      _errorMessage = error.toString();
-      await _closeDatabase();
-      _status = AppSessionStatus.error;
+    } catch (error, stackTrace) {
+      await _handleFatalError(
+        operation: 'initialize session',
+        error: error,
+        stackTrace: stackTrace,
+        errorCode: AppSessionErrorCode.errorLoadingDatabase,
+      );
     } finally {
       _isBusy = false;
       notifyListeners();
@@ -99,6 +117,7 @@ class AppSessionController extends ChangeNotifier {
     await _openDatabase(passphrase);
     _pendingRecoveryKey = bootstrapResult.recoveryKey;
     _pendingAutoImportBackupPath = null;
+    _errorCode = null;
     _status = AppSessionStatus.ready;
     notifyListeners();
     return bootstrapResult.recoveryKey;
@@ -111,7 +130,7 @@ class AppSessionController extends ChangeNotifier {
 
     _isBusy = true;
     _status = AppSessionStatus.loading;
-    _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
 
     try {
@@ -121,8 +140,7 @@ class AppSessionController extends ChangeNotifier {
         passphrase: passphrase,
       );
       if (!validPassphrase) {
-        _status = AppSessionStatus.locked;
-        _errorMessage = 'invalid_passphrase';
+        _setLockedError(AppSessionErrorCode.invalidPassphrase);
         return false;
       }
 
@@ -139,8 +157,7 @@ class AppSessionController extends ChangeNotifier {
         );
         if (!repaired) {
           await _closeDatabase();
-          _status = AppSessionStatus.locked;
-          _errorMessage = 'integrity_check_failed';
+          _setLockedError(AppSessionErrorCode.integrityCheckFailed);
           return false;
         }
       }
@@ -156,10 +173,13 @@ class AppSessionController extends ChangeNotifier {
       _status = AppSessionStatus.ready;
       _resetInactivityTimer();
       return true;
-    } catch (error) {
-      _errorMessage = error.toString();
-      await _closeDatabase();
-      _status = AppSessionStatus.error;
+    } catch (error, stackTrace) {
+      await _handleFatalError(
+        operation: 'unlock database',
+        error: error,
+        stackTrace: stackTrace,
+        errorCode: AppSessionErrorCode.errorLoadingDatabase,
+      );
       return false;
     } finally {
       _isBusy = false;
@@ -178,7 +198,12 @@ class AppSessionController extends ChangeNotifier {
         passphrase: passphrase,
       );
       return true;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logUnexpectedError(
+        operation: 'repair integrity after open',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return false;
     }
   }
@@ -191,7 +216,7 @@ class AppSessionController extends ChangeNotifier {
     _cancelInactivityTimer();
     await _persistOpenDatabaseState(markSessionClean: true);
     _status = AppSessionStatus.locked;
-    _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
   }
 
@@ -355,11 +380,14 @@ class AppSessionController extends ChangeNotifier {
       await _databasePathService.setDatabaseFilePath(databasePath);
       await _resolveCurrentDatabaseState();
       return null;
-    } catch (error) {
-      _errorMessage = error.toString();
-      await _closeDatabase();
-      _status = AppSessionStatus.error;
-      return 'error_loading_database';
+    } catch (error, stackTrace) {
+      await _handleFatalError(
+        operation: 'select database',
+        error: error,
+        stackTrace: stackTrace,
+        errorCode: AppSessionErrorCode.errorLoadingDatabase,
+      );
+      return AppSessionErrorCode.errorLoadingDatabase.translationKey;
     } finally {
       _isBusy = false;
       notifyListeners();
@@ -422,7 +450,12 @@ class AppSessionController extends ChangeNotifier {
       _setBackupMessage('backup_exported');
       notifyListeners();
       return null;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _logUnexpectedError(
+        operation: 'export backup to folder',
+        error: error,
+        stackTrace: stackTrace,
+      );
       if (_database == null) {
         await _openDatabase(passphrase);
         _resetInactivityTimer();
@@ -461,10 +494,13 @@ class AppSessionController extends ChangeNotifier {
       await _resolveCurrentDatabaseState();
       _setBackupMessage('backup_imported');
       return null;
-    } catch (error) {
-      _errorMessage = error.toString();
-      await _closeDatabase();
-      _status = AppSessionStatus.error;
+    } catch (error, stackTrace) {
+      await _handleFatalError(
+        operation: 'import backup',
+        error: error,
+        stackTrace: stackTrace,
+        errorCode: AppSessionErrorCode.errorLoadingDatabase,
+      );
       _setBackupMessage('backup_import_failed', isError: true);
       return 'backup_import_failed';
     } finally {
@@ -503,10 +539,13 @@ class AppSessionController extends ChangeNotifier {
       await _resolveCurrentDatabaseState();
       _setBackupMessage('backup_restored');
       return null;
-    } catch (error) {
-      _errorMessage = error.toString();
-      await _closeDatabase();
-      _status = AppSessionStatus.error;
+    } catch (error, stackTrace) {
+      await _handleFatalError(
+        operation: 'restore pending auto import',
+        error: error,
+        stackTrace: stackTrace,
+        errorCode: AppSessionErrorCode.errorLoadingDatabase,
+      );
       _setBackupMessage('backup_import_failed', isError: true);
       return 'backup_import_failed';
     } finally {
@@ -533,8 +572,7 @@ class AppSessionController extends ChangeNotifier {
         recoveryKey: recoveryKey,
       );
       if (!validRecoveryKey) {
-        _status = AppSessionStatus.locked;
-        _errorMessage = 'invalid_recovery_key';
+        _setLockedError(AppSessionErrorCode.invalidRecoveryKey);
         return false;
       }
 
@@ -545,8 +583,7 @@ class AppSessionController extends ChangeNotifier {
         allowRepair: allowRepair,
       );
       if (!integrityValid) {
-        _status = AppSessionStatus.locked;
-        _errorMessage = 'integrity_check_failed';
+        _setLockedError(AppSessionErrorCode.integrityCheckFailed);
         return false;
       }
 
@@ -556,8 +593,7 @@ class AppSessionController extends ChangeNotifier {
         newPassphrase: newPassphrase,
       );
       if (recoveredDatabaseKey == null) {
-        _status = AppSessionStatus.locked;
-        _errorMessage = 'recovery_not_available';
+        _setLockedError(AppSessionErrorCode.recoveryNotAvailable);
         return false;
       }
 
@@ -571,10 +607,13 @@ class AppSessionController extends ChangeNotifier {
       _status = AppSessionStatus.ready;
       _resetInactivityTimer();
       return true;
-    } catch (error) {
-      _errorMessage = error.toString();
-      await _closeDatabase();
-      _status = AppSessionStatus.error;
+    } catch (error, stackTrace) {
+      await _handleFatalError(
+        operation: 'recover access',
+        error: error,
+        stackTrace: stackTrace,
+        errorCode: AppSessionErrorCode.errorLoadingDatabase,
+      );
       return false;
     } finally {
       _isBusy = false;
@@ -682,7 +721,12 @@ class AppSessionController extends ChangeNotifier {
         sourceDatabasePath: await _databasePathService.getCurrentDatabasePath(),
         destinationFolderPath: folderPath,
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _logUnexpectedError(
+        operation: 'run auto export',
+        error: error,
+        stackTrace: stackTrace,
+      );
       _setBackupMessage('backup_export_failed', isError: true);
     }
   }
@@ -730,8 +774,43 @@ class AppSessionController extends ChangeNotifier {
 
   void _beginLoading() {
     _status = AppSessionStatus.loading;
-    _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
+  }
+
+  void _setLockedError(AppSessionErrorCode errorCode) {
+    _status = AppSessionStatus.locked;
+    _errorCode = errorCode;
+  }
+
+  Future<void> _handleFatalError({
+    required String operation,
+    required Object error,
+    required StackTrace stackTrace,
+    required AppSessionErrorCode errorCode,
+  }) async {
+    _logUnexpectedError(
+      operation: operation,
+      error: error,
+      stackTrace: stackTrace,
+    );
+    _errorCode = errorCode;
+    await _closeDatabase();
+    _status = AppSessionStatus.error;
+  }
+
+  void _logUnexpectedError({
+    required String operation,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    developer.log(
+      'Failed to $operation.',
+      name: 'classi.session',
+      level: 1000,
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 
   void clearPendingRecoveryKey() {

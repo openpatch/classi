@@ -124,6 +124,8 @@
   "group_name": "Gruppenname",
   "groups": "Gruppen",
   "group_color": "Gruppenfarbe",
+  "generic_error": "Etwas ist schiefgelaufen.",
+  "generic_error_hint": "Bitte versuche es erneut.",
   "had_homework": "Hausaufgaben gemacht",
   "had_material": "Material dabei",
   "homework": "Hausaufgaben",
