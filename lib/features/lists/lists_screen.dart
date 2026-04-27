@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/utils/grade_categories.dart';
+import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/swipe_action_background.dart';
@@ -396,7 +397,7 @@ class _ListsList extends StatelessWidget {
           },
         );
       },
-      error: (error, _) => Center(child: Text(error.toString())),
+      error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }

@@ -13,6 +13,7 @@ import '../../core/providers/app_providers.dart';
 import '../../shared/utils/grade_categories.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_bar_title.dart';
+import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_link_chip.dart';
@@ -274,7 +275,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       ? null
                       : () => _importWebUntisStudents(context, ref, group.id),
                 ),
-                error: (error, _) => Text(error.toString()),
+                error: (error, _) => const AppErrorText(),
                 loading: () => const Center(child: CircularProgressIndicator()),
               ),
               const SizedBox(height: AppSpacing.large),
@@ -321,8 +322,7 @@ class GroupDetailScreen extends ConsumerWidget {
           ),
         );
       },
-      error: (error, _) =>
-          Scaffold(body: Center(child: Text(error.toString()))),
+      error: (error, _) => const AppErrorScaffold(),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
     );

@@ -7,6 +7,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/theme/app_ui.dart';
 import '../../shared/utils/grade_categories.dart';
+import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_link_chip.dart';
@@ -355,7 +356,7 @@ class _NotesList extends ConsumerWidget {
           },
         );
       },
-      error: (error, _) => Center(child: Text(error.toString())),
+      error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }

@@ -7,6 +7,7 @@ import '../../core/providers/app_providers.dart';
 import '../../shared/utils/grade_categories.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_bar_title.dart';
+import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 
@@ -171,13 +172,12 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
                 ],
               );
             },
-            error: (error, _) => Center(child: Text(error.toString())),
+            error: (error, _) => const AppErrorState(),
             loading: () => const Center(child: CircularProgressIndicator()),
           ),
         );
       },
-      error: (error, _) =>
-          Scaffold(body: Center(child: Text(error.toString()))),
+      error: (error, _) => const AppErrorScaffold(),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
