@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:classi/core/providers/app_providers.dart';
+import 'package:classi/core/security/biometric_service.dart';
 import 'package:classi/core/security/key_service.dart';
 import 'package:classi/core/security/security_preferences_service.dart';
 import 'package:classi/core/session/app_session_controller.dart';
@@ -135,6 +136,7 @@ class _FakeAppSessionController extends AppSessionController {
          securityPreferencesService: SecurityPreferencesService(),
          libraryBackupPreferencesService: LibraryBackupPreferencesService(),
          libraryBackupService: LibraryBackupService(),
+         biometricService: BiometricService(),
        );
 
   final AppSessionStatus statusValue;
