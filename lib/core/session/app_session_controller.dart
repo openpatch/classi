@@ -308,6 +308,15 @@ class AppSessionController extends ChangeNotifier {
   Future<String> currentDatabasePath() =>
       _databasePathService.getCurrentDatabasePath();
 
+  /// Updates the stored database path without opening or creating the database.
+  ///
+  /// Call this before [createDatabase] to change where the new database will
+  /// be written.
+  Future<void> setNewDatabasePath(String path) async {
+    await _databasePathService.setDatabaseFilePath(path);
+    notifyListeners();
+  }
+
   Future<bool> supportsRecovery() async {
     final dbFile = await _databasePathService.getDatabaseFile();
     return _keyService.hasRecoveryKey(dbFile);
