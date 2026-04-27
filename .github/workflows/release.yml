@@ -37,11 +37,21 @@ jobs:
           config: cliff.toml
           args: --output CHANGELOG.md
 
-      - name: Commit CHANGELOG.md
+      - name: Bump version in pubspec.yaml
+        run: |
+          set -e
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: could not derive version from tag '${{ github.ref_name }}'" >&2
+            exit 1
+          fi
+          sed -i "s/^version: .*/version: ${VERSION}+${{ github.run_number }}/" pubspec.yaml
+
+      - name: Commit CHANGELOG.md and pubspec.yaml
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "chore(release): update CHANGELOG.md for ${{ github.ref_name }}"
-          file_pattern: CHANGELOG.md
+          commit_message: "chore(release): bump version to ${{ github.ref_name }}"
+          file_pattern: CHANGELOG.md pubspec.yaml
 
   build-android:
     name: Build Android
