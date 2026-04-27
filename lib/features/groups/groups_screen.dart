@@ -21,14 +21,7 @@ final archivedGroupsProvider = StreamProvider<List<Group>>(
 );
 
 final groupStudentCountsProvider = StreamProvider<Map<int, int>>(
-  (ref) =>
-      ref.watch(studentRepositoryProvider).watchAllStudents().map((students) {
-        final counts = <int, int>{};
-        for (final student in students) {
-          counts[student.groupId] = (counts[student.groupId] ?? 0) + 1;
-        }
-        return counts;
-      }),
+  (ref) => ref.watch(studentRepositoryProvider).watchGroupStudentCounts(),
 );
 
 class GroupsScreen extends ConsumerStatefulWidget {

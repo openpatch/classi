@@ -104,6 +104,38 @@ void main() {
     );
   });
 
+  test('group student counts come from a grouped repository query', () async {
+    final groupAId = await groupRepository.createGroup(
+      name: '6A',
+      gradeScale: defaultGradeScaleEntries,
+    );
+    final groupBId = await groupRepository.createGroup(
+      name: '6B',
+      gradeScale: defaultGradeScaleEntries,
+    );
+
+    await studentRepository.addStudent(
+      groupId: groupAId,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+    );
+    await studentRepository.addStudent(
+      groupId: groupAId,
+      firstName: 'Alan',
+      lastName: 'Turing',
+    );
+    await studentRepository.addStudent(
+      groupId: groupBId,
+      firstName: 'Grace',
+      lastName: 'Hopper',
+    );
+
+    final counts = await studentRepository.watchGroupStudentCounts().first;
+
+    expect(counts[groupAId], 2);
+    expect(counts[groupBId], 1);
+  });
+
   test('grades and materials can be deleted', () async {
     final groupId = await groupRepository.createGroup(
       name: '9C',
