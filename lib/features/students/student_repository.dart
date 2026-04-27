@@ -27,6 +27,27 @@ class StudentRepository {
     return query.watch();
   }
 
+  Stream<Map<int, int>> watchGroupStudentCounts() {
+    return _database
+        .customSelect(
+          '''
+          SELECT
+            group_id,
+            COUNT(id) AS student_count
+          FROM students_table
+          GROUP BY group_id
+          ''',
+          readsFrom: {_database.studentsTable},
+        )
+        .watch()
+        .map(
+          (rows) => {
+            for (final row in rows)
+              row.read<int>('group_id'): row.read<int>('student_count'),
+          },
+        );
+  }
+
   Stream<Student?> watchStudent(int id) {
     return (_database.select(
       _database.studentsTable,
