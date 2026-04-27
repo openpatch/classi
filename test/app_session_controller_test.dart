@@ -55,8 +55,30 @@ void main() {
 
     expect(unlocked, isTrue);
     expect(controller.status, AppSessionStatus.ready);
+    expect(controller.errorCode, isNull);
     expect(controller.errorMessage, isNull);
   });
+
+  test(
+    'invalid passphrase keeps the session locked with a typed error',
+    () async {
+      await controller.initialize();
+      await controller.createDatabase('test');
+
+      controller.clearPendingRecoveryKey();
+      await controller.lock();
+
+      final unlocked = await controller.unlock('wrong-passphrase');
+
+      expect(unlocked, isFalse);
+      expect(controller.status, AppSessionStatus.locked);
+      expect(controller.errorCode, AppSessionErrorCode.invalidPassphrase);
+      expect(
+        controller.errorMessage,
+        AppSessionErrorCode.invalidPassphrase.translationKey,
+      );
+    },
+  );
 }
 
 class _TestDatabasePathService extends DatabasePathService {
