@@ -1,18 +1,38 @@
 name: Build PR
 
 on:
-  pull_request:
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   build-android:
     name: Build Android
+    if: >
+      github.event.issue.pull_request != null &&
+      startsWith(github.event.comment.body, '/build android')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Verify commenter has write access
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.payload.comment.user.login,
+            });
+            if (!['admin', 'write'].includes(perm.permission)) {
+              core.setFailed(`@${context.payload.comment.user.login} does not have write access and cannot trigger builds.`);
+            }
+
+      - name: Checkout PR
         uses: actions/checkout@v6
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -39,17 +59,53 @@ jobs:
         run: fastforge package --platform android --targets apk
 
       - name: Upload Android artifact
+        id: upload
         uses: actions/upload-artifact@v7
         with:
-          name: classi-android-apk-pr${{ github.event.pull_request.number }}
+          name: classi-android-apk-pr${{ github.event.issue.number }}
           path: dist/**/*.apk
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        with:
+          script: |
+            const url = process.env.ARTIFACT_URL;
+            const body = url
+              ? `### 📦 Android build ready\n\n[Download APK](${url})`
+              : `### 📦 Android build ready\n\nThe APK is available in the [Actions run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body,
+            });
 
   build-linux:
     name: Build Linux
+    if: >
+      github.event.issue.pull_request != null &&
+      startsWith(github.event.comment.body, '/build linux')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Verify commenter has write access
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.payload.comment.user.login,
+            });
+            if (!['admin', 'write'].includes(perm.permission)) {
+              core.setFailed(`@${context.payload.comment.user.login} does not have write access and cannot trigger builds.`);
+            }
+
+      - name: Checkout PR
         uses: actions/checkout@v6
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
 
       - name: Install Linux build dependencies
         run: |
@@ -81,17 +137,53 @@ jobs:
         run: fastforge package --platform linux --targets appimage
 
       - name: Upload Linux artifact
+        id: upload
         uses: actions/upload-artifact@v7
         with:
-          name: classi-linux-appimage-pr${{ github.event.pull_request.number }}
+          name: classi-linux-appimage-pr${{ github.event.issue.number }}
           path: dist/**/*.AppImage
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        with:
+          script: |
+            const url = process.env.ARTIFACT_URL;
+            const body = url
+              ? `### 📦 Linux build ready\n\n[Download AppImage](${url})`
+              : `### 📦 Linux build ready\n\nThe AppImage is available in the [Actions run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body,
+            });
 
   build-macos:
     name: Build macOS
+    if: >
+      github.event.issue.pull_request != null &&
+      startsWith(github.event.comment.body, '/build macos')
     runs-on: macos-latest
     steps:
-      - name: Checkout
+      - name: Verify commenter has write access
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.payload.comment.user.login,
+            });
+            if (!['admin', 'write'].includes(perm.permission)) {
+              core.setFailed(`@${context.payload.comment.user.login} does not have write access and cannot trigger builds.`);
+            }
+
+      - name: Checkout PR
         uses: actions/checkout@v6
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
 
       - name: Install appdmg
         run: npm install -g appdmg
@@ -115,17 +207,53 @@ jobs:
         run: fastforge package --platform macos --targets dmg
 
       - name: Upload macOS artifact
+        id: upload
         uses: actions/upload-artifact@v7
         with:
-          name: classi-macos-dmg-pr${{ github.event.pull_request.number }}
+          name: classi-macos-dmg-pr${{ github.event.issue.number }}
           path: dist/**/*.dmg
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        with:
+          script: |
+            const url = process.env.ARTIFACT_URL;
+            const body = url
+              ? `### 📦 macOS build ready\n\n[Download DMG](${url})`
+              : `### 📦 macOS build ready\n\nThe DMG is available in the [Actions run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body,
+            });
 
   build-windows:
     name: Build Windows
+    if: >
+      github.event.issue.pull_request != null &&
+      startsWith(github.event.comment.body, '/build windows')
     runs-on: windows-latest
     steps:
-      - name: Checkout
+      - name: Verify commenter has write access
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.payload.comment.user.login,
+            });
+            if (!['admin', 'write'].includes(perm.permission)) {
+              core.setFailed(`@${context.payload.comment.user.login} does not have write access and cannot trigger builds.`);
+            }
+
+      - name: Checkout PR
         uses: actions/checkout@v6
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
@@ -149,7 +277,25 @@ jobs:
         run: fastforge package --platform windows --targets exe
 
       - name: Upload Windows artifact
+        id: upload
         uses: actions/upload-artifact@v7
         with:
-          name: classi-windows-exe-pr${{ github.event.pull_request.number }}
+          name: classi-windows-exe-pr${{ github.event.issue.number }}
           path: dist/**/*.exe
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        with:
+          script: |
+            const url = process.env.ARTIFACT_URL;
+            const body = url
+              ? `### 📦 Windows build ready\n\n[Download EXE installer](${url})`
+              : `### 📦 Windows build ready\n\nThe EXE installer is available in the [Actions run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body,
+            });
