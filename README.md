@@ -98,6 +98,9 @@ Three workflows are included:
   Only the requested platform is built using [Fastforge](https://fastforge.dev/).
   Once the artifact is uploaded the workflow replies directly on the pull request
   with a link to download the artifact.
+
+  Android PR builds use the application ID `org.openpatch.classi.pr` so they
+  can be installed alongside the production app without overwriting it.
 - `release.yml` — triggered by version tags (`v*`). It generates a changelog
   with `git-cliff`, commits an updated `CHANGELOG.md`, builds release artifacts
   for Android (APK), Linux (AppImage), macOS (DMG), and Windows (EXE installer)

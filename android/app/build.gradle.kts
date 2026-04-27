@@ -21,6 +21,10 @@ android {
 
     defaultConfig {
         applicationId = "org.openpatch.classi"
+        val appIdSuffix = System.getenv("APP_ID_SUFFIX") ?: ""
+        if (appIdSuffix.isNotEmpty()) {
+            applicationIdSuffix = appIdSuffix
+        }
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
