@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-04-27
+
+### Bug Fixes
+
+- *(ci)* Bump pubspec.yaml version on release- PR builds use .pr applicationId suffix to avoid overwriting the real app
+
 ## [1.1.0] - 2026-04-27
 
 ### Bug Fixes
