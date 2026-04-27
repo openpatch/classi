@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.4] - 2026-04-27
+
+### Bug Fixes
+
+- Cache PackageInfo future and unify shell quoting in Windows build step
+
+
+### Features
+
+- Add fingerprint/biometric unlock support on Android, iOS, and macOS
+- Add PR build app name suffix and version info in settings
+
+
 ## [1.1.3] - 2026-04-27
 
 ### Bug Fixes
