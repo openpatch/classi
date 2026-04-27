@@ -299,10 +299,11 @@ jobs:
         run: echo "GIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Package EXE
+        shell: bash
         run: >-
           fastforge package --platform windows --targets exe
           --build-dart-define GIT_HASH=${{ env.GIT_HASH }}
-          --build-dart-define "APP_SUFFIX= (PR)"
+          --build-dart-define APP_SUFFIX=" (PR)"
 
       - name: Upload Windows artifact
         id: upload
