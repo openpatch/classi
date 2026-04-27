@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 
 import '../../core/providers/app_providers.dart';
@@ -113,8 +114,42 @@ class SettingsScreen extends ConsumerWidget {
               },
             ),
           ),
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'app_version'.tr(),
+            child: const _AppInfoSection(),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _AppInfoSection extends StatelessWidget {
+  const _AppInfoSection();
+
+  static const String _kGitHash = String.fromEnvironment('GIT_HASH');
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (info != null)
+              SelectableText('${info.version}+${info.buildNumber}'),
+            if (_kGitHash.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('build_commit'.tr()),
+              const SizedBox(height: 4),
+              SelectableText(_kGitHash),
+            ],
+          ],
+        );
+      },
     );
   }
 }
