@@ -25,6 +25,8 @@ android {
         if (appIdSuffix.isNotEmpty()) {
             applicationIdSuffix = appIdSuffix
         }
+        val appLabelSuffix = System.getenv("APP_LABEL_SUFFIX") ?: ""
+        resValue("string", "app_name", "Classi$appLabelSuffix")
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

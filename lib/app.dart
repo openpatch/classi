@@ -43,7 +43,7 @@ class _ClassiAppState extends ConsumerState<ClassiApp> {
       onActivity: () => ref.read(appSessionProvider).registerActivity(),
       child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
-        title: 'Classi',
+        title: 'Classi${const String.fromEnvironment('APP_SUFFIX')}',
         locale: context.locale,
         supportedLocales: context.supportedLocales,
         localizationsDelegates: context.localizationDelegates,
