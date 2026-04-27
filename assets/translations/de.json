@@ -233,6 +233,8 @@
   "unknown_group": "Unbekannte Gruppe",
   "unknown_student": "Unbekannte:r Schüler:in",
   "version": "Version",
+  "app_version": "App-Version",
+  "build_commit": "Build-Commit",
   "library_package_required": "Wähle einen .classi-Bibliotheksordner aus.",
   "biometric_unlock": "Biometrisch entsperren",
   "biometric_unlock_hint": "Fingerabdruck oder Gesichtserkennung statt Passphrase verwenden.",
