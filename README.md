@@ -83,11 +83,16 @@ expectations, and release hygiene.
 
 ## GitHub Actions
 
-Two workflows are included:
+Three workflows are included:
 
 - `ci.yml` — runs on every push to `main`/`master` and on pull requests. It
   installs dependencies, runs Drift code generation, analyzes the code, and
   executes the test suite.
+- `build-pr.yml` — runs on every pull request. It builds downloadable binaries
+  for Android (APK), Linux (AppImage), macOS (DMG), and Windows (EXE installer)
+  using [Fastforge](https://fastforge.dev/) and uploads them as GitHub Actions
+  artifacts. Reviewers can download and test these binaries directly from the
+  **Actions** tab of the pull request to verify the change works as expected.
 - `release.yml` — triggered by version tags (`v*`). It generates a changelog
   with `git-cliff`, commits an updated `CHANGELOG.md`, builds release artifacts
   for Android (APK), Linux (AppImage), macOS (DMG), and Windows (EXE installer)
