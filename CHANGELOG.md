@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2026-04-27
+
+### Bug Fixes
+
+- *(session)* Centralize app session errors
+- *(ui)* Replace raw error output
+- *(data)* Query group student counts
+
+
+### Refactoring
+
+- *(lessons)* Extract lesson sections
+
+
+### Testing
+
+- *(app)* Cover session entry states
+
+
 ## [1.1.2] - 2026-04-27
 
 ### Bug Fixes
