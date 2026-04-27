@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/app_providers.dart';
+import '../../core/session/app_session_controller.dart';
+import '../../shared/widgets/app_error_state.dart';
 
 class RecoverAccessScreen extends ConsumerStatefulWidget {
   const RecoverAccessScreen({super.key});
@@ -65,15 +67,26 @@ class _RecoverAccessScreenState extends ConsumerState<RecoverAccessScreen> {
                               decoration: InputDecoration(
                                 labelText: 'recovery_key'.tr(),
                                 errorText:
-                                    session.errorMessage ==
-                                        'invalid_recovery_key'
-                                    ? 'invalid_recovery_key'.tr()
-                                    : session.errorMessage ==
-                                          'recovery_not_available'
-                                    ? 'recovery_not_available'.tr()
-                                    : session.errorMessage ==
-                                          'integrity_check_failed'
-                                    ? 'integrity_check_failed'.tr()
+                                    session.errorCode ==
+                                        AppSessionErrorCode.invalidRecoveryKey
+                                    ? AppSessionErrorCode
+                                          .invalidRecoveryKey
+                                          .translationKey
+                                          .tr()
+                                    : session.errorCode ==
+                                          AppSessionErrorCode
+                                              .recoveryNotAvailable
+                                    ? AppSessionErrorCode
+                                          .recoveryNotAvailable
+                                          .translationKey
+                                          .tr()
+                                    : session.errorCode ==
+                                          AppSessionErrorCode
+                                              .integrityCheckFailed
+                                    ? AppSessionErrorCode
+                                          .integrityCheckFailed
+                                          .translationKey
+                                          .tr()
                                     : null,
                               ),
                             ),
@@ -119,6 +132,14 @@ class _RecoverAccessScreenState extends ConsumerState<RecoverAccessScreen> {
                                 child: Text('back_to_unlock'.tr()),
                               ),
                             ),
+                            if (session.status == AppSessionStatus.error) ...[
+                              const SizedBox(height: 12),
+                              AppErrorText(
+                                message:
+                                    session.errorCode?.translationKey.tr() ??
+                                    'generic_error'.tr(),
+                              ),
+                            ],
                           ],
                         ),
                       ),

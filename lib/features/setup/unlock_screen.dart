@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers/app_providers.dart';
 import '../../core/session/app_session_controller.dart';
+import '../../shared/widgets/app_error_state.dart';
 import 'auto_import_prompt_card.dart';
 import 'database_selection_sheet.dart';
 
@@ -78,11 +79,19 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                               decoration: InputDecoration(
                                 labelText: 'setup_passphrase'.tr(),
                                 errorText:
-                                    session.errorMessage == 'invalid_passphrase'
-                                    ? 'invalid_passphrase'.tr()
-                                    : session.errorMessage ==
-                                          'integrity_check_failed'
-                                    ? 'integrity_check_failed'.tr()
+                                    session.errorCode ==
+                                        AppSessionErrorCode.invalidPassphrase
+                                    ? AppSessionErrorCode
+                                          .invalidPassphrase
+                                          .translationKey
+                                          .tr()
+                                    : session.errorCode ==
+                                          AppSessionErrorCode
+                                              .integrityCheckFailed
+                                    ? AppSessionErrorCode
+                                          .integrityCheckFailed
+                                          .translationKey
+                                          .tr()
                                     : null,
                               ),
                             ),
@@ -137,11 +146,10 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                             ),
                             if (session.status == AppSessionStatus.error) ...[
                               const SizedBox(height: 12),
-                              Text(
-                                session.errorMessage ?? 'generic_error'.tr(),
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
+                              AppErrorText(
+                                message:
+                                    session.errorCode?.translationKey.tr() ??
+                                    'generic_error'.tr(),
                               ),
                             ],
                           ],
