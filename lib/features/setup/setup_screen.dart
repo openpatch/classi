@@ -1,10 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
 
 import '../../core/providers/app_providers.dart';
 import '../../core/session/app_session_controller.dart';
+import '../../core/storage/database_path_service.dart';
 import 'auto_import_prompt_card.dart';
 import 'database_selection_sheet.dart';
 
@@ -19,12 +22,43 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _passphraseController = TextEditingController();
   final _confirmController = TextEditingController();
+  final _nameController = TextEditingController();
   bool _isSaving = false;
+  String? _selectedFolder;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefaultPath();
+  }
+
+  Future<void> _loadDefaultPath() async {
+    final currentPath =
+        await ref.read(appSessionProvider).currentDatabasePath();
+    if (!mounted) return;
+    setState(() {
+      _selectedFolder =
+          DatabasePathService.containerParentPathFor(currentPath);
+      _nameController.text = p.basenameWithoutExtension(currentPath);
+    });
+  }
+
+  String get _databasePath {
+    final folder = _selectedFolder ?? '';
+    final name = _nameController.text.trim().isEmpty
+        ? 'classi'
+        : _nameController.text.trim();
+    return p.join(
+      folder,
+      DatabasePathService.normalizeDatabasePackageName(name),
+    );
+  }
 
   @override
   void dispose() {
     _passphraseController.dispose();
     _confirmController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -60,19 +94,47 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text('setup_intro'.tr()),
+                              const SizedBox(height: 16),
+                              Text(
+                                'database_folder'.tr(),
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _selectedFolder ?? '',
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'choose_library_folder'.tr(),
+                                    onPressed: _isSaving
+                                        ? null
+                                        : _pickFolder,
+                                    icon: const Icon(
+                                      Icons.folder_open_outlined,
+                                    ),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 12),
-                              FutureBuilder<String>(
-                                future: ref
-                                    .read(appSessionProvider)
-                                    .currentDatabasePath(),
-                                builder: (context, snapshot) {
-                                  return SelectableText(
-                                    snapshot.data ?? '',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  );
-                                },
+                              TextFormField(
+                                controller: _nameController,
+                                decoration: InputDecoration(
+                                  labelText: 'database_name'.tr(),
+                                  hintText: 'database_name_hint'.tr(),
+                                  suffixText: '.classi',
+                                ),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                              const SizedBox(height: 8),
+                              SelectableText(
+                                _databasePath,
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
                               const SizedBox(height: 16),
                               const AutoImportPromptCard(),
@@ -148,6 +210,16 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     );
   }
 
+  Future<void> _pickFolder() async {
+    final folder = await FilePicker.getDirectoryPath(
+      initialDirectory: _selectedFolder,
+      dialogTitle: 'choose_library_folder'.tr(),
+    );
+    if (folder != null && mounted) {
+      setState(() => _selectedFolder = folder);
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -156,6 +228,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     setState(() => _isSaving = true);
 
     try {
+      await ref
+          .read(appSessionProvider)
+          .setNewDatabasePath(_databasePath);
+      if (!mounted) return;
+
       await ref
           .read(appSessionProvider)
           .createDatabase(_passphraseController.text.trim());
