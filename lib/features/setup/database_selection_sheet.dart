@@ -80,7 +80,14 @@ Future<void> _openExistingDatabase({
   required BuildContext context,
   required WidgetRef ref,
 }) async {
-  final path = await FilePicker.getDirectoryPath();
+  final session = ref.read(appSessionProvider);
+  session.suspendBackgroundLock();
+  String? path;
+  try {
+    path = await FilePicker.getDirectoryPath();
+  } finally {
+    session.resumeBackgroundLock();
+  }
   if (path == null || !context.mounted) {
     return;
   }
@@ -114,6 +121,7 @@ Future<void> _createNewDatabase({
 
   final databasePath = await _showCreateDatabaseDialog(
     context: context,
+    ref: ref,
     initialFolder: defaultFolder,
     initialName: defaultName,
   );
@@ -131,6 +139,7 @@ Future<void> _createNewDatabase({
 
 Future<String?> _showCreateDatabaseDialog({
   required BuildContext context,
+  required WidgetRef ref,
   required String initialFolder,
   required String initialName,
 }) async {
@@ -174,12 +183,19 @@ Future<String?> _showCreateDatabaseDialog({
                       IconButton(
                         tooltip: 'choose_library_folder'.tr(),
                         onPressed: () async {
-                          final folder = await FilePicker.getDirectoryPath(
-                            initialDirectory: selectedFolder,
-                            dialogTitle: 'choose_library_folder'.tr(),
-                          );
+                          final session = ref.read(appSessionProvider);
+                          session.suspendBackgroundLock();
+                          String? folder;
+                          try {
+                            folder = await FilePicker.getDirectoryPath(
+                              initialDirectory: selectedFolder,
+                              dialogTitle: 'choose_library_folder'.tr(),
+                            );
+                          } finally {
+                            session.resumeBackgroundLock();
+                          }
                           if (folder != null) {
-                            setState(() => selectedFolder = folder);
+                            setState(() => selectedFolder = folder!);
                           }
                         },
                         icon: const Icon(Icons.folder_open_outlined),
