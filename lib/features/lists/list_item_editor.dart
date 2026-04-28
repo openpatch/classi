@@ -67,7 +67,13 @@ class _ListItemEditorSheetState extends State<_ListItemEditorSheet> {
   void initState() {
     super.initState();
     _labelController = TextEditingController(text: widget.initialLabel);
-    _studentIds = {...?widget.initialStudentIds};
+    final validStudentIds = {
+      for (final student in widget.students) student.id,
+    };
+    _studentIds = {
+      for (final studentId in widget.initialStudentIds ?? const <int>[])
+        if (validStudentIds.contains(studentId)) studentId,
+    };
   }
 
   @override

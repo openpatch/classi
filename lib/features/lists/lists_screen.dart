@@ -281,7 +281,8 @@ class _ListsList extends StatelessWidget {
           separatorBuilder: (context, index) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final list = lists[index];
-            final group = groups[list.groupId];
+            final groupId = list.groupId;
+            final group = groupId != null ? groups[groupId] : null;
             final tile = Card(
               child: ListTile(
                 onTap: () => context.push(listPathBuilder(list)),
