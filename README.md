@@ -107,10 +107,6 @@ Three workflows are included:
   using [Fastforge](https://fastforge.dev/), and publishes a GitHub Release with
   all artifacts attached.
 
-The Android release build currently uses the debug signing config, which keeps
-CI buildable out of the box. Replace that with your real signing setup before
-shipping to users.
-
 ## License
 
 Released under the [MIT License](LICENSE).
