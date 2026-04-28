@@ -57,7 +57,10 @@ class _StudentSelectionSheetState extends State<_StudentSelectionSheet> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
-    _selectedStudentIds = {...widget.selectedStudentIds};
+    final validStudentIds =
+        widget.students.map((student) => student.id).toSet();
+    _selectedStudentIds =
+        widget.selectedStudentIds.intersection(validStudentIds);
   }
 
   @override
@@ -70,10 +73,14 @@ class _StudentSelectionSheetState extends State<_StudentSelectionSheet> {
   Widget build(BuildContext context) {
     final sections = _sections;
 
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.8,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.fromLTRB(24, 8, 24, 24 + keyboardInset),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
