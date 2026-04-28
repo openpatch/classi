@@ -12,8 +12,14 @@ All notable changes to this project will be documented in this file.
 
 ## [1.1.8] - 2026-04-28
 
+### Bug Fixes
+
+- Address review issues in list screens and student selection sheet
+
+
 ### Features
 
+- Better lists
 - *(students)* Add Lists tab to student detail screen
 
 
