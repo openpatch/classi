@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.6] - 2026-04-28
+
+### Bug Fixes
+
+- *(android)* Use stable release keystore for signed APK builds
+
+
+### Miscellaneous Tasks
+
+- Add archive: false to upload-artifact steps for direct download links
+
+
 ## [1.1.5] - 2026-04-28
 
 ### Bug Fixes
