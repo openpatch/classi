@@ -679,68 +679,92 @@ class _BackupsSection extends ConsumerWidget {
   }
 
   Future<void> _exportNow(BuildContext context, WidgetRef ref) async {
-    final folder = await FilePicker.getDirectoryPath();
-    if (folder == null || !context.mounted) {
-      return;
-    }
+    final session = ref.read(appSessionProvider);
+    session.suspendBackgroundLock();
+    try {
+      final folder = await FilePicker.getDirectoryPath();
+      if (folder == null || !context.mounted) {
+        return;
+      }
 
-    final errorCode = await ref
-        .read(appSessionProvider)
-        .exportBackupToFolder(folder);
-    if (!context.mounted) {
-      return;
-    }
+      final errorCode = await ref
+          .read(appSessionProvider)
+          .exportBackupToFolder(folder);
+      if (!context.mounted) {
+        return;
+      }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text((errorCode ?? 'backup_exported').tr())),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text((errorCode ?? 'backup_exported').tr())),
+      );
+    } finally {
+      session.resumeBackgroundLock();
+    }
   }
 
   Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['classi-backup'],
-    );
-    final backupPath = result?.files.single.path;
-    if (backupPath == null || !context.mounted) {
-      return;
-    }
+    final session = ref.read(appSessionProvider);
+    session.suspendBackgroundLock();
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['classi-backup'],
+      );
+      final backupPath = result?.files.single.path;
+      if (backupPath == null || !context.mounted) {
+        return;
+      }
 
-    final errorCode = await ref
-        .read(appSessionProvider)
-        .importBackup(backupPath);
-    if (!context.mounted) {
-      return;
-    }
+      final errorCode = await ref
+          .read(appSessionProvider)
+          .importBackup(backupPath);
+      if (!context.mounted) {
+        return;
+      }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text((errorCode ?? 'backup_imported').tr())),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text((errorCode ?? 'backup_imported').tr())),
+      );
+    } finally {
+      session.resumeBackgroundLock();
+    }
   }
 
   Future<void> _pickAutoExportFolder(
     BuildContext context,
     WidgetRef ref,
   ) async {
-    final folder = await FilePicker.getDirectoryPath();
-    if (folder == null) {
-      return;
-    }
+    final session = ref.read(appSessionProvider);
+    session.suspendBackgroundLock();
+    try {
+      final folder = await FilePicker.getDirectoryPath();
+      if (folder == null) {
+        return;
+      }
 
-    await ref.read(appSessionProvider).setAutoExportFolderPath(folder);
+      await ref.read(appSessionProvider).setAutoExportFolderPath(folder);
+    } finally {
+      session.resumeBackgroundLock();
+    }
   }
 
   Future<void> _pickAutoImportFile(BuildContext context, WidgetRef ref) async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['classi-backup'],
-    );
-    final backupPath = result?.files.single.path;
-    if (backupPath == null) {
-      return;
-    }
+    final session = ref.read(appSessionProvider);
+    session.suspendBackgroundLock();
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['classi-backup'],
+      );
+      final backupPath = result?.files.single.path;
+      if (backupPath == null) {
+        return;
+      }
 
-    await ref.read(appSessionProvider).setAutoImportBackupPath(backupPath);
+      await ref.read(appSessionProvider).setAutoImportBackupPath(backupPath);
+    } finally {
+      session.resumeBackgroundLock();
+    }
   }
 
   Future<void> _toggleAutoExport({
@@ -750,7 +774,13 @@ class _BackupsSection extends ConsumerWidget {
   }) async {
     final session = ref.read(appSessionProvider);
     if (nextValue && session.autoExportFolderPath == null) {
-      final folder = await FilePicker.getDirectoryPath();
+      session.suspendBackgroundLock();
+      String? folder;
+      try {
+        folder = await FilePicker.getDirectoryPath();
+      } finally {
+        session.resumeBackgroundLock();
+      }
       if (folder == null) {
         if (!context.mounted) {
           return;
@@ -773,10 +803,16 @@ class _BackupsSection extends ConsumerWidget {
   }) async {
     final session = ref.read(appSessionProvider);
     if (nextValue && session.autoImportBackupPath == null) {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['classi-backup'],
-      );
+      session.suspendBackgroundLock();
+      FilePickerResult? result;
+      try {
+        result = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: const ['classi-backup'],
+        );
+      } finally {
+        session.resumeBackgroundLock();
+      }
       final backupPath = result?.files.single.path;
       if (backupPath == null) {
         if (!context.mounted) {

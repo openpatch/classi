@@ -50,6 +50,12 @@ final studentNotesProvider = StreamProvider.family<List<TeacherNote>, int>(
       ref.watch(noteRepositoryProvider).watchNotesForStudent(studentId),
 );
 
+final studentListItemsProvider = StreamProvider.family<
+    List<({Checklist list, ChecklistItem item})>, int>(
+  (ref, studentId) =>
+      ref.watch(listRepositoryProvider).watchItemsForStudent(studentId),
+);
+
 final availableGroupsProvider = FutureProvider<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).allActiveGroups(),
 );
@@ -80,6 +86,7 @@ class StudentDetailScreen extends ConsumerWidget {
         final materialValue = ref.watch(studentMaterialProvider(studentId));
         final homeworkValue = ref.watch(studentHomeworkProvider(studentId));
         final notesValue = ref.watch(studentNotesProvider(studentId));
+        final listItemsValue = ref.watch(studentListItemsProvider(studentId));
         final groupsValue = ref.watch(availableGroupsProvider);
         final allStudentsValue = ref.watch(availableStudentsProvider);
         final group = groupValue.value;
@@ -89,7 +96,7 @@ class StudentDetailScreen extends ConsumerWidget {
             : onColorForBackground(groupColor);
 
         return DefaultTabController(
-          length: 4,
+          length: 5,
           child: Scaffold(
             appBar: AppBar(
               backgroundColor: groupColor,
@@ -132,6 +139,7 @@ class StudentDetailScreen extends ConsumerWidget {
                   Tab(text: 'material'.tr()),
                   Tab(text: 'homework'.tr()),
                   Tab(text: 'notes'.tr()),
+                  Tab(text: 'lists'.tr()),
                 ],
               ),
             ),
@@ -156,6 +164,10 @@ class StudentDetailScreen extends ConsumerWidget {
                   notesValue: notesValue,
                   groups: groupsValue.value ?? const [],
                   students: allStudentsValue.value ?? const [],
+                ),
+                _ListsTab(
+                  studentId: student.id,
+                  listItemsValue: listItemsValue,
                 ),
               ],
             ),
@@ -1529,5 +1541,74 @@ class _StudentNotesTab extends ConsumerWidget {
           isTodo: result.isTodo,
           createdAt: result.createdAt,
         );
+  }
+}
+
+class _ListsTab extends ConsumerWidget {
+  const _ListsTab({
+    required this.studentId,
+    required this.listItemsValue,
+  });
+
+  final int studentId;
+  final AsyncValue<List<({Checklist list, ChecklistItem item})>> listItemsValue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return listItemsValue.when(
+      data: (entries) {
+        if (entries.isEmpty) {
+          return EmptyState(
+            icon: Icons.checklist_outlined,
+            title: 'empty_student_lists'.tr(),
+          );
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            for (final entry in entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.small),
+                child: _ListItemTile(item: entry),
+              ),
+          ],
+        );
+      },
+      error: (error, _) => const AppErrorState(),
+      loading: () => const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _ListItemTile extends ConsumerWidget {
+  const _ListItemTile({required this.item});
+
+  final ({Checklist list, ChecklistItem item}) item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final checkedAt = item.item.checkedAt;
+    final checked = checkedAt != null;
+
+    void toggle(bool value) => ref
+        .read(listRepositoryProvider)
+        .toggleItem(itemId: item.item.id, checked: value);
+
+    return Card(
+      child: ListTile(
+        onTap: () => toggle(!checked),
+        title: Text(item.list.name),
+        subtitle: checkedAt == null
+            ? null
+            : Text(
+                MaterialLocalizations.of(context).formatMediumDate(checkedAt),
+              ),
+        trailing: Checkbox(
+          value: checked,
+          onChanged: (value) => toggle(value ?? false),
+        ),
+      ),
+    );
   }
 }
