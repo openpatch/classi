@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  reactions: write
+  issues: write
 
 jobs:
   build-android:
