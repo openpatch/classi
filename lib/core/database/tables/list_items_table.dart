@@ -16,6 +16,8 @@ class ListItemsTable extends Table {
     onDelete: KeyAction.setNull,
   )();
 
+  TextColumn get studentIdsJson => text().nullable()();
+
   TextColumn get label => text().withLength(min: 1, max: 150)();
 
   DateTimeColumn get checkedAt => dateTime().nullable()();
