@@ -201,11 +201,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
 
     setState(() => _isUnlocking = true);
     try {
-      final success = await ref.read(appSessionProvider).unlock(passphrase);
-      if (!mounted || !success) {
-        return;
-      }
-      context.go('/groups');
+      await ref.read(appSessionProvider).unlock(passphrase);
     } finally {
       if (mounted) {
         setState(() => _isUnlocking = false);
@@ -216,14 +212,11 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   Future<void> _unlockWithBiometrics() async {
     setState(() => _isUnlocking = true);
     try {
-      final success = await ref
+      await ref
           .read(appSessionProvider)
           .unlockWithBiometrics(
             localizedReason: 'biometric_reason'.tr(),
           );
-      if (!mounted) return;
-      if (!success) return;
-      context.go('/groups');
     } finally {
       if (mounted) setState(() => _isUnlocking = false);
     }

@@ -28,14 +28,24 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       switch (session.status) {
         case AppSessionStatus.loading:
+          // Stay on /unlock during an unlock attempt so the `from` query
+          // parameter is preserved across the loading → ready transition.
+          if (state.matchedLocation == '/unlock') return null;
           return state.matchedLocation == '/loading' ? null : '/loading';
         case AppSessionStatus.needsSetup:
           return state.matchedLocation == '/setup' ? null : '/setup';
         case AppSessionStatus.locked:
-          return state.matchedLocation == '/unlock' ||
-                  state.matchedLocation == '/recover'
-              ? null
-              : '/unlock';
+          if (state.matchedLocation == '/unlock' ||
+              state.matchedLocation == '/recover') {
+            return null;
+          }
+          // Capture the current location so it can be restored after unlock.
+          // Strip fragments (client-side only, not meaningful across auth).
+          final currentUri = state.uri.removeFragment();
+          return Uri(
+            path: '/unlock',
+            queryParameters: {'from': currentUri.toString()},
+          ).toString();
         case AppSessionStatus.ready:
           if (session.hasPendingRecoveryKey) {
             return state.matchedLocation == '/setup/recovery'
@@ -48,6 +58,22 @@ final routerProvider = Provider<GoRouter>((ref) {
               state.matchedLocation == '/unlock' ||
               state.matchedLocation == '/recover' ||
               state.matchedLocation == '/') {
+            // Restore the location the user was at before the app locked.
+            final from = state.uri.queryParameters['from'];
+            if (from != null && from.isNotEmpty) {
+              final fromUri = Uri.tryParse(from);
+              // Only allow relative paths (no scheme or host) to prevent open
+              // redirect attacks. Explicitly reject protocol-relative URLs
+              // (e.g. //evil.com) as a defense-in-depth measure before
+              // parsing, since Uri.parse may handle them unexpectedly.
+              if (!from.startsWith('//') &&
+                  fromUri != null &&
+                  fromUri.scheme.isEmpty &&
+                  fromUri.host.isEmpty &&
+                  fromUri.path.startsWith('/')) {
+                return from;
+              }
+            }
             return '/groups';
           }
           return null;
