@@ -16,9 +16,8 @@ class AppLifecycleObserver extends WidgetsBindingObserver {
       return;
     }
 
-    if (state == AppLifecycleState.hidden ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
       onBackgrounded();
     }
   }
