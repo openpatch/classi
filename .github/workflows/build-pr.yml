@@ -5,8 +5,9 @@ on:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
+  reactions: write
 
 jobs:
   build-android:
@@ -28,6 +29,17 @@ jobs:
             if (!['admin', 'write'].includes(perm.permission)) {
               core.setFailed(`@${context.payload.comment.user.login} does not have write access and cannot trigger builds.`);
             }
+
+      - name: React with rocket
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket',
+            });
 
       - name: Checkout PR
         uses: actions/checkout@v6
@@ -67,20 +79,32 @@ jobs:
           --build-dart-define GIT_HASH=${{ env.GIT_HASH }}
           --build-dart-define APP_SUFFIX=" (PR)"
 
-      - name: Upload Android artifact
-        id: upload
-        uses: actions/upload-artifact@v7
-        with:
-          name: classi-android-apk-pr${{ github.event.issue.number }}
-          path: dist/**/*.apk
+      - name: Upload APK to GitHub Release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="pr-${{ github.event.issue.number }}-android"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          APK=$(find dist -name "*.apk" | head -1)
+          if [ -z "$APK" ]; then
+            echo "No APK file found in dist/" >&2
+            exit 1
+          fi
+          FILENAME=$(basename "$APK")
+          gh release create "$TAG" "$APK" \
+            --prerelease \
+            --title "PR #${{ github.event.issue.number }} – Android build" \
+            --notes "Android APK build for PR #${{ github.event.issue.number }}"
+          echo "DOWNLOAD_URL=https://github.com/${{ github.repository }}/releases/download/${TAG}/${FILENAME}" >> $GITHUB_ENV
 
       - name: Comment on PR
         uses: actions/github-script@v7
         env:
-          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
         with:
           script: |
-            const url = process.env.ARTIFACT_URL;
+            const url = process.env.DOWNLOAD_URL;
             const body = url
               ? `### 📦 Android build ready\n\n[Download APK](${url})`
               : `### 📦 Android build ready\n\nThe APK is available in the [Actions run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
@@ -110,6 +134,17 @@ jobs:
             if (!['admin', 'write'].includes(perm.permission)) {
               core.setFailed(`@${context.payload.comment.user.login} does not have write access and cannot trigger builds.`);
             }
+
+      - name: React with rocket
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket',
+            });
 
       - name: Checkout PR
         uses: actions/checkout@v6
@@ -151,20 +186,32 @@ jobs:
           --build-dart-define GIT_HASH=${{ env.GIT_HASH }}
           --build-dart-define APP_SUFFIX=" (PR)"
 
-      - name: Upload Linux artifact
-        id: upload
-        uses: actions/upload-artifact@v7
-        with:
-          name: classi-linux-appimage-pr${{ github.event.issue.number }}
-          path: dist/**/*.AppImage
+      - name: Upload AppImage to GitHub Release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="pr-${{ github.event.issue.number }}-linux"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          APPIMAGE=$(find dist -name "*.AppImage" | head -1)
+          if [ -z "$APPIMAGE" ]; then
+            echo "No AppImage file found in dist/" >&2
+            exit 1
+          fi
+          FILENAME=$(basename "$APPIMAGE")
+          gh release create "$TAG" "$APPIMAGE" \
+            --prerelease \
+            --title "PR #${{ github.event.issue.number }} – Linux build" \
+            --notes "Linux AppImage build for PR #${{ github.event.issue.number }}"
+          echo "DOWNLOAD_URL=https://github.com/${{ github.repository }}/releases/download/${TAG}/${FILENAME}" >> $GITHUB_ENV
 
       - name: Comment on PR
         uses: actions/github-script@v7
         env:
-          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
         with:
           script: |
-            const url = process.env.ARTIFACT_URL;
+            const url = process.env.DOWNLOAD_URL;
             const body = url
               ? `### 📦 Linux build ready\n\n[Download AppImage](${url})`
               : `### 📦 Linux build ready\n\nThe AppImage is available in the [Actions run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
@@ -194,6 +241,17 @@ jobs:
             if (!['admin', 'write'].includes(perm.permission)) {
               core.setFailed(`@${context.payload.comment.user.login} does not have write access and cannot trigger builds.`);
             }
+
+      - name: React with rocket
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket',
+            });
 
       - name: Checkout PR
         uses: actions/checkout@v6
@@ -227,20 +285,32 @@ jobs:
           --build-dart-define GIT_HASH=${{ env.GIT_HASH }}
           --build-dart-define APP_SUFFIX=" (PR)"
 
-      - name: Upload macOS artifact
-        id: upload
-        uses: actions/upload-artifact@v7
-        with:
-          name: classi-macos-dmg-pr${{ github.event.issue.number }}
-          path: dist/**/*.dmg
+      - name: Upload DMG to GitHub Release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="pr-${{ github.event.issue.number }}-macos"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          DMG=$(find dist -name "*.dmg" | head -1)
+          if [ -z "$DMG" ]; then
+            echo "No DMG file found in dist/" >&2
+            exit 1
+          fi
+          FILENAME=$(basename "$DMG")
+          gh release create "$TAG" "$DMG" \
+            --prerelease \
+            --title "PR #${{ github.event.issue.number }} – macOS build" \
+            --notes "macOS DMG build for PR #${{ github.event.issue.number }}"
+          echo "DOWNLOAD_URL=https://github.com/${{ github.repository }}/releases/download/${TAG}/${FILENAME}" >> $GITHUB_ENV
 
       - name: Comment on PR
         uses: actions/github-script@v7
         env:
-          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
         with:
           script: |
-            const url = process.env.ARTIFACT_URL;
+            const url = process.env.DOWNLOAD_URL;
             const body = url
               ? `### 📦 macOS build ready\n\n[Download DMG](${url})`
               : `### 📦 macOS build ready\n\nThe DMG is available in the [Actions run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
@@ -270,6 +340,17 @@ jobs:
             if (!['admin', 'write'].includes(perm.permission)) {
               core.setFailed(`@${context.payload.comment.user.login} does not have write access and cannot trigger builds.`);
             }
+
+      - name: React with rocket
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket',
+            });
 
       - name: Checkout PR
         uses: actions/checkout@v6
@@ -305,20 +386,33 @@ jobs:
           --build-dart-define GIT_HASH=${{ env.GIT_HASH }}
           --build-dart-define APP_SUFFIX=" (PR)"
 
-      - name: Upload Windows artifact
-        id: upload
-        uses: actions/upload-artifact@v7
-        with:
-          name: classi-windows-exe-pr${{ github.event.issue.number }}
-          path: dist/**/*.exe
+      - name: Upload EXE to GitHub Release
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="pr-${{ github.event.issue.number }}-windows"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          EXE=$(find dist -name "*.exe" | head -1)
+          if [ -z "$EXE" ]; then
+            echo "No EXE file found in dist/" >&2
+            exit 1
+          fi
+          FILENAME=$(basename "$EXE")
+          gh release create "$TAG" "$EXE" \
+            --prerelease \
+            --title "PR #${{ github.event.issue.number }} – Windows build" \
+            --notes "Windows EXE installer build for PR #${{ github.event.issue.number }}"
+          echo "DOWNLOAD_URL=https://github.com/${{ github.repository }}/releases/download/${TAG}/${FILENAME}" >> $GITHUB_ENV
 
       - name: Comment on PR
         uses: actions/github-script@v7
         env:
-          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
         with:
           script: |
-            const url = process.env.ARTIFACT_URL;
+            const url = process.env.DOWNLOAD_URL;
             const body = url
               ? `### 📦 Windows build ready\n\n[Download EXE installer](${url})`
               : `### 📦 Windows build ready\n\nThe EXE installer is available in the [Actions run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
