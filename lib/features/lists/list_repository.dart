@@ -64,6 +64,31 @@ class ListRepository {
         .watch();
   }
 
+  Stream<List<({Checklist list, ChecklistItem item})>> watchItemsForStudent(
+    int studentId,
+  ) {
+    final query = _database.select(_database.listItemsTable).join([
+      innerJoin(
+        _database.listsTable,
+        _database.listsTable.id.equalsExp(_database.listItemsTable.listId),
+      ),
+    ])
+      ..where(_database.listItemsTable.studentId.equals(studentId))
+      ..where(_database.listsTable.archivedAt.isNull())
+      ..orderBy([OrderingTerm.asc(_database.listsTable.name)]);
+
+    return query.watch().map(
+      (rows) => rows
+          .map(
+            (row) => (
+              list: row.readTable(_database.listsTable),
+              item: row.readTable(_database.listItemsTable),
+            ),
+          )
+          .toList(),
+    );
+  }
+
   Stream<Map<int, ListProgress>> watchListProgress({int? groupId}) {
     final variables = <Variable<Object>>[];
     final whereClause = groupId == null ? '' : 'WHERE l.group_id = ?';
