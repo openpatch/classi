@@ -10,6 +10,7 @@ import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/swipe_action_background.dart';
+import 'list_editor.dart';
 import 'list_repository.dart';
 
 final listsProvider = StreamProvider.family<List<Checklist>, int>(
@@ -169,13 +170,11 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
       return;
     }
 
-    if (groups.isEmpty) {
-      return;
-    }
-
-    final result = await showDialog<({int groupId, String name})>(
+    final result = await showListEditorDialog(
       context: context,
-      builder: (context) => _CreateListDialog(groups: groups),
+      groups: groups,
+      title: 'new_list'.tr(),
+      actionLabel: 'add'.tr(),
     );
     if (result == null) {
       return;
@@ -183,7 +182,11 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
 
     await ref
         .read(listRepositoryProvider)
-        .createList(groupId: result.groupId, name: result.name);
+        .createListWithOptions(
+          groupId: result.groupId,
+          name: result.name,
+          populateFromGroupStudents: result.populateFromGroupStudents,
+        );
   }
 
   Future<void> _createListForGroup(
@@ -191,36 +194,30 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
     WidgetRef ref,
     int groupId,
   ) async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
+    final group = (await ref.read(listsGroupProvider(groupId).future))!;
+    if (!context.mounted) {
+      return;
+    }
+    final result = await showListEditorDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('new_list'.tr()),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(labelText: 'new_list'.tr()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('cancel'.tr()),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: Text('add'.tr()),
-          ),
-        ],
-      ),
+      groups: [group],
+      initialGroupId: groupId,
+      allowGroupSelection: false,
+      fixedGroupName: group.name,
+      title: 'new_list'.tr(),
+      actionLabel: 'add'.tr(),
     );
-
-    controller.dispose();
-    if (name == null || name.isEmpty) {
+    if (result == null) {
       return;
     }
 
     await ref
         .read(listRepositoryProvider)
-        .createList(groupId: groupId, name: name);
+        .createListWithOptions(
+          groupId: groupId,
+          name: result.name,
+          populateFromGroupStudents: result.populateFromGroupStudents,
+        );
   }
 
   Future<void> _deleteList(
@@ -284,14 +281,17 @@ class _ListsList extends StatelessWidget {
           separatorBuilder: (context, index) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final list = lists[index];
-            final group = groups[list.groupId];
+            final groupId = list.groupId;
+            final group = groupId != null ? groups[groupId] : null;
             final tile = Card(
               child: ListTile(
                 onTap: () => context.push(listPathBuilder(list)),
                 title: Text(
                   '${list.name} (${(progress[list.id]?.checked ?? 0)}/${(progress[list.id]?.total ?? 0)})',
                 ),
-                subtitle: group == null ? null : _ListGroupChip(group: group),
+                subtitle: group == null
+                    ? const _GlobalListChip()
+                    : _ListGroupChip(group: group),
                 trailing: PopupMenuButton<_GlobalListAction>(
                   onSelected: (action) {
                     switch (action) {
@@ -405,6 +405,21 @@ class _ListsList extends StatelessWidget {
 
 enum _GlobalListAction { archive, unarchive, delete }
 
+class _GlobalListChip extends StatelessWidget {
+  const _GlobalListChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Chip(
+        avatar: const Icon(Icons.public_outlined, size: 18),
+        label: Text('global_list'.tr()),
+      ),
+    );
+  }
+}
+
 class _ListGroupChip extends StatelessWidget {
   const _ListGroupChip({required this.group});
 
@@ -426,79 +441,6 @@ class _ListGroupChip extends StatelessWidget {
         label: Text(group.name, style: TextStyle(color: groupColor)),
         onPressed: () => context.go('/groups/${group.id}'),
       ),
-    );
-  }
-}
-
-class _CreateListDialog extends StatefulWidget {
-  const _CreateListDialog({required this.groups});
-
-  final List<Group> groups;
-
-  @override
-  State<_CreateListDialog> createState() => _CreateListDialogState();
-}
-
-class _CreateListDialogState extends State<_CreateListDialog> {
-  late final TextEditingController _nameController;
-  late int _selectedGroupId;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController();
-    _selectedGroupId = widget.groups.first.id;
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('new_list'.tr()),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<int>(
-            initialValue: _selectedGroupId,
-            decoration: InputDecoration(labelText: 'groups'.tr()),
-            items: [
-              for (final group in widget.groups)
-                DropdownMenuItem<int>(value: group.id, child: Text(group.name)),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedGroupId = value);
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(labelText: 'new_list'.tr()),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('cancel'.tr()),
-        ),
-        FilledButton(
-          onPressed: () {
-            final name = _nameController.text.trim();
-            if (name.isEmpty) {
-              return;
-            }
-            Navigator.of(context).pop((groupId: _selectedGroupId, name: name));
-          },
-          child: Text('add'.tr()),
-        ),
-      ],
     );
   }
 }

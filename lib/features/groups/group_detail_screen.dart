@@ -22,6 +22,7 @@ import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/swipe_action_background.dart';
 import '../../shared/theme/app_ui.dart';
 import '../lists/list_repository.dart';
+import '../lists/list_editor.dart';
 import '../lessons/lesson_support.dart';
 import '../notes/note_editor.dart';
 import '../notes/note_links.dart';
@@ -287,7 +288,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     listProgressValue.value ?? const <int, ListProgress>{},
                 onAddList: archived
                     ? null
-                    : () => _createList(context, ref, group.id),
+                    : () => _createList(context, ref, group),
                 onEditList: (list) => _editList(context, ref, list),
                 onArchiveList: (list) =>
                     ref.read(listRepositoryProvider).archiveList(list.id),
@@ -447,20 +448,28 @@ class GroupDetailScreen extends ConsumerWidget {
   Future<void> _createList(
     BuildContext context,
     WidgetRef ref,
-    int groupId,
+    Group group,
   ) async {
-    final name = await _showListNameDialog(
+    final result = await showListEditorDialog(
       context: context,
+      groups: [group],
+      initialGroupId: group.id,
+      allowGroupSelection: false,
+      fixedGroupName: group.name,
       title: 'new_list'.tr(),
       actionLabel: 'add'.tr(),
     );
-    if (name == null || name.isEmpty) {
+    if (result == null) {
       return;
     }
 
     await ref
         .read(listRepositoryProvider)
-        .createList(groupId: groupId, name: name);
+        .createListWithOptions(
+          groupId: group.id,
+          name: result.name,
+          populateFromGroupStudents: result.populateFromGroupStudents,
+        );
   }
 
   Future<void> _addGroupNote(

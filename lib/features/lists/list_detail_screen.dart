@@ -10,6 +10,9 @@ import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_avatar.dart';
+import '../../shared/widgets/student_link_chip.dart';
+import 'list_item_editor.dart';
+import 'list_item_links.dart';
 
 final checklistProvider = StreamProvider.family<Checklist?, int>(
   (ref, listId) => ref.watch(listRepositoryProvider).watchList(listId),
@@ -23,10 +26,20 @@ final listDetailGroupProvider = StreamProvider.family<Group?, int>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
+final listDetailGroupsProvider = StreamProvider<List<Group>>(
+  (ref) => ref.watch(groupRepositoryProvider).watchActiveGroups(),
+);
+
 final listDetailStudentsProvider = StreamProvider.family<List<Student>, int>(
   (ref, groupId) => ref
       .watch(studentRepositoryProvider)
       .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
+);
+
+final listDetailAllStudentsProvider = StreamProvider<List<Student>>(
+  (ref) => ref
+      .watch(studentRepositoryProvider)
+      .watchAllStudents(sortField: ref.watch(studentSortFieldProvider)),
 );
 
 class ListDetailScreen extends ConsumerStatefulWidget {
@@ -52,11 +65,14 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
           return const Scaffold(body: SizedBox.shrink());
         }
 
-        final groupValue = ref.watch(listDetailGroupProvider(list.groupId));
-        final studentsValue = ref.watch(
-          listDetailStudentsProvider(list.groupId),
-        );
-        final group = groupValue.value;
+        final groupsValue = ref.watch(listDetailGroupsProvider);
+        final groupValue = list.groupId == null
+            ? null
+            : ref.watch(listDetailGroupProvider(list.groupId!));
+        final studentsValue = list.groupId == null
+            ? ref.watch(listDetailAllStudentsProvider)
+            : ref.watch(listDetailStudentsProvider(list.groupId!));
+        final group = groupValue?.value;
         final appBarColor = group == null ? null : colorFromHex(group.colorHex);
         final appBarForeground = appBarColor == null
             ? null
@@ -66,7 +82,12 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
           appBar: AppBar(
             backgroundColor: appBarColor,
             foregroundColor: appBarForeground,
-            title: AppBarTitle(title: list.name, subtitle: group?.name),
+            title: AppBarTitle(
+              title: list.name,
+              subtitle:
+                  group?.name ??
+                  (list.groupId == null ? 'global_list'.tr() : null),
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
@@ -75,12 +96,18 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _addItem(context),
+            onPressed: () => _addItem(
+              context,
+              list: list,
+              groups: groupsValue.value ?? const <Group>[],
+              students: studentsValue.value ?? const <Student>[],
+            ),
             icon: const Icon(Icons.add),
             label: Text('add_item'.tr()),
           ),
           body: itemsValue.when(
             data: (items) {
+              final groups = groupsValue.value ?? const <Group>[];
               final studentsById = {
                 for (final student in studentsValue.value ?? const <Student>[])
                   student.id: student,
@@ -135,15 +162,17 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
                             onSelected: (value) =>
                                 setState(() => _showUncheckedOnly = value),
                           ),
-                          if (items.isEmpty)
+                          if (items.isEmpty && list.groupId != null)
                             OutlinedButton(
                               onPressed: () => ref
                                   .read(listRepositoryProvider)
                                   .populateFromGroup(
                                     listId: list.id,
-                                    groupId: list.groupId,
+                                    groupId: list.groupId!,
                                   ),
-                              child: Text('populate_from_group'.tr()),
+                              child: Text(
+                                'create_items_for_group_students'.tr(),
+                              ),
                             ),
                         ],
                       ),
@@ -159,12 +188,21 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
                     for (final item in visibleItems)
                       _ChecklistItemTile(
                         item: item,
-                        student: item.studentId == null
-                            ? null
-                            : studentsById[item.studentId],
+                        linkedStudents: [
+                          for (final studentId in listItemStudentIds(item))
+                            if (studentsById[studentId] != null)
+                              studentsById[studentId]!,
+                        ],
                         onChanged: (checked) => ref
                             .read(listRepositoryProvider)
                             .toggleItem(itemId: item.id, checked: checked),
+                        onEdit: () => _editItem(
+                          context,
+                          list: list,
+                          item: item,
+                          groups: groups,
+                          students: studentsValue.value ?? const <Student>[],
+                        ),
                         onDelete: () => ref
                             .read(listRepositoryProvider)
                             .deleteItem(item.id),
@@ -216,76 +254,128 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
         .renameList(listId: list.id, name: name);
   }
 
-  Future<void> _addItem(BuildContext context) async {
-    final controller = TextEditingController();
-    final label = await showDialog<String>(
+  Future<void> _addItem(
+    BuildContext context, {
+    required Checklist list,
+    required List<Group> groups,
+    required List<Student> students,
+  }) async {
+    final result = await showListItemEditorSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('add_item'.tr()),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(labelText: 'add_item'.tr()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('cancel'.tr()),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: Text('add'.tr()),
-          ),
-        ],
-      ),
+      groups: groups,
+      students: students,
+      preferredGroupId: list.groupId,
+      allowSelectAllStudents: list.groupId == null,
+      title: 'add_item'.tr(),
     );
-
-    controller.dispose();
-    if (label == null || label.isEmpty) {
+    if (result == null) {
       return;
     }
 
     await ref
         .read(listRepositoryProvider)
-        .addItem(listId: widget.listId, label: label);
+        .addItem(
+          listId: widget.listId,
+          label: result.label,
+          studentIds: result.studentIds,
+        );
+  }
+
+  Future<void> _editItem(
+    BuildContext context, {
+    required Checklist list,
+    required ChecklistItem item,
+    required List<Group> groups,
+    required List<Student> students,
+  }) async {
+    final result = await showListItemEditorSheet(
+      context: context,
+      groups: groups,
+      students: students,
+      preferredGroupId: list.groupId,
+      allowSelectAllStudents: list.groupId == null,
+      title: 'edit'.tr(),
+      initialLabel: item.label,
+      initialStudentIds: listItemStudentIds(item),
+    );
+    if (result == null) {
+      return;
+    }
+
+    await ref
+        .read(listRepositoryProvider)
+        .updateItem(
+          item: item,
+          label: result.label,
+          studentIds: result.studentIds,
+        );
   }
 }
 
 class _ChecklistItemTile extends StatelessWidget {
   const _ChecklistItemTile({
     required this.item,
-    required this.student,
+    required this.linkedStudents,
     required this.onChanged,
+    required this.onEdit,
     required this.onDelete,
   });
 
   final ChecklistItem item;
-  final Student? student;
+  final List<Student> linkedStudents;
   final ValueChanged<bool> onChanged;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final checked = item.checkedAt != null;
-    final title = student == null
-        ? item.label
+    final singleLinkedStudent = linkedStudents.length == 1
+        ? linkedStudents.single
+        : null;
+    final singleLinkedStudentName = singleLinkedStudent == null
+        ? null
         : studentDisplayName(
-            firstName: student!.firstName,
-            lastName: student!.lastName,
+            firstName: singleLinkedStudent.firstName,
+            lastName: singleLinkedStudent.lastName,
           );
+    final showLinkedStudents =
+        linkedStudents.length > 1 ||
+        (singleLinkedStudentName != null &&
+            singleLinkedStudentName != item.label);
+    final subtitleChildren = <Widget>[
+      if (item.checkedAt != null)
+        Text(
+          MaterialLocalizations.of(context).formatMediumDate(item.checkedAt!),
+        ),
+      if (showLinkedStudents) ...[
+        if (item.checkedAt != null) const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final student in linkedStudents)
+              StudentLinkChip(student: student, avatarSize: 24),
+          ],
+        ),
+      ],
+    ];
 
     return Card(
       child: ListTile(
         onTap: () => onChanged(!checked),
-        leading: student == null
+        leading: singleLinkedStudent == null
+            ? linkedStudents.length > 1
+                  ? CircleAvatar(child: Text('${linkedStudents.length}'))
+                  : null
+            : StudentAvatar(student: singleLinkedStudent, size: 36),
+        title: Text(item.label),
+        subtitle: subtitleChildren.isEmpty
             ? null
-            : StudentAvatar(student: student!, size: 36),
-        title: Text(title),
-        subtitle: item.checkedAt == null
-            ? null
-            : Text(
-                MaterialLocalizations.of(
-                  context,
-                ).formatMediumDate(item.checkedAt!),
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: subtitleChildren,
               ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -294,9 +384,27 @@ class _ChecklistItemTile extends StatelessWidget {
               value: checked,
               onChanged: (value) => onChanged(value ?? false),
             ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: onDelete,
+            PopupMenuButton<_ChecklistItemAction>(
+              onSelected: (action) {
+                switch (action) {
+                  case _ChecklistItemAction.edit:
+                    onEdit();
+                    return;
+                  case _ChecklistItemAction.delete:
+                    onDelete();
+                    return;
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: _ChecklistItemAction.edit,
+                  child: Text('edit'.tr()),
+                ),
+                PopupMenuItem(
+                  value: _ChecklistItemAction.delete,
+                  child: Text('delete'.tr()),
+                ),
+              ],
             ),
           ],
         ),
@@ -304,3 +412,5 @@ class _ChecklistItemTile extends StatelessWidget {
     );
   }
 }
+
+enum _ChecklistItemAction { edit, delete }
