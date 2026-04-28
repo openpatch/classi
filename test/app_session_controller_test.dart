@@ -81,6 +81,49 @@ void main() {
       );
     },
   );
+
+  test('lock is idempotent: calling lock twice does not double-lock', () async {
+    await controller.initialize();
+    await controller.createDatabase('test');
+    controller.clearPendingRecoveryKey();
+
+    expect(controller.status, AppSessionStatus.ready);
+
+    // Simulate concurrent background events by calling handleAppBackgrounded
+    // twice without awaiting the first call.
+    final first = controller.handleAppBackgrounded();
+    final second = controller.handleAppBackgrounded();
+    await Future.wait([first, second]);
+
+    // The app must be locked exactly once; status should be locked.
+    expect(controller.status, AppSessionStatus.locked);
+
+    // After locking, the app can still be unlocked normally.
+    final unlocked = await controller.unlock('test');
+    expect(unlocked, isTrue);
+    expect(controller.status, AppSessionStatus.ready);
+  });
+
+  test(
+    'lock sets status to locked immediately before async cleanup',
+    () async {
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+
+      expect(controller.status, AppSessionStatus.ready);
+
+      // Start locking but do not await – the status should change synchronously.
+      final lockFuture = controller.lock();
+      expect(
+        controller.status,
+        AppSessionStatus.locked,
+        reason: 'status must be locked before async cleanup completes',
+      );
+      await lockFuture;
+      expect(controller.status, AppSessionStatus.locked);
+    },
+  );
 }
 
 class _TestDatabasePathService extends DatabasePathService {
