@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +23,7 @@ class SetupScreen extends ConsumerStatefulWidget {
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
   static const int _totalSteps = 4;
+  static const String _defaultLibraryName = 'classi';
 
   static const Map<int, Duration> _timeoutOptions = {
     1: Duration(minutes: 1),
@@ -38,6 +41,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   int _currentStep = 0;
   bool _isSaving = false;
   String? _selectedFolder;
+  bool _folderError = false;
 
   // Step 3: App lock preferences with recommended defaults.
   bool _lockOnBackground = true;
@@ -64,20 +68,21 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   Future<void> _loadDefaultPath() async {
-    final currentPath =
-        await ref.read(appSessionProvider).currentDatabasePath();
+    // Do not pre-populate the folder so the user must explicitly choose where
+    // to store their data.  Only pre-fill the library name with a sensible
+    // default so the name field is not blank.
     if (!mounted) return;
     setState(() {
-      _selectedFolder =
-          DatabasePathService.containerParentPathFor(currentPath);
-      _nameController.text = p.basenameWithoutExtension(currentPath);
+      _selectedFolder = null;
+      _nameController.text = _defaultLibraryName;
     });
   }
 
   String get _databasePath {
-    final folder = _selectedFolder ?? '';
+    final folder = _selectedFolder;
+    if (folder == null) return '';
     final name = _nameController.text.trim().isEmpty
-        ? 'classi'
+        ? _defaultLibraryName
         : _nameController.text.trim();
     return p.join(
       folder,
@@ -96,6 +101,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   Future<void> _onNext() async {
     switch (_currentStep) {
       case 0:
+        final folderMissing = _selectedFolder == null;
+        setState(() => _folderError = folderMissing);
+        if (folderMissing) return;
         if (_locationFormKey.currentState!.validate()) {
           setState(() => _currentStep = 1);
         }
@@ -163,7 +171,10 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       dialogTitle: 'choose_library_folder'.tr(),
     );
     if (folder != null && mounted) {
-      setState(() => _selectedFolder = folder);
+      setState(() {
+        _selectedFolder = folder;
+        _folderError = false;
+      });
     }
   }
 
@@ -275,6 +286,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           isSaving: _isSaving,
           onPickFolder: _pickFolder,
           onChanged: () => setState(() {}),
+          folderError: _folderError,
         );
       case 1:
         return _SecurityStep(
@@ -354,6 +366,7 @@ class _LibraryStep extends StatelessWidget {
     required this.isSaving,
     required this.onPickFolder,
     required this.onChanged,
+    required this.folderError,
   });
 
   final GlobalKey<FormState> formKey;
@@ -363,9 +376,11 @@ class _LibraryStep extends StatelessWidget {
   final bool isSaving;
   final VoidCallback onPickFolder;
   final VoidCallback onChanged;
+  final bool folderError;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Form(
       key: formKey,
       child: Column(
@@ -382,9 +397,16 @@ class _LibraryStep extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  selectedFolder ?? '',
+                  selectedFolder ?? 'no_folder_selected'.tr(),
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: selectedFolder == null
+                        ? colorScheme.onSurfaceVariant
+                        : null,
+                    fontStyle: selectedFolder == null
+                        ? FontStyle.italic
+                        : FontStyle.normal,
+                  ),
                 ),
               ),
               IconButton(
@@ -394,6 +416,19 @@ class _LibraryStep extends StatelessWidget {
               ),
             ],
           ),
+          if (folderError) ...[
+            const SizedBox(height: 4),
+            Text(
+              'library_folder_required'.tr(),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.error,
+              ),
+            ),
+          ],
+          if (Platform.isAndroid) ...[
+            const SizedBox(height: 8),
+            const _AndroidStorageNote(),
+          ],
           const SizedBox(height: 12),
           TextFormField(
             controller: nameController,
@@ -410,15 +445,42 @@ class _LibraryStep extends StatelessWidget {
             },
             onChanged: (_) => onChanged(),
           ),
-          const SizedBox(height: 8),
-          SelectableText(
-            databasePath,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          if (databasePath.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SelectableText(
+              databasePath,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: 16),
           const AutoImportPromptCard(),
         ],
       ),
+    );
+  }
+}
+
+class _AndroidStorageNote extends StatelessWidget {
+  const _AndroidStorageNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.info_outline,
+          size: 16,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'library_storage_warning_android'.tr(),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
     );
   }
 }

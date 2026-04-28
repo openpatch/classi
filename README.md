@@ -36,6 +36,24 @@ This first release focuses on the local-first teaching workflow:
   database
 - English and German translations through `easy_localization`
 
+## Data storage
+
+Classi stores your library in a `.classi` folder that you choose during the
+first-run setup.  The setup wizard always requires an explicit folder selection
+so your data is never silently placed inside an app-private directory.
+
+**Recommended locations:**
+
+| Platform | Recommended folder |
+|---|---|
+| Android | A folder in shared storage such as *Documents* — **not** inside `Android/data/`, which is erased when the app is uninstalled |
+| macOS (App Store) | `~/Documents/Classi` or another location outside `~/Library/Containers/` |
+| macOS / Windows / Linux | Any folder in your home directory or an accessible drive |
+
+Regardless of platform, enabling **auto-export backups** in Settings (or during
+setup) is strongly recommended so you always have a portable `.classi-backup`
+file in a separate location.
+
 ## Local development
 
 Linux desktop builds need native packages installed first:
