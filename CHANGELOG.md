@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.9] - 2026-04-28
+
+### Bug Fixes
+
+- Prevent app from locking when file picker dialog is open
+- Restore navigation context after app unlock
+
+
 ## [1.1.8] - 2026-04-28
 
 ### Features
