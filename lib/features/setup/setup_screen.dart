@@ -23,6 +23,7 @@ class SetupScreen extends ConsumerStatefulWidget {
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
   static const int _totalSteps = 4;
+  static const String _defaultLibraryName = 'classi';
 
   static const Map<int, Duration> _timeoutOptions = {
     1: Duration(minutes: 1),
@@ -73,7 +74,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     if (!mounted) return;
     setState(() {
       _selectedFolder = null;
-      _nameController.text = 'classi';
+      _nameController.text = _defaultLibraryName;
     });
   }
 
@@ -81,7 +82,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final folder = _selectedFolder;
     if (folder == null) return '';
     final name = _nameController.text.trim().isEmpty
-        ? 'classi'
+        ? _defaultLibraryName
         : _nameController.text.trim();
     return p.join(
       folder,
