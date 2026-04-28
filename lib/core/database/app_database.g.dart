@@ -2555,9 +2555,9 @@ class $ListsTableTable extends ListsTable
   late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
     'group_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES groups_table (id) ON DELETE CASCADE',
     ),
@@ -2626,8 +2626,6 @@ class $ListsTableTable extends ListsTable
         _groupIdMeta,
         groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
       );
-    } else if (isInserting) {
-      context.missing(_groupIdMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -2665,7 +2663,7 @@ class $ListsTableTable extends ListsTable
       groupId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}group_id'],
-      )!,
+      ),
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}name'],
@@ -2689,13 +2687,13 @@ class $ListsTableTable extends ListsTable
 
 class Checklist extends DataClass implements Insertable<Checklist> {
   final int id;
-  final int groupId;
+  final int? groupId;
   final String name;
   final DateTime createdAt;
   final DateTime? archivedAt;
   const Checklist({
     required this.id,
-    required this.groupId,
+    this.groupId,
     required this.name,
     required this.createdAt,
     this.archivedAt,
@@ -2704,7 +2702,9 @@ class Checklist extends DataClass implements Insertable<Checklist> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['group_id'] = Variable<int>(groupId);
+    if (!nullToAbsent || groupId != null) {
+      map['group_id'] = Variable<int>(groupId);
+    }
     map['name'] = Variable<String>(name);
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || archivedAt != null) {
@@ -2716,7 +2716,9 @@ class Checklist extends DataClass implements Insertable<Checklist> {
   ListsTableCompanion toCompanion(bool nullToAbsent) {
     return ListsTableCompanion(
       id: Value(id),
-      groupId: Value(groupId),
+      groupId: groupId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(groupId),
       name: Value(name),
       createdAt: Value(createdAt),
       archivedAt: archivedAt == null && nullToAbsent
@@ -2732,7 +2734,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Checklist(
       id: serializer.fromJson<int>(json['id']),
-      groupId: serializer.fromJson<int>(json['groupId']),
+      groupId: serializer.fromJson<int?>(json['groupId']),
       name: serializer.fromJson<String>(json['name']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
@@ -2743,7 +2745,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'groupId': serializer.toJson<int>(groupId),
+      'groupId': serializer.toJson<int?>(groupId),
       'name': serializer.toJson<String>(name),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'archivedAt': serializer.toJson<DateTime?>(archivedAt),
@@ -2752,13 +2754,13 @@ class Checklist extends DataClass implements Insertable<Checklist> {
 
   Checklist copyWith({
     int? id,
-    int? groupId,
+    Value<int?> groupId = const Value.absent(),
     String? name,
     DateTime? createdAt,
     Value<DateTime?> archivedAt = const Value.absent(),
   }) => Checklist(
     id: id ?? this.id,
-    groupId: groupId ?? this.groupId,
+    groupId: groupId.present ? groupId.value : this.groupId,
     name: name ?? this.name,
     createdAt: createdAt ?? this.createdAt,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
@@ -2802,7 +2804,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
 
 class ListsTableCompanion extends UpdateCompanion<Checklist> {
   final Value<int> id;
-  final Value<int> groupId;
+  final Value<int?> groupId;
   final Value<String> name;
   final Value<DateTime> createdAt;
   final Value<DateTime?> archivedAt;
@@ -2815,12 +2817,11 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
   });
   ListsTableCompanion.insert({
     this.id = const Value.absent(),
-    required int groupId,
+    this.groupId = const Value.absent(),
     required String name,
     this.createdAt = const Value.absent(),
     this.archivedAt = const Value.absent(),
-  }) : groupId = Value(groupId),
-       name = Value(name);
+  }) : name = Value(name);
   static Insertable<Checklist> custom({
     Expression<int>? id,
     Expression<int>? groupId,
@@ -2839,7 +2840,7 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
 
   ListsTableCompanion copyWith({
     Value<int>? id,
-    Value<int>? groupId,
+    Value<int?>? groupId,
     Value<String>? name,
     Value<DateTime>? createdAt,
     Value<DateTime?>? archivedAt,
@@ -2932,6 +2933,17 @@ class $ListItemsTableTable extends ListItemsTable
       'REFERENCES students_table (id) ON DELETE SET NULL',
     ),
   );
+  static const VerificationMeta _studentIdsJsonMeta = const VerificationMeta(
+    'studentIdsJson',
+  );
+  @override
+  late final GeneratedColumn<String> studentIdsJson = GeneratedColumn<String>(
+    'student_ids_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _labelMeta = const VerificationMeta('label');
   @override
   late final GeneratedColumn<String> label = GeneratedColumn<String>(
@@ -2973,6 +2985,7 @@ class $ListItemsTableTable extends ListItemsTable
     id,
     listId,
     studentId,
+    studentIdsJson,
     label,
     checkedAt,
     createdAt,
@@ -3004,6 +3017,15 @@ class $ListItemsTableTable extends ListItemsTable
       context.handle(
         _studentIdMeta,
         studentId.isAcceptableOrUnknown(data['student_id']!, _studentIdMeta),
+      );
+    }
+    if (data.containsKey('student_ids_json')) {
+      context.handle(
+        _studentIdsJsonMeta,
+        studentIdsJson.isAcceptableOrUnknown(
+          data['student_ids_json']!,
+          _studentIdsJsonMeta,
+        ),
       );
     }
     if (data.containsKey('label')) {
@@ -3047,6 +3069,10 @@ class $ListItemsTableTable extends ListItemsTable
         DriftSqlType.int,
         data['${effectivePrefix}student_id'],
       ),
+      studentIdsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}student_ids_json'],
+      ),
       label: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}label'],
@@ -3072,6 +3098,7 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
   final int id;
   final int listId;
   final int? studentId;
+  final String? studentIdsJson;
   final String label;
   final DateTime? checkedAt;
   final DateTime createdAt;
@@ -3079,6 +3106,7 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
     required this.id,
     required this.listId,
     this.studentId,
+    this.studentIdsJson,
     required this.label,
     this.checkedAt,
     required this.createdAt,
@@ -3090,6 +3118,9 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
     map['list_id'] = Variable<int>(listId);
     if (!nullToAbsent || studentId != null) {
       map['student_id'] = Variable<int>(studentId);
+    }
+    if (!nullToAbsent || studentIdsJson != null) {
+      map['student_ids_json'] = Variable<String>(studentIdsJson);
     }
     map['label'] = Variable<String>(label);
     if (!nullToAbsent || checkedAt != null) {
@@ -3106,6 +3137,9 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
       studentId: studentId == null && nullToAbsent
           ? const Value.absent()
           : Value(studentId),
+      studentIdsJson: studentIdsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(studentIdsJson),
       label: Value(label),
       checkedAt: checkedAt == null && nullToAbsent
           ? const Value.absent()
@@ -3123,6 +3157,7 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
       id: serializer.fromJson<int>(json['id']),
       listId: serializer.fromJson<int>(json['listId']),
       studentId: serializer.fromJson<int?>(json['studentId']),
+      studentIdsJson: serializer.fromJson<String?>(json['studentIdsJson']),
       label: serializer.fromJson<String>(json['label']),
       checkedAt: serializer.fromJson<DateTime?>(json['checkedAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -3135,6 +3170,7 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
       'id': serializer.toJson<int>(id),
       'listId': serializer.toJson<int>(listId),
       'studentId': serializer.toJson<int?>(studentId),
+      'studentIdsJson': serializer.toJson<String?>(studentIdsJson),
       'label': serializer.toJson<String>(label),
       'checkedAt': serializer.toJson<DateTime?>(checkedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -3145,6 +3181,7 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
     int? id,
     int? listId,
     Value<int?> studentId = const Value.absent(),
+    Value<String?> studentIdsJson = const Value.absent(),
     String? label,
     Value<DateTime?> checkedAt = const Value.absent(),
     DateTime? createdAt,
@@ -3152,6 +3189,9 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
     id: id ?? this.id,
     listId: listId ?? this.listId,
     studentId: studentId.present ? studentId.value : this.studentId,
+    studentIdsJson: studentIdsJson.present
+        ? studentIdsJson.value
+        : this.studentIdsJson,
     label: label ?? this.label,
     checkedAt: checkedAt.present ? checkedAt.value : this.checkedAt,
     createdAt: createdAt ?? this.createdAt,
@@ -3161,6 +3201,9 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
       id: data.id.present ? data.id.value : this.id,
       listId: data.listId.present ? data.listId.value : this.listId,
       studentId: data.studentId.present ? data.studentId.value : this.studentId,
+      studentIdsJson: data.studentIdsJson.present
+          ? data.studentIdsJson.value
+          : this.studentIdsJson,
       label: data.label.present ? data.label.value : this.label,
       checkedAt: data.checkedAt.present ? data.checkedAt.value : this.checkedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -3173,6 +3216,7 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
           ..write('id: $id, ')
           ..write('listId: $listId, ')
           ..write('studentId: $studentId, ')
+          ..write('studentIdsJson: $studentIdsJson, ')
           ..write('label: $label, ')
           ..write('checkedAt: $checkedAt, ')
           ..write('createdAt: $createdAt')
@@ -3181,8 +3225,15 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, listId, studentId, label, checkedAt, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    listId,
+    studentId,
+    studentIdsJson,
+    label,
+    checkedAt,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3190,6 +3241,7 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
           other.id == this.id &&
           other.listId == this.listId &&
           other.studentId == this.studentId &&
+          other.studentIdsJson == this.studentIdsJson &&
           other.label == this.label &&
           other.checkedAt == this.checkedAt &&
           other.createdAt == this.createdAt);
@@ -3199,6 +3251,7 @@ class ListItemsTableCompanion extends UpdateCompanion<ChecklistItem> {
   final Value<int> id;
   final Value<int> listId;
   final Value<int?> studentId;
+  final Value<String?> studentIdsJson;
   final Value<String> label;
   final Value<DateTime?> checkedAt;
   final Value<DateTime> createdAt;
@@ -3206,6 +3259,7 @@ class ListItemsTableCompanion extends UpdateCompanion<ChecklistItem> {
     this.id = const Value.absent(),
     this.listId = const Value.absent(),
     this.studentId = const Value.absent(),
+    this.studentIdsJson = const Value.absent(),
     this.label = const Value.absent(),
     this.checkedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3214,6 +3268,7 @@ class ListItemsTableCompanion extends UpdateCompanion<ChecklistItem> {
     this.id = const Value.absent(),
     required int listId,
     this.studentId = const Value.absent(),
+    this.studentIdsJson = const Value.absent(),
     required String label,
     this.checkedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3223,6 +3278,7 @@ class ListItemsTableCompanion extends UpdateCompanion<ChecklistItem> {
     Expression<int>? id,
     Expression<int>? listId,
     Expression<int>? studentId,
+    Expression<String>? studentIdsJson,
     Expression<String>? label,
     Expression<DateTime>? checkedAt,
     Expression<DateTime>? createdAt,
@@ -3231,6 +3287,7 @@ class ListItemsTableCompanion extends UpdateCompanion<ChecklistItem> {
       if (id != null) 'id': id,
       if (listId != null) 'list_id': listId,
       if (studentId != null) 'student_id': studentId,
+      if (studentIdsJson != null) 'student_ids_json': studentIdsJson,
       if (label != null) 'label': label,
       if (checkedAt != null) 'checked_at': checkedAt,
       if (createdAt != null) 'created_at': createdAt,
@@ -3241,6 +3298,7 @@ class ListItemsTableCompanion extends UpdateCompanion<ChecklistItem> {
     Value<int>? id,
     Value<int>? listId,
     Value<int?>? studentId,
+    Value<String?>? studentIdsJson,
     Value<String>? label,
     Value<DateTime?>? checkedAt,
     Value<DateTime>? createdAt,
@@ -3249,6 +3307,7 @@ class ListItemsTableCompanion extends UpdateCompanion<ChecklistItem> {
       id: id ?? this.id,
       listId: listId ?? this.listId,
       studentId: studentId ?? this.studentId,
+      studentIdsJson: studentIdsJson ?? this.studentIdsJson,
       label: label ?? this.label,
       checkedAt: checkedAt ?? this.checkedAt,
       createdAt: createdAt ?? this.createdAt,
@@ -3266,6 +3325,9 @@ class ListItemsTableCompanion extends UpdateCompanion<ChecklistItem> {
     }
     if (studentId.present) {
       map['student_id'] = Variable<int>(studentId.value);
+    }
+    if (studentIdsJson.present) {
+      map['student_ids_json'] = Variable<String>(studentIdsJson.value);
     }
     if (label.present) {
       map['label'] = Variable<String>(label.value);
@@ -3285,6 +3347,7 @@ class ListItemsTableCompanion extends UpdateCompanion<ChecklistItem> {
           ..write('id: $id, ')
           ..write('listId: $listId, ')
           ..write('studentId: $studentId, ')
+          ..write('studentIdsJson: $studentIdsJson, ')
           ..write('label: $label, ')
           ..write('checkedAt: $checkedAt, ')
           ..write('createdAt: $createdAt')
@@ -6937,7 +7000,7 @@ typedef $$HomeworkLogsTableTableProcessedTableManager =
 typedef $$ListsTableTableCreateCompanionBuilder =
     ListsTableCompanion Function({
       Value<int> id,
-      required int groupId,
+      Value<int?> groupId,
       required String name,
       Value<DateTime> createdAt,
       Value<DateTime?> archivedAt,
@@ -6945,7 +7008,7 @@ typedef $$ListsTableTableCreateCompanionBuilder =
 typedef $$ListsTableTableUpdateCompanionBuilder =
     ListsTableCompanion Function({
       Value<int> id,
-      Value<int> groupId,
+      Value<int?> groupId,
       Value<String> name,
       Value<DateTime> createdAt,
       Value<DateTime?> archivedAt,
@@ -6960,9 +7023,9 @@ final class $$ListsTableTableReferences
         $_aliasNameGenerator(db.listsTable.groupId, db.groupsTable.id),
       );
 
-  $$GroupsTableTableProcessedTableManager get groupId {
-    final $_column = $_itemColumn<int>('group_id')!;
-
+  $$GroupsTableTableProcessedTableManager? get groupId {
+    final $_column = $_itemColumn<int>('group_id');
+    if ($_column == null) return null;
     final manager = $$GroupsTableTableTableManager(
       $_db,
       $_db.groupsTable,
@@ -7225,7 +7288,7 @@ class $$ListsTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<int> groupId = const Value.absent(),
+                Value<int?> groupId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
@@ -7239,7 +7302,7 @@ class $$ListsTableTableTableManager
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required int groupId,
+                Value<int?> groupId = const Value.absent(),
                 required String name,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
@@ -7348,6 +7411,7 @@ typedef $$ListItemsTableTableCreateCompanionBuilder =
       Value<int> id,
       required int listId,
       Value<int?> studentId,
+      Value<String?> studentIdsJson,
       required String label,
       Value<DateTime?> checkedAt,
       Value<DateTime> createdAt,
@@ -7357,6 +7421,7 @@ typedef $$ListItemsTableTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> listId,
       Value<int?> studentId,
+      Value<String?> studentIdsJson,
       Value<String> label,
       Value<DateTime?> checkedAt,
       Value<DateTime> createdAt,
@@ -7420,6 +7485,11 @@ class $$ListItemsTableTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get studentIdsJson => $composableBuilder(
+    column: $table.studentIdsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7499,6 +7569,11 @@ class $$ListItemsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get studentIdsJson => $composableBuilder(
+    column: $table.studentIdsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get label => $composableBuilder(
     column: $table.label,
     builder: (column) => ColumnOrderings(column),
@@ -7572,6 +7647,11 @@ class $$ListItemsTableTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get studentIdsJson => $composableBuilder(
+    column: $table.studentIdsJson,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get label =>
       $composableBuilder(column: $table.label, builder: (column) => column);
@@ -7662,6 +7742,7 @@ class $$ListItemsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> listId = const Value.absent(),
                 Value<int?> studentId = const Value.absent(),
+                Value<String?> studentIdsJson = const Value.absent(),
                 Value<String> label = const Value.absent(),
                 Value<DateTime?> checkedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -7669,6 +7750,7 @@ class $$ListItemsTableTableTableManager
                 id: id,
                 listId: listId,
                 studentId: studentId,
+                studentIdsJson: studentIdsJson,
                 label: label,
                 checkedAt: checkedAt,
                 createdAt: createdAt,
@@ -7678,6 +7760,7 @@ class $$ListItemsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 required int listId,
                 Value<int?> studentId = const Value.absent(),
+                Value<String?> studentIdsJson = const Value.absent(),
                 required String label,
                 Value<DateTime?> checkedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -7685,6 +7768,7 @@ class $$ListItemsTableTableTableManager
                 id: id,
                 listId: listId,
                 studentId: studentId,
+                studentIdsJson: studentIdsJson,
                 label: label,
                 checkedAt: checkedAt,
                 createdAt: createdAt,
