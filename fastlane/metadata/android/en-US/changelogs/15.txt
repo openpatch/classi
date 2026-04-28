@@ -1,0 +1,8 @@
+Initial release on F-Droid.
+
+• Encrypted local libraries with passphrase and recovery key
+• Groups, students, grades, notes, checklists, homework tracking
+• WebUntis class-list CSV import
+• Biometric unlock (fingerprint / face)
+• Auto-export backups to a folder of your choice
+• English and German interface

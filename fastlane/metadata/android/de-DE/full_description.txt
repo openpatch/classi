@@ -1,0 +1,17 @@
+Classi ist eine lokal-erste App für Lehrkräfte. Alle Klassen-Daten bleiben auf deinem Gerät, verschlüsselt und unter deiner Kontrolle — kein Cloud-Konto erforderlich.
+
+Deine Daten werden in verschlüsselten .classi-Bibliotheken gespeichert, die du selbst platzierst (z. B. in Dokumente). Eine portable .classi-Backup-Datei kann automatisch exportiert werden, sobald die App sperrt oder du die Bibliothek wechselst — so ist die Synchronisation zwischen Geräten einfach möglich.
+
+<b>Funktionen</b>
+• Gruppen und Schüler:innenlisten mit Archivieren, Klonen und Massenanlage
+• WebUntis-Klassenlisten-CSV-Import
+• Noteneingabe mit konfigurierbaren Notensystemen und Diagrammverlauf
+• Checklisten mit schüler:innen-bezogenen Verknüpfungen
+• Notizen für Gruppen und einzelne Schüler:innen
+• Hausaufgaben- und Material-Tracking
+• Biometrische Entsperrung (Fingerabdruck / Gesicht) zusätzlich zur Passphrase
+• Automatischer Backup-Export in einen frei wählbaren Ordner
+• Deutsche und englische Oberfläche
+
+<b>Datenschutz</b>
+Classi speichert alle Daten lokal auf deinem Gerät. Keine Analyse, kein Tracking, kein Internetzugriff notwendig.
