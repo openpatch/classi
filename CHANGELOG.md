@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-04-28
+
+### Miscellaneous Tasks
+
+- Add playstore release
+
+
 ## [1.1.9] - 2026-04-28
 
 ### Bug Fixes
