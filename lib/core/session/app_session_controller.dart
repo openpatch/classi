@@ -224,12 +224,15 @@ class AppSessionController extends ChangeNotifier {
     if (isRecoveryKeyHandoffActive) {
       return;
     }
+    if (_status != AppSessionStatus.ready) {
+      return;
+    }
 
     _cancelInactivityTimer();
-    await _persistOpenDatabaseState(markSessionClean: true);
     _status = AppSessionStatus.locked;
     _errorCode = null;
     notifyListeners();
+    await _persistOpenDatabaseState(markSessionClean: true);
   }
 
   Future<void> handleAppResumed() async {
