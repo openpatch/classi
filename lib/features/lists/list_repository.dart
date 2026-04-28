@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
 import '../../shared/utils/formatting.dart';
+import 'list_item_links.dart';
 
 class ListProgress {
   const ListProgress({required this.checked, required this.total});
@@ -100,11 +101,36 @@ class ListRepository {
   }
 
   Future<int> createList({required int groupId, required String name}) {
-    return _database
-        .into(_database.listsTable)
-        .insert(
-          ListsTableCompanion.insert(groupId: groupId, name: name.trim()),
-        );
+    return createListWithOptions(groupId: groupId, name: name);
+  }
+
+  Future<int> createListWithOptions({
+    int? groupId,
+    required String name,
+    bool populateFromGroupStudents = false,
+  }) {
+    if (populateFromGroupStudents && groupId == null) {
+      throw ArgumentError.value(
+        groupId,
+        'groupId',
+        'Only group lists can create one item per student.',
+      );
+    }
+
+    return _database.transaction(() async {
+      final listId = await _database
+          .into(_database.listsTable)
+          .insert(
+            ListsTableCompanion.insert(
+              groupId: Value(groupId),
+              name: name.trim(),
+            ),
+          );
+      if (populateFromGroupStudents && groupId != null) {
+        await populateFromGroup(listId: listId, groupId: groupId);
+      }
+      return listId;
+    });
   }
 
   Future<void> renameList({required int listId, required String name}) {
@@ -133,18 +159,53 @@ class ListRepository {
 
   Future<void> addItem({
     required int listId,
-    int? studentId,
+    List<int> studentIds = const [],
     required String label,
-  }) {
-    return _database
+  }) async {
+    final list = await _requireList(listId);
+    final normalizedStudentIds = await _validatedStudentIdsForList(
+      list: list,
+      studentIds: studentIds,
+    );
+
+    await _database
         .into(_database.listItemsTable)
         .insert(
           ListItemsTableCompanion.insert(
             listId: listId,
-            studentId: Value(studentId),
+            studentId: Value(
+              normalizedStudentIds.isEmpty ? null : normalizedStudentIds.first,
+            ),
+            studentIdsJson: Value(
+              encodeListItemStudentIds(normalizedStudentIds),
+            ),
             label: label.trim(),
           ),
         );
+  }
+
+  Future<void> updateItem({
+    required ChecklistItem item,
+    required String label,
+    List<int> studentIds = const [],
+  }) async {
+    final list = await _requireList(item.listId);
+    final normalizedStudentIds = await _validatedStudentIdsForList(
+      list: list,
+      studentIds: studentIds,
+    );
+
+    await (_database.update(
+      _database.listItemsTable,
+    )..where((table) => table.id.equals(item.id))).write(
+      ListItemsTableCompanion(
+        studentId: Value(
+          normalizedStudentIds.isEmpty ? null : normalizedStudentIds.first,
+        ),
+        studentIdsJson: Value(encodeListItemStudentIds(normalizedStudentIds)),
+        label: Value(label.trim()),
+      ),
+    );
   }
 
   Future<void> toggleItem({required int itemId, required bool checked}) {
@@ -167,6 +228,15 @@ class ListRepository {
     required int listId,
     required int groupId,
   }) async {
+    final list = await _requireList(listId);
+    if (list.groupId != groupId) {
+      throw ArgumentError.value(
+        groupId,
+        'groupId',
+        'List does not belong to the requested group.',
+      );
+    }
+
     final students =
         await (_database.select(_database.studentsTable)
               ..where((table) => table.groupId.equals(groupId))
@@ -183,6 +253,7 @@ class ListRepository {
           ListItemsTableCompanion.insert(
             listId: listId,
             studentId: Value(student.id),
+            studentIdsJson: Value(encodeListItemStudentIds([student.id])),
             label: studentDisplayName(
               firstName: student.firstName,
               lastName: student.lastName,
@@ -191,5 +262,41 @@ class ListRepository {
         );
       }
     });
+  }
+
+  Future<Checklist> _requireList(int listId) {
+    return (_database.select(
+      _database.listsTable,
+    )..where((table) => table.id.equals(listId))).getSingle();
+  }
+
+  Future<List<int>> _validatedStudentIdsForList({
+    required Checklist list,
+    required Iterable<int> studentIds,
+  }) async {
+    final normalizedStudentIds = normalizeListItemStudentIds(studentIds);
+    if (normalizedStudentIds.isEmpty) {
+      return normalizedStudentIds;
+    }
+
+    final query = _database.select(_database.studentsTable)
+      ..where((table) => table.id.isIn(normalizedStudentIds));
+    if (list.groupId != null) {
+      query.where((table) => table.groupId.equals(list.groupId!));
+    }
+    final students = await query.get();
+    final availableStudentIds = {for (final student in students) student.id};
+    final invalidStudentIds = [
+      for (final studentId in normalizedStudentIds)
+        if (!availableStudentIds.contains(studentId)) studentId,
+    ];
+    if (invalidStudentIds.isNotEmpty) {
+      throw ArgumentError.value(
+        invalidStudentIds,
+        'studentIds',
+        'Students are not available for this list.',
+      );
+    }
+    return normalizedStudentIds;
   }
 }

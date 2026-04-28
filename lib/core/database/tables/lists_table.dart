@@ -6,8 +6,11 @@ import 'groups_table.dart';
 class ListsTable extends Table {
   IntColumn get id => integer().autoIncrement()();
 
-  IntColumn get groupId =>
-      integer().references(GroupsTable, #id, onDelete: KeyAction.cascade)();
+  IntColumn get groupId => integer().nullable().references(
+    GroupsTable,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
 
   TextColumn get name => text().withLength(min: 1, max: 120)();
 

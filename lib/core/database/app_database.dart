@@ -38,7 +38,10 @@ typedef AttendanceLog = AttendanceLogsTableData;
 class AppDatabase extends _$AppDatabase {
   AppDatabase._(super.executor, {required this.databasePath});
 
-  factory AppDatabase.open({required File dbFile, required String databaseKey}) {
+  factory AppDatabase.open({
+    required File dbFile,
+    required String databaseKey,
+  }) {
     return AppDatabase._(
       openEncryptedDatabase(dbFile, databaseKey),
       databasePath: dbFile.path,
@@ -51,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
   final String databasePath;
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -92,6 +95,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 10) {
         await migrator.addColumn(studentsTable, studentsTable.seatIndex);
+      }
+      if (from < 11) {
+        await migrator.alterTable(TableMigration(listsTable));
+        await migrator.addColumn(listItemsTable, listItemsTable.studentIdsJson);
+        await customStatement('''
+          UPDATE list_items_table
+          SET student_ids_json = json_array(student_id)
+          WHERE student_id IS NOT NULL AND student_ids_json IS NULL
+        ''');
       }
     },
   );
