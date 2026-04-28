@@ -382,11 +382,18 @@ class GroupDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     int groupId,
   ) async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['csv', 'tsv', 'txt'],
-      withData: true,
-    );
+    final session = ref.read(appSessionProvider);
+    session.suspendBackgroundLock();
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['csv', 'tsv', 'txt'],
+        withData: true,
+      );
+    } finally {
+      session.resumeBackgroundLock();
+    }
     if (result == null || result.files.isEmpty) {
       return;
     }
