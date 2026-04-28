@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.5] - 2026-04-28
+
+### Bug Fixes
+
+- Add missing biometricService argument to test constructors
+- Prevent app from locking twice on background
+
+
+### Features
+
+- *(ci)* Add rocket reaction on build start and direct binary download links
+
+
+### Reverts
+
+- *(ci)* Restore upload-artifact for zip downloads, keep rocket reaction
+
+
 ## [1.1.4] - 2026-04-27
 
 ### Bug Fixes
