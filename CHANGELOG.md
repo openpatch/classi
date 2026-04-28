@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.7] - 2026-04-28
+
+### Bug Fixes
+
+- *(ci)* Replace invalid reactions permission with issues write
+
+
+### Features
+
+- *(setup)* Force folder selection and warn about storage risk on Android
+
+
+### Refactoring
+
+- *(setup)* Extract default library name to a named constant
+
+
 ## [1.1.6] - 2026-04-28
 
 ### Bug Fixes
