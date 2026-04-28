@@ -98,11 +98,25 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: fastforge package --platform android --targets apk
 
-      - name: Upload Android artifact
+      - name: Package AAB
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: fastforge package --platform android --targets aab
+
+      - name: Upload Android APK artifact
         uses: actions/upload-artifact@v7
         with:
           name: classi-android-apk
           path: dist/**/*.apk
+
+      - name: Upload Android AAB artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: classi-android-aab
+          path: dist/**/*.aab
 
   build-linux:
     name: Build Linux
@@ -223,9 +237,50 @@ jobs:
           name: classi-windows-exe
           path: dist/**/*.exe
 
+  publish-playstore:
+    name: Publish to Play Store
+    needs: [build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android AAB artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: classi-android-aab
+          path: artifacts/aab
+
+      - name: Decode Play Store credentials
+        run: |
+          echo "${{ secrets.PLAYSTORE_CREDENTIALS_BASE64 }}" | base64 --decode > "${{ runner.temp }}/playstore-credentials.json"
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.7'
+          cache: true
+
+      - name: Install Fastforge
+        run: dart pub global activate fastforge
+
+      - name: Publish to Play Store
+        env:
+          PLAYSTORE_CREDENTIALS: ${{ runner.temp }}/playstore-credentials.json
+        run: |
+          AAB_PATH=$(find artifacts/aab -name "*.aab" | head -1)
+          fastforge publish \
+            --path "$AAB_PATH" \
+            --targets playstore \
+            --playstore-package-name org.openpatch.classi \
+            --playstore-track production
+
   release:
     name: Create GitHub Release
-    needs: [changelog, build-android, build-linux, build-macos, build-windows]
+    needs: [changelog, build-android, build-linux, build-macos, build-windows, publish-playstore]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
