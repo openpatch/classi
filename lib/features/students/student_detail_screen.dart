@@ -1570,39 +1570,45 @@ class _ListsTab extends ConsumerWidget {
             for (final entry in entries)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.small),
-                child: Card(
-                  child: ListTile(
-                    onTap: () => ref
-                        .read(listRepositoryProvider)
-                        .toggleItem(
-                          itemId: entry.item.id,
-                          checked: entry.item.checkedAt == null,
-                        ),
-                    title: Text(entry.list.name),
-                    subtitle: entry.item.checkedAt == null
-                        ? null
-                        : Text(
-                            MaterialLocalizations.of(
-                              context,
-                            ).formatMediumDate(entry.item.checkedAt!),
-                          ),
-                    trailing: Checkbox(
-                      value: entry.item.checkedAt != null,
-                      onChanged: (value) => ref
-                          .read(listRepositoryProvider)
-                          .toggleItem(
-                            itemId: entry.item.id,
-                            checked: value ?? false,
-                          ),
-                    ),
-                  ),
-                ),
+                child: _ListItemTile(item: entry),
               ),
           ],
         );
       },
       error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _ListItemTile extends ConsumerWidget {
+  const _ListItemTile({required this.item});
+
+  final ({Checklist list, ChecklistItem item}) item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final checkedAt = item.item.checkedAt;
+    final checked = checkedAt != null;
+
+    void toggle(bool value) => ref
+        .read(listRepositoryProvider)
+        .toggleItem(itemId: item.item.id, checked: value);
+
+    return Card(
+      child: ListTile(
+        onTap: () => toggle(!checked),
+        title: Text(item.list.name),
+        subtitle: checkedAt == null
+            ? null
+            : Text(
+                MaterialLocalizations.of(context).formatMediumDate(checkedAt),
+              ),
+        trailing: Checkbox(
+          value: checked,
+          onChanged: (value) => toggle(value ?? false),
+        ),
+      ),
     );
   }
 }
