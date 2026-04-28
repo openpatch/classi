@@ -55,6 +55,7 @@ class AppSessionController extends ChangeNotifier {
   DateTime? _openedAt;
   bool _isBusy = false;
   bool _lockOnBackground = true;
+  int _backgroundLockSuspendCount = 0;
   bool _biometricEnabled = false;
   Duration _inactivityTimeout =
       SecurityPreferencesService.defaultInactivityTimeout;
@@ -242,12 +243,30 @@ class AppSessionController extends ChangeNotifier {
     }
   }
 
+  /// Temporarily prevents the app from locking when it goes to the background.
+  ///
+  /// Call this before opening a system dialog (e.g. file picker) that causes
+  /// the Flutter app to transition to the paused lifecycle state. Always pair
+  /// with [resumeBackgroundLock] in a try/finally block.
+  ///
+  /// Calls are reference-counted, so nested suspend/resume pairs are safe.
+  void suspendBackgroundLock() {
+    _backgroundLockSuspendCount++;
+  }
+
+  /// Re-enables background locking after a call to [suspendBackgroundLock].
+  void resumeBackgroundLock() {
+    if (_backgroundLockSuspendCount > 0) {
+      _backgroundLockSuspendCount--;
+    }
+  }
+
   Future<void> handleAppBackgrounded() async {
     if (_status != AppSessionStatus.ready) {
       return;
     }
 
-    if (hasPendingRecoveryKey) {
+    if (hasPendingRecoveryKey || _backgroundLockSuspendCount > 0) {
       _cancelInactivityTimer();
       return;
     }
