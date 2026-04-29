@@ -280,7 +280,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: [changelog, build-android, build-linux, build-macos, build-windows, publish-playstore]
+    needs: [changelog, build-android, build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
