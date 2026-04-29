@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.2] - 2026-04-29
+
+### Bug Fixes
+
+- *(android)* Enable edge-to-edge for Android 15 compatibility
+
+
+### Documentation
+
+- Add PRIVACY_POLICY.md for Google Play Store
+- Add fastlane metadata
+
+
+### Miscellaneous Tasks
+
+- Remove publish-playstore from release job needs
+
+
 ## [1.2.1] - 2026-04-28
 
 ### Miscellaneous Tasks
