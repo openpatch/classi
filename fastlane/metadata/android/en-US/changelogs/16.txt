@@ -1,0 +1,1 @@
+- *(android)* Enable edge-to-edge for Android 15 compatibility
