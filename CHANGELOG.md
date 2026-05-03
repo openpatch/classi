@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.3] - 2026-05-03
+
+### Bug Fixes
+
+- *(setup)* Show error snackbar if database creation fails
+
+
+### Documentation
+
+- Update changelog
+
+
 ## [1.2.2] - 2026-04-29
 
 ### Bug Fixes
