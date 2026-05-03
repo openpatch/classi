@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -156,6 +157,19 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       if (session.status == AppSessionStatus.ready) {
         context.go('/setup/recovery');
       } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('error_loading_database'.tr())),
+        );
+      }
+    } catch (e, st) {
+      developer.log(
+        'Failed to create database',
+        name: 'classi.setup',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('error_loading_database'.tr())),
         );
