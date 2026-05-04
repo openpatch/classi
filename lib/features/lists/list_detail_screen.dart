@@ -169,6 +169,9 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
                                   .populateFromGroup(
                                     listId: list.id,
                                     groupId: list.groupId!,
+                                    sortField: ref.read(
+                                      studentSortFieldProvider,
+                                    ),
                                   ),
                               child: Text(
                                 'create_items_for_group_students'.tr(),
@@ -312,7 +315,7 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
   }
 }
 
-class _ChecklistItemTile extends StatelessWidget {
+class _ChecklistItemTile extends ConsumerWidget {
   const _ChecklistItemTile({
     required this.item,
     required this.linkedStudents,
@@ -328,7 +331,8 @@ class _ChecklistItemTile extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sortField = ref.watch(studentSortFieldProvider);
     final checked = item.checkedAt != null;
     final singleLinkedStudent = linkedStudents.length == 1
         ? linkedStudents.single
@@ -338,11 +342,21 @@ class _ChecklistItemTile extends StatelessWidget {
         : studentDisplayName(
             firstName: singleLinkedStudent.firstName,
             lastName: singleLinkedStudent.lastName,
+            sortField: sortField,
           );
+    final displayLabel =
+        singleLinkedStudent != null &&
+            isGeneratedStudentDisplayName(
+              value: item.label,
+              firstName: singleLinkedStudent.firstName,
+              lastName: singleLinkedStudent.lastName,
+            )
+        ? singleLinkedStudentName!
+        : item.label;
     final showLinkedStudents =
         linkedStudents.length > 1 ||
         (singleLinkedStudentName != null &&
-            singleLinkedStudentName != item.label);
+            singleLinkedStudentName != displayLabel);
     final subtitleChildren = <Widget>[
       if (item.checkedAt != null)
         Text(
@@ -369,7 +383,7 @@ class _ChecklistItemTile extends StatelessWidget {
                   ? CircleAvatar(child: Text('${linkedStudents.length}'))
                   : null
             : StudentAvatar(student: singleLinkedStudent, size: 36),
-        title: Text(item.label),
+        title: Text(displayLabel),
         subtitle: subtitleChildren.isEmpty
             ? null
             : Column(

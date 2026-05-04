@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/providers/app_providers.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/student_selection_sheet.dart';
@@ -35,7 +37,7 @@ Future<ListItemEditorResult?> showListItemEditorSheet({
   );
 }
 
-class _ListItemEditorSheet extends StatefulWidget {
+class _ListItemEditorSheet extends ConsumerStatefulWidget {
   const _ListItemEditorSheet({
     required this.groups,
     required this.students,
@@ -55,10 +57,11 @@ class _ListItemEditorSheet extends StatefulWidget {
   final bool allowSelectAllStudents;
 
   @override
-  State<_ListItemEditorSheet> createState() => _ListItemEditorSheetState();
+  ConsumerState<_ListItemEditorSheet> createState() =>
+      _ListItemEditorSheetState();
 }
 
-class _ListItemEditorSheetState extends State<_ListItemEditorSheet> {
+class _ListItemEditorSheetState extends ConsumerState<_ListItemEditorSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _labelController;
   late final Set<int> _studentIds;
@@ -67,9 +70,7 @@ class _ListItemEditorSheetState extends State<_ListItemEditorSheet> {
   void initState() {
     super.initState();
     _labelController = TextEditingController(text: widget.initialLabel);
-    final validStudentIds = {
-      for (final student in widget.students) student.id,
-    };
+    final validStudentIds = {for (final student in widget.students) student.id};
     _studentIds = {
       for (final studentId in widget.initialStudentIds ?? const <int>[])
         if (validStudentIds.contains(studentId)) studentId,
@@ -84,6 +85,7 @@ class _ListItemEditorSheetState extends State<_ListItemEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final sortField = ref.watch(studentSortFieldProvider);
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -135,6 +137,7 @@ class _ListItemEditorSheetState extends State<_ListItemEditorSheet> {
                                     studentDisplayName(
                                       firstName: student.firstName,
                                       lastName: student.lastName,
+                                      sortField: sortField,
                                     ),
                                   ),
                                   onDeleted: () => setState(

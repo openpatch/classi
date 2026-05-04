@@ -63,6 +63,7 @@ class _GradeEntryScreenState extends ConsumerState<GradeEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sortField = ref.watch(studentSortFieldProvider);
     final groupValue = ref.watch(gradeEntryGroupProvider(widget.groupId));
     final studentsValue = ref.watch(gradeEntryStudentsProvider(widget.groupId));
 
@@ -207,6 +208,7 @@ class _GradeEntryScreenState extends ConsumerState<GradeEntryScreen> {
                                         studentDisplayName(
                                           firstName: student.firstName,
                                           lastName: student.lastName,
+                                          sortField: sortField,
                                         ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,

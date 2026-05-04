@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../../features/students/student_sorting.dart';
+
 class GradeScaleEntry {
   const GradeScaleEntry({required this.label, required this.numericValue});
 
@@ -249,24 +251,50 @@ bool _sameLabels(List<String> labels, List<GradeScaleEntry> entries) {
 String studentDisplayName({
   required String firstName,
   required String lastName,
+  StudentSortField sortField = StudentSortField.lastName,
 }) {
-  return '$lastName, $firstName';
+  return switch (sortField) {
+    StudentSortField.firstName => '$firstName $lastName',
+    StudentSortField.lastName => '$lastName, $firstName',
+  };
 }
 
 String studentDisplayNameWithOrigin({
   required String firstName,
   required String lastName,
   String? originNote,
+  StudentSortField sortField = StudentSortField.lastName,
 }) {
   final displayName = studentDisplayName(
     firstName: firstName,
     lastName: lastName,
+    sortField: sortField,
   );
   final trimmedOriginNote = originNote?.trim();
   if (trimmedOriginNote == null || trimmedOriginNote.isEmpty) {
     return displayName;
   }
   return '$displayName ($trimmedOriginNote)';
+}
+
+bool isGeneratedStudentDisplayName({
+  required String value,
+  required String firstName,
+  required String lastName,
+}) {
+  final trimmedValue = value.trim();
+  return trimmedValue ==
+          studentDisplayName(
+            firstName: firstName,
+            lastName: lastName,
+            sortField: StudentSortField.firstName,
+          ) ||
+      trimmedValue ==
+          studentDisplayName(
+            firstName: firstName,
+            lastName: lastName,
+            sortField: StudentSortField.lastName,
+          );
 }
 
 String studentInitials({required String firstName, required String lastName}) {

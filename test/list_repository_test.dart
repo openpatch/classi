@@ -3,6 +3,7 @@ import 'package:classi/features/groups/group_repository.dart';
 import 'package:classi/features/lists/list_item_links.dart';
 import 'package:classi/features/lists/list_repository.dart';
 import 'package:classi/features/students/student_repository.dart';
+import 'package:classi/features/students/student_sorting.dart';
 import 'package:classi/shared/utils/formatting.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -138,16 +139,18 @@ void main() {
       groupId: groupId,
       name: 'Presentations',
       populateFromGroupStudents: true,
+      sortField: StudentSortField.firstName,
     );
 
     final items = await repository.watchItems(listId).first;
     expect(items, hasLength(2));
-    expect(
-      items.map(listItemStudentIds).toList(),
-      containsAll([
-        [firstStudentId],
-        [secondStudentId],
-      ]),
-    );
+    expect(items.map((item) => item.label).toList(), [
+      'Erika Musterfrau',
+      'Max Mustermann',
+    ]);
+    expect(items.map(listItemStudentIds).toList(), [
+      [secondStudentId],
+      [firstStudentId],
+    ]);
   });
 }

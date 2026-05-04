@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/providers/app_providers.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../avatar/avatar_editor_sheet.dart';
@@ -32,7 +34,7 @@ Future<StudentFormResult?> showStudentFormSheet({
   );
 }
 
-class _StudentFormSheet extends StatefulWidget {
+class _StudentFormSheet extends ConsumerStatefulWidget {
   const _StudentFormSheet({
     this.initialFirstName,
     this.initialLastName,
@@ -48,10 +50,10 @@ class _StudentFormSheet extends StatefulWidget {
   final String? title;
 
   @override
-  State<_StudentFormSheet> createState() => _StudentFormSheetState();
+  ConsumerState<_StudentFormSheet> createState() => _StudentFormSheetState();
 }
 
-class _StudentFormSheetState extends State<_StudentFormSheet> {
+class _StudentFormSheetState extends ConsumerState<_StudentFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
@@ -83,6 +85,7 @@ class _StudentFormSheetState extends State<_StudentFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final sortField = ref.watch(studentSortFieldProvider);
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -115,6 +118,7 @@ class _StudentFormSheetState extends State<_StudentFormSheet> {
                           ? '...'
                           : _previewStudent.lastName,
                       originNote: _previewStudent.originNote,
+                      sortField: sortField,
                     ),
                   ),
                   trailing: const Icon(Icons.chevron_right),

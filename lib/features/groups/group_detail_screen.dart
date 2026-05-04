@@ -29,6 +29,7 @@ import '../notes/note_links.dart';
 import '../students/student_batch_create_sheet.dart';
 import '../students/student_form.dart';
 import '../students/student_import_parser.dart';
+import '../students/student_sorting.dart';
 import 'group_form.dart';
 
 final groupProvider = StreamProvider.family<Group?, int>(
@@ -86,6 +87,7 @@ class GroupDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final sortField = ref.watch(studentSortFieldProvider);
     final groupValue = ref.watch(groupProvider(groupId));
     final studentsValue = ref.watch(groupStudentsProvider(groupId));
     final averagesValue = ref.watch(groupAveragesProvider(groupId));
@@ -262,6 +264,7 @@ class GroupDetailScreen extends ConsumerWidget {
               studentsValue.when(
                 data: (loadedStudents) => _StudentsSection(
                   students: loadedStudents,
+                  sortField: sortField,
                   gradeScaleEntries: gradeScaleEntries,
                   categories: categories,
                   averagesValue: averagesValue,
@@ -469,6 +472,7 @@ class GroupDetailScreen extends ConsumerWidget {
           groupId: group.id,
           name: result.name,
           populateFromGroupStudents: result.populateFromGroupStudents,
+          sortField: ref.read(studentSortFieldProvider),
         );
   }
 
@@ -1271,6 +1275,7 @@ class _GroupNoteTile extends StatelessWidget {
 class _StudentsSection extends StatelessWidget {
   const _StudentsSection({
     required this.students,
+    required this.sortField,
     required this.gradeScaleEntries,
     required this.categories,
     required this.averagesValue,
@@ -1281,6 +1286,7 @@ class _StudentsSection extends StatelessWidget {
   });
 
   final List<Student> students;
+  final StudentSortField sortField;
   final List<GradeScaleEntry> gradeScaleEntries;
   final List<GradeCategory> categories;
   final AsyncValue<Map<int, double>> averagesValue;
@@ -1355,6 +1361,7 @@ class _StudentsSection extends StatelessWidget {
                           studentDisplayName(
                             firstName: student.firstName,
                             lastName: student.lastName,
+                            sortField: sortField,
                           ),
                         ),
                         subtitle:
