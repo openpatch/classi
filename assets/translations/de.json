@@ -69,6 +69,7 @@
   "confirm_archive_group_body": "Die Gruppe verschwindet aus der aktiven Liste, alle Daten bleiben erhalten.",
   "confirm_delete": "{name} löschen?",
   "confirm_delete_group_body": "Schüler:innen, Noten, Listen und verknüpfte Notizen dieser Gruppe werden gelöscht.",
+  "confirm_delete_student_body": "Alle Noten, Anwesenheiten, Materialien, Hausaufgaben, Notizen und Listeneinträge dieser Schüler:in werden gelöscht.",
   "confirm_passphrase": "Passphrase bestätigen",
   "create_database": "Bibliothek erstellen",
   "create_another_database": "Weitere Bibliothek erstellen",
