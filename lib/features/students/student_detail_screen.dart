@@ -187,6 +187,7 @@ class StudentDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     Student student,
   ) async {
+    var deleted = false;
     final result = await showStudentFormSheet(
       context: context,
       initialFirstName: student.firstName,
@@ -194,7 +195,22 @@ class StudentDetailScreen extends ConsumerWidget {
       initialOriginNote: student.originNote,
       initialAvatarJson: student.avatarJson,
       title: 'edit'.tr(),
+      onDelete: () async {
+        await ref
+            .read(studentRepositoryProvider)
+            .deleteStudent(student.id);
+        deleted = true;
+      },
     );
+    if (deleted) {
+      if (!context.mounted) return;
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/groups/${student.groupId}');
+      }
+      return;
+    }
     if (result == null) {
       return;
     }

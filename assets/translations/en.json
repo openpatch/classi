@@ -69,6 +69,7 @@
   "confirm_archive_group_body": "The group will leave the active list, but its data stays available.",
   "confirm_delete": "Delete {name}?",
   "confirm_delete_group_body": "Students, grades, lists, and linked notes in this group will be deleted.",
+  "confirm_delete_student_body": "All grades, attendance, material, homework, notes, and list entries for this student will be deleted.",
   "confirm_passphrase": "Confirm passphrase",
   "create_database": "Create library",
   "create_another_database": "Create another library",
