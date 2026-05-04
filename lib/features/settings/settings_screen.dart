@@ -775,22 +775,23 @@ class _BackupsSection extends ConsumerWidget {
     final session = ref.read(appSessionProvider);
     if (nextValue && session.autoExportFolderPath == null) {
       session.suspendBackgroundLock();
-      String? folder;
       try {
-        folder = await FilePicker.getDirectoryPath();
+        final folder = await FilePicker.getDirectoryPath();
+        if (folder == null) {
+          if (!context.mounted) {
+            return;
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('auto_export_requires_folder'.tr())),
+          );
+          return;
+        }
+        await session.setAutoExportFolderPath(folder);
+        await session.setAutoExportEnabled(nextValue);
+        return;
       } finally {
         session.resumeBackgroundLock();
       }
-      if (folder == null) {
-        if (!context.mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('auto_export_requires_folder'.tr())),
-        );
-        return;
-      }
-      await session.setAutoExportFolderPath(folder);
     }
 
     await session.setAutoExportEnabled(nextValue);
@@ -804,26 +805,27 @@ class _BackupsSection extends ConsumerWidget {
     final session = ref.read(appSessionProvider);
     if (nextValue && session.autoImportBackupPath == null) {
       session.suspendBackgroundLock();
-      FilePickerResult? result;
       try {
-        result = await FilePicker.pickFiles(
+        final result = await FilePicker.pickFiles(
           type: FileType.custom,
           allowedExtensions: const ['classi-backup'],
         );
+        final backupPath = result?.files.single.path;
+        if (backupPath == null) {
+          if (!context.mounted) {
+            return;
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('auto_import_requires_file'.tr())),
+          );
+          return;
+        }
+        await session.setAutoImportBackupPath(backupPath);
+        await session.setAutoImportEnabled(nextValue);
+        return;
       } finally {
         session.resumeBackgroundLock();
       }
-      final backupPath = result?.files.single.path;
-      if (backupPath == null) {
-        if (!context.mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('auto_import_requires_file'.tr())),
-        );
-        return;
-      }
-      await session.setAutoImportBackupPath(backupPath);
     }
 
     await session.setAutoImportEnabled(nextValue);
