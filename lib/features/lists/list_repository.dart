@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
 import '../../shared/utils/formatting.dart';
+import '../students/student_sorting.dart';
 import 'list_item_links.dart';
 
 class ListProgress {
@@ -68,15 +69,18 @@ class ListRepository {
   Stream<List<({Checklist list, ChecklistItem item})>> watchItemsForStudent(
     int studentId,
   ) {
-    final query = _database.select(_database.listItemsTable).join([
-      innerJoin(
-        _database.listsTable,
-        _database.listsTable.id.equalsExp(_database.listItemsTable.listId),
-      ),
-    ])
-      ..where(_database.listItemsTable.studentId.equals(studentId))
-      ..where(_database.listsTable.archivedAt.isNull())
-      ..orderBy([OrderingTerm.asc(_database.listsTable.name)]);
+    final query =
+        _database.select(_database.listItemsTable).join([
+            innerJoin(
+              _database.listsTable,
+              _database.listsTable.id.equalsExp(
+                _database.listItemsTable.listId,
+              ),
+            ),
+          ])
+          ..where(_database.listItemsTable.studentId.equals(studentId))
+          ..where(_database.listsTable.archivedAt.isNull())
+          ..orderBy([OrderingTerm.asc(_database.listsTable.name)]);
 
     return query.watch().map(
       (rows) => rows
@@ -125,14 +129,23 @@ class ListRepository {
         );
   }
 
-  Future<int> createList({required int groupId, required String name}) {
-    return createListWithOptions(groupId: groupId, name: name);
+  Future<int> createList({
+    required int groupId,
+    required String name,
+    StudentSortField sortField = StudentSortField.lastName,
+  }) {
+    return createListWithOptions(
+      groupId: groupId,
+      name: name,
+      sortField: sortField,
+    );
   }
 
   Future<int> createListWithOptions({
     int? groupId,
     required String name,
     bool populateFromGroupStudents = false,
+    StudentSortField sortField = StudentSortField.lastName,
   }) {
     if (populateFromGroupStudents && groupId == null) {
       throw ArgumentError.value(
@@ -152,7 +165,11 @@ class ListRepository {
             ),
           );
       if (populateFromGroupStudents && groupId != null) {
-        await populateFromGroup(listId: listId, groupId: groupId);
+        await populateFromGroup(
+          listId: listId,
+          groupId: groupId,
+          sortField: sortField,
+        );
       }
       return listId;
     });
@@ -252,6 +269,7 @@ class ListRepository {
   Future<void> populateFromGroup({
     required int listId,
     required int groupId,
+    StudentSortField sortField = StudentSortField.lastName,
   }) async {
     final list = await _requireList(listId);
     if (list.groupId != groupId) {
@@ -262,14 +280,23 @@ class ListRepository {
       );
     }
 
-    final students =
-        await (_database.select(_database.studentsTable)
-              ..where((table) => table.groupId.equals(groupId))
-              ..orderBy([
-                (table) => OrderingTerm.asc(table.lastName),
-                (table) => OrderingTerm.asc(table.firstName),
-              ]))
-            .get();
+    final query = _database.select(_database.studentsTable)
+      ..where((table) => table.groupId.equals(groupId));
+    switch (sortField) {
+      case StudentSortField.firstName:
+        query.orderBy([
+          (table) => OrderingTerm.asc(table.firstName),
+          (table) => OrderingTerm.asc(table.lastName),
+        ]);
+        break;
+      case StudentSortField.lastName:
+        query.orderBy([
+          (table) => OrderingTerm.asc(table.lastName),
+          (table) => OrderingTerm.asc(table.firstName),
+        ]);
+        break;
+    }
+    final students = await query.get();
 
     await _database.batch((batch) {
       for (final student in students) {
@@ -282,6 +309,7 @@ class ListRepository {
             label: studentDisplayName(
               firstName: student.firstName,
               lastName: student.lastName,
+              sortField: sortField,
             ),
           ),
         );

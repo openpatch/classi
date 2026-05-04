@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/providers/app_providers.dart';
 import '../utils/grade_categories.dart';
 import '../utils/formatting.dart';
 import 'student_avatar.dart';
@@ -29,7 +31,7 @@ Future<List<int>?> showStudentSelectionSheet({
   );
 }
 
-class _StudentSelectionSheet extends StatefulWidget {
+class _StudentSelectionSheet extends ConsumerStatefulWidget {
   const _StudentSelectionSheet({
     required this.groups,
     required this.students,
@@ -45,10 +47,12 @@ class _StudentSelectionSheet extends StatefulWidget {
   final bool allowSelectAll;
 
   @override
-  State<_StudentSelectionSheet> createState() => _StudentSelectionSheetState();
+  ConsumerState<_StudentSelectionSheet> createState() =>
+      _StudentSelectionSheetState();
 }
 
-class _StudentSelectionSheetState extends State<_StudentSelectionSheet> {
+class _StudentSelectionSheetState
+    extends ConsumerState<_StudentSelectionSheet> {
   late final TextEditingController _searchController;
   late final Set<int> _selectedStudentIds;
   String _query = '';
@@ -57,10 +61,12 @@ class _StudentSelectionSheetState extends State<_StudentSelectionSheet> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
-    final validStudentIds =
-        widget.students.map((student) => student.id).toSet();
-    _selectedStudentIds =
-        widget.selectedStudentIds.intersection(validStudentIds);
+    final validStudentIds = widget.students
+        .map((student) => student.id)
+        .toSet();
+    _selectedStudentIds = widget.selectedStudentIds.intersection(
+      validStudentIds,
+    );
   }
 
   @override
@@ -71,6 +77,7 @@ class _StudentSelectionSheetState extends State<_StudentSelectionSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final sortField = ref.watch(studentSortFieldProvider);
     final sections = _sections;
 
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -129,6 +136,7 @@ class _StudentSelectionSheetState extends State<_StudentSelectionSheet> {
                           studentDisplayName(
                             firstName: student.firstName,
                             lastName: student.lastName,
+                            sortField: sortField,
                           ),
                         ),
                         onDeleted: () => _toggleStudent(student.id, false),
@@ -190,6 +198,7 @@ class _StudentSelectionSheetState extends State<_StudentSelectionSheet> {
                                       studentDisplayName(
                                         firstName: student.firstName,
                                         lastName: student.lastName,
+                                        sortField: sortField,
                                       ),
                                     ),
                                     controlAffinity:

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/providers/app_providers.dart';
 import '../utils/avatar_preview.dart';
 import '../utils/formatting.dart';
 
-class StudentAvatar extends StatelessWidget {
+class StudentAvatar extends ConsumerWidget {
   const StudentAvatar({
     required this.student,
     this.size = 40,
@@ -18,7 +20,8 @@ class StudentAvatar extends StatelessWidget {
   final VoidCallback? onEdit;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sortField = ref.watch(studentSortFieldProvider);
     final avatarSvg = avatarSvgFromJson(student.avatarJson);
     final hasStoredAvatarData =
         student.avatarJson != null && student.avatarJson!.isNotEmpty;
@@ -64,6 +67,7 @@ class StudentAvatar extends StatelessWidget {
                 semanticsLabel: studentDisplayName(
                   firstName: student.firstName,
                   lastName: student.lastName,
+                  sortField: sortField,
                 ),
               ),
             ),

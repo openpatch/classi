@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/providers/app_providers.dart';
 import '../../shared/theme/app_ui.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_error_state.dart';
@@ -268,6 +269,7 @@ class LessonStudentNotesSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final sortField = ref.watch(studentSortFieldProvider);
     final notesValue = ref.watch(lessonNotesProvider(groupId));
     final studentsById = {for (final item in students) item.id: item};
 
@@ -287,7 +289,7 @@ class LessonStudentNotesSheet extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '${studentDisplayName(firstName: student.firstName, lastName: student.lastName)} · ${'notes'.tr()}',
+                    '${studentDisplayName(firstName: student.firstName, lastName: student.lastName, sortField: sortField)} · ${'notes'.tr()}',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -516,7 +518,7 @@ class _LessonStudentRow extends StatelessWidget {
   }
 }
 
-class _LessonNameCell extends StatelessWidget {
+class _LessonNameCell extends ConsumerWidget {
   const _LessonNameCell({
     required this.student,
     required this.absent,
@@ -530,7 +532,8 @@ class _LessonNameCell extends StatelessWidget {
   final VoidCallback onOpenStudent;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sortField = ref.watch(studentSortFieldProvider);
     return Row(
       children: [
         InkWell(
@@ -550,6 +553,7 @@ class _LessonNameCell extends StatelessWidget {
                 studentDisplayName(
                   firstName: student.firstName,
                   lastName: student.lastName,
+                  sortField: sortField,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

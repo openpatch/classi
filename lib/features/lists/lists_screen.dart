@@ -186,6 +186,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
           groupId: result.groupId,
           name: result.name,
           populateFromGroupStudents: result.populateFromGroupStudents,
+          sortField: ref.read(studentSortFieldProvider),
         );
   }
 
@@ -217,6 +218,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
           groupId: groupId,
           name: result.name,
           populateFromGroupStudents: result.populateFromGroupStudents,
+          sortField: ref.read(studentSortFieldProvider),
         );
   }
 

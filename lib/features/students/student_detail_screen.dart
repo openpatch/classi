@@ -50,11 +50,11 @@ final studentNotesProvider = StreamProvider.family<List<TeacherNote>, int>(
       ref.watch(noteRepositoryProvider).watchNotesForStudent(studentId),
 );
 
-final studentListItemsProvider = StreamProvider.family<
-    List<({Checklist list, ChecklistItem item})>, int>(
-  (ref, studentId) =>
-      ref.watch(listRepositoryProvider).watchItemsForStudent(studentId),
-);
+final studentListItemsProvider =
+    StreamProvider.family<List<({Checklist list, ChecklistItem item})>, int>(
+      (ref, studentId) =>
+          ref.watch(listRepositoryProvider).watchItemsForStudent(studentId),
+    );
 
 final availableGroupsProvider = FutureProvider<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).allActiveGroups(),
@@ -73,6 +73,7 @@ class StudentDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final sortField = ref.watch(studentSortFieldProvider);
     final studentValue = ref.watch(studentProvider(studentId));
 
     return studentValue.when(
@@ -120,6 +121,7 @@ class StudentDetailScreen extends ConsumerWidget {
                         firstName: student.firstName,
                         lastName: student.lastName,
                         originNote: student.originNote,
+                        sortField: sortField,
                       ),
                       subtitle: group?.name,
                     ),
@@ -1298,6 +1300,7 @@ class _StudentNotesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final sortField = ref.watch(studentSortFieldProvider);
     return notesValue.when(
       data: (notes) {
         final studentsById = {
@@ -1461,6 +1464,7 @@ class _StudentNotesTab extends ConsumerWidget {
                                               firstName:
                                                   linkedStudent.firstName,
                                               lastName: linkedStudent.lastName,
+                                              sortField: sortField,
                                             ),
                                           ),
                                         ),
@@ -1545,10 +1549,7 @@ class _StudentNotesTab extends ConsumerWidget {
 }
 
 class _ListsTab extends ConsumerWidget {
-  const _ListsTab({
-    required this.studentId,
-    required this.listItemsValue,
-  });
+  const _ListsTab({required this.studentId, required this.listItemsValue});
 
   final int studentId;
   final AsyncValue<List<({Checklist list, ChecklistItem item})>> listItemsValue;

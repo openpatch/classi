@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:avatar_maker/avatar_maker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/providers/app_providers.dart';
 import '../../shared/utils/formatting.dart';
 import 'avatar_helpers.dart';
 
@@ -21,17 +23,17 @@ Future<void> showAvatarEditorSheet({
   );
 }
 
-class _AvatarEditorSheet extends StatefulWidget {
+class _AvatarEditorSheet extends ConsumerStatefulWidget {
   const _AvatarEditorSheet({required this.student, required this.onSave});
 
   final Student student;
   final Future<void> Function(String? avatarJson) onSave;
 
   @override
-  State<_AvatarEditorSheet> createState() => _AvatarEditorSheetState();
+  ConsumerState<_AvatarEditorSheet> createState() => _AvatarEditorSheetState();
 }
 
-class _AvatarEditorSheetState extends State<_AvatarEditorSheet> {
+class _AvatarEditorSheetState extends ConsumerState<_AvatarEditorSheet> {
   late final NonPersistentAvatarMakerController _controller;
   late final bool _hasStoredAvatar;
   bool _isSaving = false;
@@ -55,6 +57,7 @@ class _AvatarEditorSheetState extends State<_AvatarEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final sortField = ref.watch(studentSortFieldProvider);
     final size = MediaQuery.sizeOf(context);
     final customizerWidth = math.min(size.width - 32, 720.0);
 
@@ -93,6 +96,7 @@ class _AvatarEditorSheetState extends State<_AvatarEditorSheet> {
                       studentDisplayName(
                         firstName: widget.student.firstName,
                         lastName: widget.student.lastName,
+                        sortField: sortField,
                       ),
                       style: Theme.of(context).textTheme.titleLarge,
                     ),

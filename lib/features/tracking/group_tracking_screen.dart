@@ -56,6 +56,7 @@ class _GroupTrackingScreenState extends ConsumerState<GroupTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sortField = ref.watch(studentSortFieldProvider);
     final groupValue = ref.watch(groupTrackingGroupProvider(widget.groupId));
     final studentsValue = ref.watch(
       groupTrackingStudentsProvider(widget.groupId),
@@ -174,6 +175,7 @@ class _GroupTrackingScreenState extends ConsumerState<GroupTrackingScreen> {
                                         studentDisplayName(
                                           firstName: student.firstName,
                                           lastName: student.lastName,
+                                          sortField: sortField,
                                         ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
