@@ -192,6 +192,18 @@ class StudentDetailScreen extends ConsumerWidget {
       initialOriginNote: student.originNote,
       initialAvatarJson: student.avatarJson,
       title: 'edit'.tr(),
+      onDelete: () async {
+        await ref
+            .read(studentRepositoryProvider)
+            .deleteStudent(student.id);
+        if (context.mounted) {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/groups/${student.groupId}');
+          }
+        }
+      },
     );
     if (result == null) {
       return;
