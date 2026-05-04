@@ -250,7 +250,10 @@ class _StudentFormSheetState extends State<_StudentFormSheet> {
     if (!confirmed || !mounted) {
       return;
     }
-    Navigator.of(context).pop();
     await widget.onDelete!();
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pop();
   }
 }
