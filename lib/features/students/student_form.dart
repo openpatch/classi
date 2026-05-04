@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/database/app_database.dart';
 import '../../shared/utils/formatting.dart';
+import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../avatar/avatar_editor_sheet.dart';
 import 'student_draft.dart';
@@ -16,6 +17,7 @@ Future<StudentFormResult?> showStudentFormSheet({
   String? initialOriginNote,
   String? initialAvatarJson,
   String? title,
+  Future<void> Function()? onDelete,
 }) {
   return showModalBottomSheet<StudentFormResult>(
     context: context,
@@ -28,6 +30,7 @@ Future<StudentFormResult?> showStudentFormSheet({
       initialOriginNote: initialOriginNote,
       initialAvatarJson: initialAvatarJson,
       title: title,
+      onDelete: onDelete,
     ),
   );
 }
@@ -39,6 +42,7 @@ class _StudentFormSheet extends StatefulWidget {
     this.initialOriginNote,
     this.initialAvatarJson,
     this.title,
+    this.onDelete,
   });
 
   final String? initialFirstName;
@@ -46,6 +50,7 @@ class _StudentFormSheet extends StatefulWidget {
   final String? initialOriginNote;
   final String? initialAvatarJson;
   final String? title;
+  final Future<void> Function()? onDelete;
 
   @override
   State<_StudentFormSheet> createState() => _StudentFormSheetState();
@@ -161,8 +166,18 @@ class _StudentFormSheetState extends State<_StudentFormSheet> {
               ),
               const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  if (widget.onDelete != null) ...[
+                    TextButton(
+                      onPressed: _delete,
+                      style: TextButton.styleFrom(
+                        foregroundColor:
+                            Theme.of(context).colorScheme.error,
+                      ),
+                      child: Text('delete'.tr()),
+                    ),
+                  ],
+                  const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: Text('cancel'.tr()),
@@ -217,5 +232,25 @@ class _StudentFormSheetState extends State<_StudentFormSheet> {
           : _originNoteController.text.trim(),
       avatarJson: _avatarJson,
     ));
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: 'confirm_delete'.tr(
+        namedArgs: {
+          'name': studentDisplayName(
+            firstName: _firstNameController.text.trim(),
+            lastName: _lastNameController.text.trim(),
+          ),
+        },
+      ),
+      body: 'confirm_delete_student_body'.tr(),
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    Navigator.of(context).pop();
+    await widget.onDelete!();
   }
 }
