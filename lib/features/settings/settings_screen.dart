@@ -788,13 +788,12 @@ class _BackupsSection extends ConsumerWidget {
         }
         await session.setAutoExportFolderPath(folder);
         await session.setAutoExportEnabled(nextValue);
-        return;
       } finally {
         session.resumeBackgroundLock();
       }
+    } else {
+      await session.setAutoExportEnabled(nextValue);
     }
-
-    await session.setAutoExportEnabled(nextValue);
   }
 
   Future<void> _toggleAutoImport({
@@ -822,12 +821,11 @@ class _BackupsSection extends ConsumerWidget {
         }
         await session.setAutoImportBackupPath(backupPath);
         await session.setAutoImportEnabled(nextValue);
-        return;
       } finally {
         session.resumeBackgroundLock();
       }
+    } else {
+      await session.setAutoImportEnabled(nextValue);
     }
-
-    await session.setAutoImportEnabled(nextValue);
   }
 }
