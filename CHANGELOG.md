@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.4] - 2026-05-04
+
+### Bug Fixes
+
+- *(students)* Match displayed names to sort order
+- Await delete before popping sheet and navigate cleanly after deletion
+- *(backup)* Extend suspendBackgroundLock to cover all async state updates
+
+
+### Features
+
+- Add delete button to student edit sheet with confirmation dialog
+
+
+### Refactoring
+
+- *(backup)* Use if/else to remove early return and dead code
+
+
 ## [1.2.3] - 2026-05-03
 
 ### Bug Fixes
