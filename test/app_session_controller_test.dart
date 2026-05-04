@@ -124,6 +124,92 @@ void main() {
       expect(controller.status, AppSessionStatus.locked);
     },
   );
+
+  test('auto-export creates a backup file when the app is locked', () async {
+    final backupDirectory = Directory('${tempDirectory.path}/backups');
+    await backupDirectory.create();
+
+    await controller.initialize();
+    await controller.createDatabase('test');
+    controller.clearPendingRecoveryKey();
+
+    await controller.setAutoExportFolderPath(backupDirectory.path);
+    await controller.setAutoExportEnabled(true);
+
+    await controller.lock();
+
+    expect(controller.status, AppSessionStatus.locked);
+    expect(controller.lastBackupMessageCode, 'backup_exported');
+    expect(controller.lastBackupMessageIsError, isFalse);
+
+    final backupFiles = backupDirectory.listSync();
+    expect(
+      backupFiles.whereType<File>().any(
+        (f) => f.path.endsWith('.classi-backup'),
+      ),
+      isTrue,
+      reason: 'a .classi-backup file must be written to the backup folder',
+    );
+  });
+
+  test(
+    'auto-export is skipped when disabled, leaving no backup file',
+    () async {
+      final backupDirectory = Directory('${tempDirectory.path}/backups');
+      await backupDirectory.create();
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+
+      await controller.setAutoExportFolderPath(backupDirectory.path);
+      await controller.setAutoExportEnabled(false);
+
+      await controller.lock();
+
+      expect(controller.status, AppSessionStatus.locked);
+      expect(controller.lastBackupMessageCode, isNull);
+
+      final backupFiles = backupDirectory.listSync();
+      expect(
+        backupFiles.whereType<File>().any(
+          (f) => f.path.endsWith('.classi-backup'),
+        ),
+        isFalse,
+        reason: 'no backup file should be created when auto-export is disabled',
+      );
+    },
+  );
+
+  test(
+    'auto-export creates backup via handleAppBackgrounded when lock-on-background is enabled',
+    () async {
+      final backupDirectory = Directory('${tempDirectory.path}/backups');
+      await backupDirectory.create();
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+
+      await controller.setAutoExportFolderPath(backupDirectory.path);
+      await controller.setAutoExportEnabled(true);
+      await controller.setLockOnBackground(true);
+
+      await controller.handleAppBackgrounded();
+
+      expect(controller.status, AppSessionStatus.locked);
+      expect(controller.lastBackupMessageCode, 'backup_exported');
+
+      final backupFiles = backupDirectory.listSync();
+      expect(
+        backupFiles.whereType<File>().any(
+          (f) => f.path.endsWith('.classi-backup'),
+        ),
+        isTrue,
+        reason: 'backup must be created when app is locked on background',
+      );
+    },
+  );
 }
 
 class _TestDatabasePathService extends DatabasePathService {

@@ -121,13 +121,19 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   Future<void> _toggleAutoExport(bool value) async {
     if (value && _autoExportFolderPath == null) {
-      final folder = await FilePicker.getDirectoryPath();
-      if (!mounted) return;
-      if (folder == null) return;
-      setState(() {
-        _autoExportFolderPath = folder;
-        _autoExportEnabled = true;
-      });
+      final session = ref.read(appSessionProvider);
+      session.suspendBackgroundLock();
+      try {
+        final folder = await FilePicker.getDirectoryPath();
+        if (!mounted) return;
+        if (folder == null) return;
+        setState(() {
+          _autoExportFolderPath = folder;
+          _autoExportEnabled = true;
+        });
+      } finally {
+        session.resumeBackgroundLock();
+      }
     } else {
       setState(() => _autoExportEnabled = value);
     }

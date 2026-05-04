@@ -798,6 +798,7 @@ class AppSessionController extends ChangeNotifier {
         sourceDatabasePath: await _databasePathService.getCurrentDatabasePath(),
         destinationFolderPath: folderPath,
       );
+      _setBackupMessage('backup_exported');
     } catch (error, stackTrace) {
       _logUnexpectedError(
         operation: 'run auto export',
