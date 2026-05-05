@@ -13,6 +13,7 @@ import '../../features/material_tracking/material_repository.dart';
 import '../../features/notes/note_repository.dart';
 import '../../features/settings/grade_system_controller.dart';
 import '../../features/settings/student_sort_controller.dart';
+import '../../features/settings/theme_controller.dart';
 import '../../features/students/student_repository.dart';
 import '../../features/students/student_sorting.dart';
 import '../database/app_database.dart';
@@ -71,6 +72,17 @@ final studentSortControllerProvider =
 
 final studentSortFieldProvider = Provider<StudentSortField>(
   (ref) => ref.watch(studentSortControllerProvider).sortField,
+);
+
+final themeControllerProvider =
+    ChangeNotifierProvider<ThemeController>((ref) {
+      final controller = ThemeController();
+      unawaited(controller.initialize());
+      return controller;
+    });
+
+final themeModeProvider = Provider<ThemeMode>(
+  (ref) => ref.watch(themeControllerProvider).themeMode,
 );
 
 final gradeSystemControllerProvider =

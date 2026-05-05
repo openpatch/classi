@@ -249,5 +249,9 @@
   "biometric_reason": "Confirm your identity to unlock Classi.",
   "unlock_with_biometrics": "Use biometrics",
   "list_scope": "List scope",
-  "global_list": "Global list"
+  "global_list": "Global list",
+  "theme": "Theme",
+  "theme_light": "Light",
+  "theme_dark": "Dark",
+  "theme_auto": "Auto"
 }
