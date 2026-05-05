@@ -48,6 +48,33 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          _SectionCard(
+            title: 'theme'.tr(),
+            child: SegmentedButton<ThemeMode>(
+              segments: [
+                ButtonSegment(
+                  value: ThemeMode.light,
+                  label: Text('theme_light'.tr()),
+                  icon: const Icon(Icons.light_mode_outlined),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.system,
+                  label: Text('theme_auto'.tr()),
+                  icon: const Icon(Icons.brightness_auto_outlined),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.dark,
+                  label: Text('theme_dark'.tr()),
+                  icon: const Icon(Icons.dark_mode_outlined),
+                ),
+              ],
+              selected: {ref.watch(themeModeProvider)},
+              onSelectionChanged: (selection) => ref
+                  .read(themeControllerProvider)
+                  .setThemeMode(selection.first),
+            ),
+          ),
+          const SizedBox(height: 16),
           const _SectionCard(title: '', child: _GradeSystemsSection()),
           const SizedBox(height: 16),
           _SectionCard(
