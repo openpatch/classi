@@ -30,6 +30,10 @@ class AppUpdater extends StatefulWidget {
 class _AppUpdaterState extends State<AppUpdater> {
   String? _currentVersion;
 
+  /// Cached latest-release payload. Shared between [_getLatestVersion] and
+  /// [_getChangelog] to avoid a duplicate network request per update check.
+  Future<Map<String, dynamic>?>? _latestReleaseFuture;
+
   @override
   void initState() {
     super.initState();
@@ -59,12 +63,12 @@ class _AppUpdaterState extends State<AppUpdater> {
 
   Future<String?> _getLatestVersion() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_apiBase/latest'),
-      );
-      if (response.statusCode != 200) return null;
+      // Reset cache on each periodic version check so a new release is
+      // eventually detected without restarting the app.
+      _latestReleaseFuture = null;
+      final data = await _fetchLatestRelease();
+      if (data == null) return null;
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
       final tagName = data['tag_name'] as String;
 
       // Strip the leading 'v' so comparison with PackageInfo.version works.
@@ -75,13 +79,17 @@ class _AppUpdaterState extends State<AppUpdater> {
   }
 
   Future<String> _getBinaryUrl(String? version) async {
+    if (version == null) {
+      throw StateError('Cannot determine binary URL: latestVersion is null');
+    }
     try {
       final response = await http.get(
         Uri.parse('$_apiBase/tags/v$version'),
       );
       if (response.statusCode != 200) {
         throw StateError(
-          'Failed to fetch release assets for v$version: ${response.statusCode}',
+          'Failed to fetch release assets for v$version '
+          '(HTTP ${response.statusCode}): ${response.body}',
         );
       }
 
@@ -98,23 +106,35 @@ class _AppUpdaterState extends State<AppUpdater> {
       throw StateError(
         'No release asset found for platform "$suffix" in release v$version',
       );
-    } on StateError {
-      rethrow;
     } catch (e) {
+      if (e is StateError) rethrow;
       throw StateError('Failed to get binary URL for v$version: $e');
     }
   }
 
   Future<String?> _getChangelog() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_apiBase/latest'),
-      );
-      if (response.statusCode != 200) return null;
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      return data['body'] as String?;
+      final data = await _fetchLatestRelease();
+      return data?['body'] as String?;
     } catch (_) {
+      return null;
+    }
+  }
+
+  /// Fetches the latest GitHub release payload, caching the result so that
+  /// [_getLatestVersion] and [_getChangelog] share a single network request.
+  Future<Map<String, dynamic>?> _fetchLatestRelease() {
+    return _latestReleaseFuture ??= _doFetchLatestRelease();
+  }
+
+  Future<Map<String, dynamic>?> _doFetchLatestRelease() async {
+    try {
+      final response = await http.get(Uri.parse('$_apiBase/latest'));
+      if (response.statusCode != 200) return null;
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      // Clear cache on failure so the next call can retry.
+      _latestReleaseFuture = null;
       return null;
     }
   }
