@@ -1,0 +1,56 @@
+---
+# Classi – PowerSync sync rules
+#
+# These rules define which rows from each Supabase table are synced to each
+# authenticated device. Each user only receives their own rows, identified by
+# the `user_id` column that matches the JWT sub claim.
+#
+# Deploy this file to your PowerSync project (PowerSync Cloud → Sync Rules,
+# or place it in your self-hosted PowerSync service configuration).
+
+bucket_definitions:
+  user_data:
+    # One sync bucket per authenticated user.
+    parameters: select request.user_id() as user_id
+
+    data:
+      - select id, name, color_hex, grade_scale_json, grade_categories_json,
+               created_at, archived_at
+        from groups_table
+        where user_id = bucket.user_id
+
+      - select id, first_name, last_name, group_id, origin_note,
+               created_at, avatar_json, seat_index
+        from students_table
+        where user_id = bucket.user_id
+
+      - select id, student_id, date, session_label, value,
+               category_id, category_name, created_at
+        from grade_entries_table
+        where user_id = bucket.user_id
+
+      - select id, student_id, date, created_at
+        from attendance_logs_table
+        where user_id = bucket.user_id
+
+      - select id, student_id, date, had_homework, created_at
+        from homework_logs_table
+        where user_id = bucket.user_id
+
+      - select id, student_id, date, had_material, created_at
+        from material_logs_table
+        where user_id = bucket.user_id
+
+      - select id, group_id, name, created_at, archived_at
+        from lists_table
+        where user_id = bucket.user_id
+
+      - select id, list_id, student_id, student_ids_json,
+               label, checked_at, created_at
+        from list_items_table
+        where user_id = bucket.user_id
+
+      - select id, body, group_id, student_id, student_ids_json,
+               is_todo, todo_done, todo_done_at, created_at, archived_at
+        from notes_table
+        where user_id = bucket.user_id

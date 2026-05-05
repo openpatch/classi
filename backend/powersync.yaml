@@ -1,0 +1,31 @@
+# PowerSync service configuration for self-hosted deployment.
+# This file is mounted into the PowerSync Docker container.
+# See https://docs.powersync.com/self-hosting/configuration for full reference.
+
+replication:
+  connections:
+    - type: postgresql
+      # Connection string to the Supabase Postgres instance running in Docker.
+      uri: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+
+      # Publish all Classi tables for replication.
+      publication: powersync
+      slot: powersync
+
+sync_rules:
+  path: /config/sync-rules.yaml
+
+client_auth:
+  # Use the same JWT secret as Supabase GoTrue so device tokens are accepted.
+  jwks:
+    - type: secret
+      secret: ${JWT_SECRET}
+      audiences:
+        - authenticated
+
+api:
+  port: 80
+
+storage:
+  type: sqlite
+  path: /data/powersync.db

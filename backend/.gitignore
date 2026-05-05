@@ -1,0 +1,5 @@
+# Ignore the real .env – only .env.example is committed.
+.env
+
+# PowerSync persistent storage (created at runtime by Docker)
+volumes/powersync/
