@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:drift/drift.dart';
+import 'package:drift_sqlite_async/drift_sqlite_async.dart';
 
-import 'cipher_opener.dart';
 import 'tables/attendance_logs_table.dart';
 import 'tables/grade_entries_table.dart';
 import 'tables/groups_table.dart';
@@ -38,14 +38,15 @@ typedef AttendanceLog = AttendanceLogsTableData;
 class AppDatabase extends _$AppDatabase {
   AppDatabase._(super.executor, {required this.databasePath});
 
-  factory AppDatabase.open({
-    required File dbFile,
-    required String databaseKey,
+  /// Creates an [AppDatabase] backed by a PowerSync/sqlite_async connection.
+  ///
+  /// The [databasePath] is used only for file-level operations such as
+  /// checking the last-modified time; PowerSync owns the actual SQLite file.
+  factory AppDatabase.withConnection(
+    SqliteAsyncDriftConnection connection, {
+    required String databasePath,
   }) {
-    return AppDatabase._(
-      openEncryptedDatabase(dbFile, databaseKey),
-      databasePath: dbFile.path,
-    );
+    return AppDatabase._(connection, databasePath: databasePath);
   }
 
   AppDatabase.test(QueryExecutor executor)
@@ -54,56 +55,19 @@ class AppDatabase extends _$AppDatabase {
   final String databasePath;
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (migrator) async {
+      // PowerSync creates the tables. We only create local Drift tables
+      // that are not part of the PowerSync schema (none currently).
+    },
     onUpgrade: (migrator, from, to) async {
-      if (from < 2) {
-        await migrator.addColumn(groupsTable, groupsTable.archivedAt);
-      }
-      if (from < 3) {
-        await migrator.addColumn(groupsTable, groupsTable.gradeCategoriesJson);
-        await migrator.addColumn(
-          gradeEntriesTable,
-          gradeEntriesTable.categoryId,
-        );
-        await migrator.addColumn(
-          gradeEntriesTable,
-          gradeEntriesTable.categoryName,
-        );
-      }
-      if (from < 4) {
-        // ignore: experimental_member_use
-        await migrator.alterTable(TableMigration(gradeEntriesTable));
-      }
-      if (from < 5) {
-        await migrator.createTable(homeworkLogsTable);
-      }
-      if (from < 6) {
-        await migrator.createTable(attendanceLogsTable);
-      }
-      if (from < 7) {
-        await migrator.addColumn(groupsTable, groupsTable.colorHex);
-      }
-      if (from < 8) {
-        await migrator.addColumn(listsTable, listsTable.archivedAt);
-        await migrator.addColumn(notesTable, notesTable.archivedAt);
-      }
-      if (from < 9) {
-        await migrator.addColumn(notesTable, notesTable.studentIdsJson);
-      }
-      if (from < 10) {
-        await migrator.addColumn(studentsTable, studentsTable.seatIndex);
-      }
-      if (from < 11) {
-        await migrator.alterTable(TableMigration(listsTable));
-        await migrator.addColumn(listItemsTable, listItemsTable.studentIdsJson);
-        await customStatement('''
-          UPDATE list_items_table
-          SET student_ids_json = json_array(student_id)
-          WHERE student_id IS NOT NULL AND student_ids_json IS NULL
-        ''');
+      // Table structure is managed by PowerSync schema updates.
+      // Drift migrations only apply when using the in-memory test executor.
+      if (from < 12 && databasePath == ':memory:') {
+        await migrator.createAll();
       }
     },
   );

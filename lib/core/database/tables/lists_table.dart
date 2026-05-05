@@ -1,12 +1,16 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import 'groups_table.dart';
 
 @DataClassName('Checklist')
 class ListsTable extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text().clientDefault(() => const Uuid().v4())();
 
-  IntColumn get groupId => integer().nullable().references(
+  @override
+  Set<Column> get primaryKey => {id};
+
+  TextColumn get groupId => text().nullable().references(
     GroupsTable,
     #id,
     onDelete: KeyAction.cascade,

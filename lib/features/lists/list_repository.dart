@@ -34,7 +34,7 @@ class ListRepository {
         .watch();
   }
 
-  Stream<List<Checklist>> watchLists(int groupId) {
+  Stream<List<Checklist>> watchLists(String groupId) {
     return (_database.select(_database.listsTable)
           ..where((table) => table.groupId.equals(groupId))
           ..where((table) => table.archivedAt.isNull())
@@ -42,7 +42,7 @@ class ListRepository {
         .watch();
   }
 
-  Stream<List<Checklist>> watchArchivedLists(int groupId) {
+  Stream<List<Checklist>> watchArchivedLists(String groupId) {
     return (_database.select(_database.listsTable)
           ..where((table) => table.groupId.equals(groupId))
           ..where((table) => table.archivedAt.isNotNull())
@@ -53,13 +53,13 @@ class ListRepository {
         .watch();
   }
 
-  Stream<Checklist?> watchList(int id) {
+  Stream<Checklist?> watchList(String id) {
     return (_database.select(
       _database.listsTable,
     )..where((table) => table.id.equals(id))).watchSingleOrNull();
   }
 
-  Stream<List<ChecklistItem>> watchItems(int listId) {
+  Stream<List<ChecklistItem>> watchItems(String listId) {
     return (_database.select(_database.listItemsTable)
           ..where((table) => table.listId.equals(listId))
           ..orderBy([(table) => OrderingTerm.asc(table.createdAt)]))
@@ -67,7 +67,7 @@ class ListRepository {
   }
 
   Stream<List<({Checklist list, ChecklistItem item})>> watchItemsForStudent(
-    int studentId,
+    String studentId,
   ) {
     final query =
         _database.select(_database.listItemsTable).join([
@@ -94,11 +94,11 @@ class ListRepository {
     );
   }
 
-  Stream<Map<int, ListProgress>> watchListProgress({int? groupId}) {
+  Stream<Map<String, ListProgress>> watchListProgress({String? groupId}) {
     final variables = <Variable<Object>>[];
     final whereClause = groupId == null ? '' : 'WHERE l.group_id = ?';
     if (groupId != null) {
-      variables.add(Variable<Object>(groupId));
+      variables.add(Variable.withString(groupId));
     }
 
     return _database
@@ -121,7 +121,7 @@ class ListRepository {
         .map(
           (rows) => {
             for (final row in rows)
-              row.read<int>('list_id'): ListProgress(
+              row.read<String>('list_id'): ListProgress(
                 checked: row.read<int>('checked_count'),
                 total: row.read<int>('total_count'),
               ),
@@ -129,8 +129,8 @@ class ListRepository {
         );
   }
 
-  Future<int> createList({
-    required int groupId,
+  Future<String> createList({
+    required String groupId,
     required String name,
     StudentSortField sortField = StudentSortField.lastName,
   }) {
@@ -141,8 +141,8 @@ class ListRepository {
     );
   }
 
-  Future<int> createListWithOptions({
-    int? groupId,
+  Future<String> createListWithOptions({
+    String? groupId,
     required String name,
     bool populateFromGroupStudents = false,
     StudentSortField sortField = StudentSortField.lastName,
@@ -156,14 +156,15 @@ class ListRepository {
     }
 
     return _database.transaction(() async {
-      final listId = await _database
+      final row = await _database
           .into(_database.listsTable)
-          .insert(
+          .insertReturning(
             ListsTableCompanion.insert(
               groupId: Value(groupId),
               name: name.trim(),
             ),
           );
+      final listId = row.id;
       if (populateFromGroupStudents && groupId != null) {
         await populateFromGroup(
           listId: listId,
@@ -175,33 +176,33 @@ class ListRepository {
     });
   }
 
-  Future<void> renameList({required int listId, required String name}) {
+  Future<void> renameList({required String listId, required String name}) {
     return (_database.update(_database.listsTable)
           ..where((table) => table.id.equals(listId)))
         .write(ListsTableCompanion(name: Value(name.trim())));
   }
 
-  Future<void> deleteList(int listId) {
+  Future<void> deleteList(String listId) {
     return (_database.delete(
       _database.listsTable,
     )..where((table) => table.id.equals(listId))).go();
   }
 
-  Future<void> archiveList(int listId) {
+  Future<void> archiveList(String listId) {
     return (_database.update(_database.listsTable)
           ..where((table) => table.id.equals(listId)))
         .write(ListsTableCompanion(archivedAt: Value(DateTime.now())));
   }
 
-  Future<void> unarchiveList(int listId) {
+  Future<void> unarchiveList(String listId) {
     return (_database.update(_database.listsTable)
           ..where((table) => table.id.equals(listId)))
         .write(const ListsTableCompanion(archivedAt: Value(null)));
   }
 
   Future<void> addItem({
-    required int listId,
-    List<int> studentIds = const [],
+    required String listId,
+    List<String> studentIds = const [],
     required String label,
   }) async {
     final list = await _requireList(listId);
@@ -229,7 +230,7 @@ class ListRepository {
   Future<void> updateItem({
     required ChecklistItem item,
     required String label,
-    List<int> studentIds = const [],
+    List<String> studentIds = const [],
   }) async {
     final list = await _requireList(item.listId);
     final normalizedStudentIds = await _validatedStudentIdsForList(
@@ -250,7 +251,7 @@ class ListRepository {
     );
   }
 
-  Future<void> toggleItem({required int itemId, required bool checked}) {
+  Future<void> toggleItem({required String itemId, required bool checked}) {
     return (_database.update(
       _database.listItemsTable,
     )..where((table) => table.id.equals(itemId))).write(
@@ -260,15 +261,15 @@ class ListRepository {
     );
   }
 
-  Future<void> deleteItem(int itemId) {
+  Future<void> deleteItem(String itemId) {
     return (_database.delete(
       _database.listItemsTable,
     )..where((table) => table.id.equals(itemId))).go();
   }
 
   Future<void> populateFromGroup({
-    required int listId,
-    required int groupId,
+    required String listId,
+    required String groupId,
     StudentSortField sortField = StudentSortField.lastName,
   }) async {
     final list = await _requireList(listId);
@@ -317,15 +318,15 @@ class ListRepository {
     });
   }
 
-  Future<Checklist> _requireList(int listId) {
+  Future<Checklist> _requireList(String listId) {
     return (_database.select(
       _database.listsTable,
     )..where((table) => table.id.equals(listId))).getSingle();
   }
 
-  Future<List<int>> _validatedStudentIdsForList({
+  Future<List<String>> _validatedStudentIdsForList({
     required Checklist list,
-    required Iterable<int> studentIds,
+    required Iterable<String> studentIds,
   }) async {
     final normalizedStudentIds = normalizeListItemStudentIds(studentIds);
     if (normalizedStudentIds.isEmpty) {

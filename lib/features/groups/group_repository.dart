@@ -23,7 +23,7 @@ class GroupRepository {
         .watch();
   }
 
-  Stream<Group?> watchGroup(int id) {
+  Stream<Group?> watchGroup(String id) {
     return (_database.select(
       _database.groupsTable,
     )..where((table) => table.id.equals(id))).watchSingleOrNull();
@@ -36,15 +36,15 @@ class GroupRepository {
         .get();
   }
 
-  Future<int> createGroup({
+  Future<String> createGroup({
     required String name,
     String colorHex = '#FF1E88E5',
     required List<GradeScaleEntry> gradeScale,
     List<GradeCategory> gradeCategories = defaultGradeCategories,
-  }) {
-    return _database
+  }) async {
+    final row = await _database
         .into(_database.groupsTable)
-        .insert(
+        .insertReturning(
           GroupsTableCompanion.insert(
             name: name.trim(),
             colorHex: Value(normalizeColorHex(colorHex, fallback: '#FF1E88E5')),
@@ -52,10 +52,11 @@ class GroupRepository {
             gradeCategoriesJson: Value(encodeGradeCategories(gradeCategories)),
           ),
         );
+    return row.id;
   }
 
   Future<void> updateGroup({
-    required int id,
+    required String id,
     required String name,
     String? colorHex,
     required List<GradeScaleEntry> gradeScale,
@@ -91,26 +92,26 @@ class GroupRepository {
         );
   }
 
-  Future<void> archiveGroup(int id) {
+  Future<void> archiveGroup(String id) {
     return (_database.update(_database.groupsTable)
           ..where((table) => table.id.equals(id)))
         .write(GroupsTableCompanion(archivedAt: Value(DateTime.now())));
   }
 
-  Future<void> unarchiveGroup(int id) {
+  Future<void> unarchiveGroup(String id) {
     return (_database.update(_database.groupsTable)
           ..where((table) => table.id.equals(id)))
         .write(const GroupsTableCompanion(archivedAt: Value(null)));
   }
 
-  Future<void> deleteGroup(int id) {
+  Future<void> deleteGroup(String id) {
     return (_database.delete(
       _database.groupsTable,
     )..where((table) => table.id.equals(id))).go();
   }
 
-  Future<int> cloneGroup({
-    required int sourceGroupId,
+  Future<String> cloneGroup({
+    required String sourceGroupId,
     required String newName,
     String? colorHex,
     List<GradeScaleEntry>? gradeScale,

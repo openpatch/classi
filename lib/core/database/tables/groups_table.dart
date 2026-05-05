@@ -1,7 +1,11 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 class GroupsTable extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text().clientDefault(() => const Uuid().v4())();
+
+  @override
+  Set<Column> get primaryKey => {id};
 
   TextColumn get name => text().withLength(min: 1, max: 100)();
 

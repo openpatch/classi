@@ -31,7 +31,7 @@ class NoteRepository {
     return query.watch();
   }
 
-  Stream<List<TeacherNote>> watchNotesForStudent(int studentId) {
+  Stream<List<TeacherNote>> watchNotesForStudent(String studentId) {
     final query = _database.select(_database.notesTable)
       ..where((table) => table.archivedAt.isNull())
       ..orderBy([(table) => OrderingTerm.desc(table.createdAt)]);
@@ -43,7 +43,7 @@ class NoteRepository {
     );
   }
 
-  Stream<List<TeacherNote>> watchNotesForGroup(int groupId) {
+  Stream<List<TeacherNote>> watchNotesForGroup(String groupId) {
     return (_database.select(_database.notesTable)
           ..where((table) => table.groupId.equals(groupId))
           ..where((table) => table.archivedAt.isNull())
@@ -51,7 +51,7 @@ class NoteRepository {
         .watch();
   }
 
-  Stream<List<TeacherNote>> watchArchivedNotesForGroup(int groupId) {
+  Stream<List<TeacherNote>> watchArchivedNotesForGroup(String groupId) {
     return (_database.select(_database.notesTable)
           ..where((table) => table.groupId.equals(groupId))
           ..where((table) => table.archivedAt.isNotNull())
@@ -74,8 +74,8 @@ class NoteRepository {
 
   Future<void> saveNote({
     required String body,
-    int? groupId,
-    List<int> studentIds = const [],
+    String? groupId,
+    List<String> studentIds = const [],
     required bool isTodo,
     DateTime? createdAt,
   }) {
@@ -99,8 +99,8 @@ class NoteRepository {
   Future<void> updateNote({
     required TeacherNote note,
     required String body,
-    int? groupId,
-    List<int> studentIds = const [],
+    String? groupId,
+    List<String> studentIds = const [],
     required bool isTodo,
     required DateTime createdAt,
   }) {
@@ -138,19 +138,19 @@ class NoteRepository {
     );
   }
 
-  Future<void> deleteNote(int id) {
+  Future<void> deleteNote(String id) {
     return (_database.delete(
       _database.notesTable,
     )..where((table) => table.id.equals(id))).go();
   }
 
-  Future<void> archiveNote(int id) {
+  Future<void> archiveNote(String id) {
     return (_database.update(_database.notesTable)
           ..where((table) => table.id.equals(id)))
         .write(NotesTableCompanion(archivedAt: Value(DateTime.now())));
   }
 
-  Future<void> unarchiveNote(int id) {
+  Future<void> unarchiveNote(String id) {
     return (_database.update(_database.notesTable)
           ..where((table) => table.id.equals(id)))
         .write(const NotesTableCompanion(archivedAt: Value(null)));

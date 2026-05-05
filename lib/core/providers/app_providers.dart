@@ -23,6 +23,7 @@ import '../session/app_session_controller.dart';
 import '../storage/database_path_service.dart';
 import '../storage/library_backup_preferences_service.dart';
 import '../storage/library_backup_service.dart';
+import '../storage/sync_preferences_service.dart';
 
 final keyServiceProvider = Provider<KeyService>((ref) => KeyService());
 
@@ -47,6 +48,10 @@ final biometricServiceProvider = Provider<BiometricService>(
   (ref) => BiometricService(),
 );
 
+final syncPreferencesServiceProvider = Provider<SyncPreferencesService>(
+  (ref) => SyncPreferencesService(),
+);
+
 final appSessionProvider = ChangeNotifierProvider<AppSessionController>((ref) {
   final controller = AppSessionController(
     keyService: ref.watch(keyServiceProvider),
@@ -57,6 +62,7 @@ final appSessionProvider = ChangeNotifierProvider<AppSessionController>((ref) {
     ),
     libraryBackupService: ref.watch(libraryBackupServiceProvider),
     biometricService: ref.watch(biometricServiceProvider),
+    syncPreferencesService: ref.watch(syncPreferencesServiceProvider),
   );
   unawaited(controller.initialize());
   return controller;

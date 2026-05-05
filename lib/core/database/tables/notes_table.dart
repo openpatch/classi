@@ -1,21 +1,25 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import 'groups_table.dart';
 import 'students_table.dart';
 
 @DataClassName('TeacherNote')
 class NotesTable extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text().clientDefault(() => const Uuid().v4())();
+
+  @override
+  Set<Column> get primaryKey => {id};
 
   TextColumn get body => text().withLength(min: 1, max: 5000)();
 
-  IntColumn get groupId => integer().nullable().references(
+  TextColumn get groupId => text().nullable().references(
     GroupsTable,
     #id,
     onDelete: KeyAction.setNull,
   )();
 
-  IntColumn get studentId => integer().nullable().references(
+  TextColumn get studentId => text().nullable().references(
     StudentsTable,
     #id,
     onDelete: KeyAction.setNull,

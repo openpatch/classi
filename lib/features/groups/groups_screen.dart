@@ -20,7 +20,7 @@ final archivedGroupsProvider = StreamProvider<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).watchArchivedGroups(),
 );
 
-final groupStudentCountsProvider = StreamProvider<Map<int, int>>(
+final groupStudentCountsProvider = StreamProvider<Map<String, int>>(
   (ref) => ref.watch(studentRepositoryProvider).watchGroupStudentCounts(),
 );
 
@@ -141,7 +141,7 @@ class _GroupsList extends ConsumerWidget {
             title: emptyKey.tr(),
           );
         }
-        final studentCounts = studentCountsValue.value ?? const <int, int>{};
+        final studentCounts = studentCountsValue.value ?? const <String, int>{};
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: groups.length,

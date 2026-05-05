@@ -3,18 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
 
-final lessonGroupProvider = StreamProvider.family<Group?, int>(
+final lessonGroupProvider = StreamProvider.family<Group?, String>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
-final lessonStudentsProvider = StreamProvider.family<List<Student>, int>(
+final lessonStudentsProvider = StreamProvider.family<List<Student>, String>(
   (ref, groupId) => ref
       .watch(studentRepositoryProvider)
       .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
 );
 
 final lessonMaterialSelectionsProvider =
-    StreamProvider.family<Map<int, bool>, (int, DateTime)>(
+    StreamProvider.family<Map<String, bool>, (String, DateTime)>(
       (ref, args) => ref
           .watch(materialRepositoryProvider)
           .watchGroupSelections(
@@ -24,7 +24,7 @@ final lessonMaterialSelectionsProvider =
     );
 
 final lessonHomeworkSelectionsProvider =
-    StreamProvider.family<Map<int, bool>, (int, DateTime)>(
+    StreamProvider.family<Map<String, bool>, (String, DateTime)>(
       (ref, args) => ref
           .watch(homeworkRepositoryProvider)
           .watchGroupSelections(
@@ -34,7 +34,7 @@ final lessonHomeworkSelectionsProvider =
     );
 
 final lessonAbsenceSelectionsProvider =
-    StreamProvider.family<Set<int>, (int, DateTime)>(
+    StreamProvider.family<Set<String>, (String, DateTime)>(
       (ref, args) => ref
           .watch(attendanceRepositoryProvider)
           .watchGroupSelections(
@@ -43,18 +43,18 @@ final lessonAbsenceSelectionsProvider =
           ),
     );
 
-final lessonNotesProvider = StreamProvider.family<List<TeacherNote>, int>(
+final lessonNotesProvider = StreamProvider.family<List<TeacherNote>, String>(
   (ref, groupId) =>
       ref.watch(noteRepositoryProvider).watchNotesForGroup(groupId),
 );
 
-final lessonEntryDatesProvider = StreamProvider.family<Set<DateTime>, int>(
+final lessonEntryDatesProvider = StreamProvider.family<Set<DateTime>, String>(
   (ref, groupId) =>
       ref.watch(lessonRepositoryProvider).watchGroupEntryDates(groupId),
 );
 
 final lessonGradeSelectionsProvider =
-    FutureProvider.family<Map<int, String>, (int, DateTime, String, String)>(
+    FutureProvider.family<Map<String, String>, (String, DateTime, String, String)>(
       (ref, args) => ref
           .watch(gradeRepositoryProvider)
           .getSessionSelections(

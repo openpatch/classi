@@ -9,14 +9,14 @@ class GradeRepository {
 
   final AppDatabase _database;
 
-  Stream<List<GradeEntry>> watchStudentGrades(int studentId) {
+  Stream<List<GradeEntry>> watchStudentGrades(String studentId) {
     return (_database.select(_database.gradeEntriesTable)
           ..where((table) => table.studentId.equals(studentId))
           ..orderBy([(table) => OrderingTerm.desc(table.date)]))
         .watch();
   }
 
-  Stream<Map<int, double>> watchGroupAverages(int groupId) {
+  Stream<Map<String, double>> watchGroupAverages(String groupId) {
     return Stream.multi((controller) {
       var categories = defaultGradeCategories;
       var gradeScale = defaultGradeScaleEntries;
@@ -26,7 +26,7 @@ class GradeRepository {
 
       void emit() {
         if (!hasGroup) {
-          controller.add(const <int, double>{});
+          controller.add(const <String, double>{});
           return;
         }
         if (!hasRows) {
@@ -68,8 +68,8 @@ class GradeRepository {
     });
   }
 
-  Stream<Map<int, Map<String, double>>> watchGroupCategoryAverages(
-    int groupId,
+  Stream<Map<String, Map<String, double>>> watchGroupCategoryAverages(
+    String groupId,
   ) {
     return Stream.multi((controller) {
       var gradeScale = defaultGradeScaleEntries;
@@ -79,7 +79,7 @@ class GradeRepository {
 
       void emit() {
         if (!hasGroup) {
-          controller.add(const <int, Map<String, double>>{});
+          controller.add(const <String, Map<String, double>>{});
           return;
         }
         if (!hasRows) {
@@ -120,7 +120,7 @@ class GradeRepository {
     });
   }
 
-  Future<Map<int, double>> getGroupAverages(int groupId) async {
+  Future<Map<String, double>> getGroupAverages(String groupId) async {
     final group = await (_database.select(
       _database.groupsTable,
     )..where((table) => table.id.equals(groupId))).getSingle();
@@ -130,8 +130,8 @@ class GradeRepository {
     return _weightedAveragesFromRows(rows, categories, gradeScale);
   }
 
-  Future<Map<int, Map<String, double>>> getGroupCategoryAverages(
-    int groupId,
+  Future<Map<String, Map<String, double>>> getGroupCategoryAverages(
+    String groupId,
   ) async {
     final group = await (_database.select(
       _database.groupsTable,
@@ -141,8 +141,8 @@ class GradeRepository {
     return _categoryAveragesFromRows(rows, gradeScale);
   }
 
-  Future<Map<int, String>> getSessionSelections({
-    required int groupId,
+  Future<Map<String, String>> getSessionSelections({
+    required String groupId,
     required String sessionLabel,
     required DateTime date,
     required String categoryId,
@@ -156,7 +156,7 @@ class GradeRepository {
       WHERE s.group_id = ? AND g.session_label = ? AND g.date = ? AND g.category_id = ?
       ''',
           variables: [
-            Variable.withInt(groupId),
+            Variable.withString(groupId),
             Variable.withString(sessionLabel),
             Variable.withDateTime(DateTime(date.year, date.month, date.day)),
             Variable.withString(categoryId),
@@ -166,12 +166,12 @@ class GradeRepository {
 
     return {
       for (final row in rows)
-        row.read<int>('student_id'): row.read<String>('value'),
+        row.read<String>('student_id'): row.read<String>('value'),
     };
   }
 
   Future<void> saveEntry({
-    required int studentId,
+    required String studentId,
     required DateTime date,
     required String sessionLabel,
     required String value,
@@ -224,7 +224,7 @@ class GradeRepository {
   }
 
   Future<void> clearSessionSelection({
-    required int studentId,
+    required String studentId,
     required DateTime date,
     required String sessionLabel,
     String categoryId = defaultGradeCategoryId,
@@ -244,8 +244,8 @@ class GradeRepository {
   }
 
   Future<void> updateEntry({
-    required int id,
-    required int studentId,
+    required String id,
+    required String studentId,
     required DateTime date,
     required String sessionLabel,
     required String value,
@@ -303,13 +303,13 @@ class GradeRepository {
     });
   }
 
-  Future<void> deleteEntry(int id) {
+  Future<void> deleteEntry(String id) {
     return (_database.delete(
       _database.gradeEntriesTable,
     )..where((table) => table.id.equals(id))).go();
   }
 
-  Selectable<QueryRow> _groupAverageRows(int groupId) {
+  Selectable<QueryRow> _groupAverageRows(String groupId) {
     return _database.customSelect(
       '''
       SELECT g.student_id, g.value, g.category_id
@@ -318,12 +318,12 @@ class GradeRepository {
       WHERE s.group_id = ?
       ORDER BY g.student_id
       ''',
-      variables: [Variable.withInt(groupId)],
+      variables: [Variable.withString(groupId)],
       readsFrom: {_database.gradeEntriesTable, _database.studentsTable},
     );
   }
 
-  Selectable<QueryRow> _groupCategoryAverageRows(int groupId) {
+  Selectable<QueryRow> _groupCategoryAverageRows(String groupId) {
     return _database.customSelect(
       '''
       SELECT g.student_id, g.category_id, g.value
@@ -332,17 +332,17 @@ class GradeRepository {
       WHERE s.group_id = ?
       ORDER BY g.student_id, g.category_id
       ''',
-      variables: [Variable.withInt(groupId)],
+      variables: [Variable.withString(groupId)],
       readsFrom: {_database.gradeEntriesTable, _database.studentsTable},
     );
   }
 
-  Map<int, double> _weightedAveragesFromRows(
+  Map<String, double> _weightedAveragesFromRows(
     Iterable<QueryRow> rows,
     List<GradeCategory> categories,
     List<GradeScaleEntry> gradeScale,
   ) {
-    final perStudent = <int, List<({double value, String categoryId})>>{};
+    final perStudent = <String, List<({double value, String categoryId})>>{};
     for (final row in rows) {
       final numericValue = gradeValueToNumber(
         row.read<String>('value'),
@@ -352,13 +352,13 @@ class GradeRepository {
         continue;
       }
 
-      perStudent.putIfAbsent(row.read<int>('student_id'), () => []).add((
+      perStudent.putIfAbsent(row.read<String>('student_id'), () => []).add((
         value: numericValue,
         categoryId: row.read<String>('category_id'),
       ));
     }
 
-    final averages = <int, double>{};
+    final averages = <String, double>{};
     for (final entry in perStudent.entries) {
       final average = calculateWeightedAverage(entry.value, categories);
       if (average != null) {
@@ -368,12 +368,12 @@ class GradeRepository {
     return averages;
   }
 
-  Map<int, Map<String, double>> _categoryAveragesFromRows(
+  Map<String, Map<String, double>> _categoryAveragesFromRows(
     Iterable<QueryRow> rows,
     List<GradeScaleEntry> gradeScale,
   ) {
-    final result = <int, Map<String, double>>{};
-    final counts = <int, Map<String, int>>{};
+    final result = <String, Map<String, double>>{};
+    final counts = <String, Map<String, int>>{};
     for (final row in rows) {
       final numericValue = gradeValueToNumber(
         row.read<String>('value'),
@@ -383,7 +383,7 @@ class GradeRepository {
         continue;
       }
 
-      final studentId = row.read<int>('student_id');
+      final studentId = row.read<String>('student_id');
       final categoryId = row.read<String>('category_id');
       result.putIfAbsent(studentId, () => {});
       counts.putIfAbsent(studentId, () => {});

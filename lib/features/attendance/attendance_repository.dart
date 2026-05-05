@@ -7,8 +7,8 @@ class AttendanceRepository {
 
   final AppDatabase _database;
 
-  Stream<Set<int>> watchGroupSelections({
-    required int groupId,
+  Stream<Set<String>> watchGroupSelections({
+    required String groupId,
     required DateTime date,
   }) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
@@ -21,17 +21,19 @@ class AttendanceRepository {
       WHERE s.group_id = ? AND a.date = ?
       ''',
           variables: [
-            Variable.withInt(groupId),
+            Variable.withString(groupId),
             Variable.withDateTime(normalizedDate),
           ],
           readsFrom: {_database.attendanceLogsTable, _database.studentsTable},
         )
         .watch()
-        .map((rows) => {for (final row in rows) row.read<int>('student_id')});
+        .map(
+          (rows) => {for (final row in rows) row.read<String>('student_id')},
+        );
   }
 
   Future<void> markAbsent({
-    required int studentId,
+    required String studentId,
     required DateTime date,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
@@ -65,7 +67,7 @@ class AttendanceRepository {
   }
 
   Future<void> clearAbsence({
-    required int studentId,
+    required String studentId,
     required DateTime date,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);

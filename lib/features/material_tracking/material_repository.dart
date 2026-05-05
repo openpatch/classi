@@ -7,15 +7,15 @@ class MaterialRepository {
 
   final AppDatabase _database;
 
-  Stream<List<MaterialLog>> watchStudentLogs(int studentId) {
+  Stream<List<MaterialLog>> watchStudentLogs(String studentId) {
     return (_database.select(_database.materialLogsTable)
           ..where((table) => table.studentId.equals(studentId))
           ..orderBy([(table) => OrderingTerm.desc(table.date)]))
         .watch();
   }
 
-  Stream<Map<int, bool>> watchGroupSelections({
-    required int groupId,
+  Stream<Map<String, bool>> watchGroupSelections({
+    required String groupId,
     required DateTime date,
   }) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
@@ -28,7 +28,7 @@ class MaterialRepository {
         WHERE s.group_id = ? AND m.date = ?
         ''',
           variables: [
-            Variable.withInt(groupId),
+            Variable.withString(groupId),
             Variable.withDateTime(normalizedDate),
           ],
           readsFrom: {_database.materialLogsTable, _database.studentsTable},
@@ -37,13 +37,13 @@ class MaterialRepository {
         .map(
           (rows) => {
             for (final row in rows)
-              row.read<int>('student_id'): row.read<bool>('had_material'),
+              row.read<String>('student_id'): row.read<bool>('had_material'),
           },
         );
   }
 
   Future<void> saveLog({
-    required int studentId,
+    required String studentId,
     required DateTime date,
     required bool hadMaterial,
   }) async {
@@ -73,8 +73,8 @@ class MaterialRepository {
   }
 
   Future<void> updateLog({
-    required int id,
-    required int studentId,
+    required String id,
+    required String studentId,
     required DateTime date,
     required bool hadMaterial,
   }) async {
@@ -113,14 +113,14 @@ class MaterialRepository {
     });
   }
 
-  Future<void> deleteLog(int id) {
+  Future<void> deleteLog(String id) {
     return (_database.delete(
       _database.materialLogsTable,
     )..where((table) => table.id.equals(id))).go();
   }
 
   Future<void> clearLog({
-    required int studentId,
+    required String studentId,
     required DateTime date,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);

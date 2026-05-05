@@ -1,16 +1,20 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import 'lists_table.dart';
 import 'students_table.dart';
 
 @DataClassName('ChecklistItem')
 class ListItemsTable extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text().clientDefault(() => const Uuid().v4())();
 
-  IntColumn get listId =>
-      integer().references(ListsTable, #id, onDelete: KeyAction.cascade)();
+  @override
+  Set<Column> get primaryKey => {id};
 
-  IntColumn get studentId => integer().nullable().references(
+  TextColumn get listId =>
+      text().references(ListsTable, #id, onDelete: KeyAction.cascade)();
+
+  TextColumn get studentId => text().nullable().references(
     StudentsTable,
     #id,
     onDelete: KeyAction.setNull,

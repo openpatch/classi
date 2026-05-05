@@ -10,7 +10,7 @@ class StudentRepository {
   final AppDatabase _database;
 
   Stream<List<Student>> watchByGroup(
-    int groupId, {
+    String groupId, {
     StudentSortField sortField = StudentSortField.lastName,
   }) {
     final query = _database.select(_database.studentsTable)
@@ -27,7 +27,7 @@ class StudentRepository {
     return query.watch();
   }
 
-  Stream<Map<int, int>> watchGroupStudentCounts() {
+  Stream<Map<String, int>> watchGroupStudentCounts() {
     return _database
         .customSelect(
           '''
@@ -43,27 +43,27 @@ class StudentRepository {
         .map(
           (rows) => {
             for (final row in rows)
-              row.read<int>('group_id'): row.read<int>('student_count'),
+              row.read<String>('group_id'): row.read<int>('student_count'),
           },
         );
   }
 
-  Stream<Student?> watchStudent(int id) {
+  Stream<Student?> watchStudent(String id) {
     return (_database.select(
       _database.studentsTable,
     )..where((table) => table.id.equals(id))).watchSingleOrNull();
   }
 
-  Future<int> addStudent({
-    required int groupId,
+  Future<String> addStudent({
+    required String groupId,
     required String firstName,
     required String lastName,
     String? originNote,
     String? avatarJson,
-  }) {
-    return _database
+  }) async {
+    final row = await _database
         .into(_database.studentsTable)
-        .insert(
+        .insertReturning(
           StudentsTableCompanion.insert(
             firstName: firstName.trim(),
             lastName: lastName.trim(),
@@ -76,10 +76,11 @@ class StudentRepository {
             ),
           ),
         );
+    return row.id;
   }
 
   Future<void> addStudents({
-    required int groupId,
+    required String groupId,
     required List<StudentDraft> students,
   }) async {
     if (students.isEmpty) {
@@ -95,7 +96,7 @@ class StudentRepository {
   }
 
   Future<void> updateStudent({
-    required int id,
+    required String id,
     required String firstName,
     required String lastName,
     String? originNote,
@@ -117,20 +118,20 @@ class StudentRepository {
     );
   }
 
-  Future<void> deleteStudent(int id) {
+  Future<void> deleteStudent(String id) {
     return (_database.delete(
       _database.studentsTable,
     )..where((table) => table.id.equals(id))).go();
   }
 
-  Future<void> updateAvatar({required int id, String? avatarJson}) {
+  Future<void> updateAvatar({required String id, String? avatarJson}) {
     return (_database.update(_database.studentsTable)
           ..where((table) => table.id.equals(id)))
         .write(StudentsTableCompanion(avatarJson: Value(avatarJson)));
   }
 
   StudentsTableCompanion _companionForDraft({
-    required int groupId,
+    required String groupId,
     required StudentDraft student,
   }) {
     return StudentsTableCompanion.insert(

@@ -1,12 +1,16 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import 'students_table.dart';
 
 class HomeworkLogsTable extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text().clientDefault(() => const Uuid().v4())();
 
-  IntColumn get studentId =>
-      integer().references(StudentsTable, #id, onDelete: KeyAction.cascade)();
+  @override
+  Set<Column> get primaryKey => {id};
+
+  TextColumn get studentId =>
+      text().references(StudentsTable, #id, onDelete: KeyAction.cascade)();
 
   DateTimeColumn get date => dateTime()();
 

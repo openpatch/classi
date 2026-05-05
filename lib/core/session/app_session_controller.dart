@@ -11,6 +11,8 @@ import '../security/security_preferences_service.dart';
 import '../storage/database_path_service.dart';
 import '../storage/library_backup_preferences_service.dart';
 import '../storage/library_backup_service.dart';
+import '../storage/sync_preferences_service.dart';
+import '../sync/powersync_service.dart';
 
 enum AppSessionStatus { loading, needsSetup, locked, ready, error }
 
@@ -35,12 +37,14 @@ class AppSessionController extends ChangeNotifier {
     required LibraryBackupPreferencesService libraryBackupPreferencesService,
     required LibraryBackupService libraryBackupService,
     required BiometricService biometricService,
+    required SyncPreferencesService syncPreferencesService,
   }) : _keyService = keyService,
        _databasePathService = databasePathService,
        _securityPreferencesService = securityPreferencesService,
        _libraryBackupPreferencesService = libraryBackupPreferencesService,
        _libraryBackupService = libraryBackupService,
-       _biometricService = biometricService;
+       _biometricService = biometricService,
+       _syncPreferencesService = syncPreferencesService;
 
   final KeyService _keyService;
   final DatabasePathService _databasePathService;
@@ -48,8 +52,10 @@ class AppSessionController extends ChangeNotifier {
   final LibraryBackupPreferencesService _libraryBackupPreferencesService;
   final LibraryBackupService _libraryBackupService;
   final BiometricService _biometricService;
+  final SyncPreferencesService _syncPreferencesService;
 
   AppDatabase? _database;
+  PowerSyncService? _powerSyncService;
   AppSessionStatus _status = AppSessionStatus.loading;
   AppSessionErrorCode? _errorCode;
   DateTime? _openedAt;
@@ -704,21 +710,29 @@ class AppSessionController extends ChangeNotifier {
       dbFile: file,
       passphrase: passphrase,
     );
-    final database = AppDatabase.open(dbFile: file, databaseKey: databaseKey);
-    await database.customSelect('SELECT 1').getSingle();
-    await database.checkpointAndTruncate();
+    final (service, database) = await PowerSyncService.open(
+      dbPath: file.path,
+      encryptionKey: databaseKey,
+    );
+    unawaited(service.connectSyncIfConfigured(_syncPreferencesService));
     _openedAt = await database.lastModified();
     _database = database;
+    _powerSyncService = service;
     _currentPassphrase = passphrase;
   }
 
   Future<void> _closeDatabase() async {
     _cancelInactivityTimer();
     final database = _database;
+    final service = _powerSyncService;
     _database = null;
+    _powerSyncService = null;
     _currentPassphrase = null;
     if (database != null) {
       await database.close();
+    }
+    if (service != null) {
+      await service.close();
     }
   }
 

@@ -10,7 +10,7 @@ class LessonRepository {
 
   final AppDatabase _database;
 
-  Stream<Set<DateTime>> watchGroupEntryDates(int groupId) {
+  Stream<Set<DateTime>> watchGroupEntryDates(String groupId) {
     return Stream.multi((controller) {
       var attendanceDates = <DateTime>{};
       var homeworkDates = <DateTime>{};
@@ -119,7 +119,7 @@ class LessonRepository {
   }
 
   Stream<Set<DateTime>> _watchStudentLogDates({
-    required int groupId,
+    required String groupId,
     required String tableName,
     required String alias,
     required String dateColumn,
@@ -134,7 +134,7 @@ class LessonRepository {
           WHERE s.group_id = ?
           ORDER BY $alias.$dateColumn DESC
           ''',
-          variables: [Variable.withInt(groupId)],
+          variables: [Variable.withString(groupId)],
           readsFrom: readsFrom,
         )
         .watch()

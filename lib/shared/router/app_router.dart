@@ -110,13 +110,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':groupId',
                 builder: (_, state) => GroupDetailScreen(
-                  groupId: int.parse(state.pathParameters['groupId']!),
+                  groupId: state.pathParameters['groupId']!,
                 ),
                 routes: [
                   GoRoute(
                     path: 'lesson',
                     builder: (_, state) => LessonModeScreen(
-                      groupId: int.parse(state.pathParameters['groupId']!),
+                      groupId: state.pathParameters['groupId']!,
                       initialDate: parseLessonDateOrToday(
                         state.uri.queryParameters['date'],
                       ),
@@ -169,13 +169,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'lists',
                     builder: (_, state) => ListsScreen(
-                      groupId: int.parse(state.pathParameters['groupId']!),
+                      groupId: state.pathParameters['groupId']!,
                     ),
                     routes: [
                       GoRoute(
                         path: ':listId',
                         builder: (_, state) => ListDetailScreen(
-                          listId: int.parse(state.pathParameters['listId']!),
+                          listId: state.pathParameters['listId']!,
                         ),
                       ),
                     ],
@@ -191,7 +191,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':listId',
                 builder: (_, state) => ListDetailScreen(
-                  listId: int.parse(state.pathParameters['listId']!),
+                  listId: state.pathParameters['listId']!,
                 ),
               ),
             ],
@@ -199,7 +199,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/students/:studentId',
             builder: (_, state) => StudentDetailScreen(
-              studentId: int.parse(state.pathParameters['studentId']!),
+              studentId: state.pathParameters['studentId']!,
             ),
           ),
           GoRoute(

@@ -2,18 +2,18 @@ import 'dart:convert';
 
 import '../../core/database/app_database.dart';
 
-List<int> normalizeNoteStudentIds(Iterable<int> studentIds) {
-  final normalized = <int>[];
-  final seen = <int>{};
+List<String> normalizeNoteStudentIds(Iterable<String> studentIds) {
+  final normalized = <String>[];
+  final seen = <String>{};
   for (final studentId in studentIds) {
-    if (studentId > 0 && seen.add(studentId)) {
+    if (studentId.isNotEmpty && seen.add(studentId)) {
       normalized.add(studentId);
     }
   }
   return normalized;
 }
 
-String? encodeNoteStudentIds(Iterable<int> studentIds) {
+String? encodeNoteStudentIds(Iterable<String> studentIds) {
   final normalized = normalizeNoteStudentIds(studentIds);
   if (normalized.isEmpty) {
     return null;
@@ -21,12 +21,12 @@ String? encodeNoteStudentIds(Iterable<int> studentIds) {
   return jsonEncode(normalized);
 }
 
-List<int> decodeNoteStudentIds(
+List<String> decodeNoteStudentIds(
   String? encodedStudentIds, {
-  int? fallbackStudentId,
+  String? fallbackStudentId,
 }) {
   final fallback = fallbackStudentId == null
-      ? const <int>[]
+      ? const <String>[]
       : [fallbackStudentId];
   if (encodedStudentIds == null || encodedStudentIds.trim().isEmpty) {
     return fallback;
@@ -38,11 +38,7 @@ List<int> decodeNoteStudentIds(
       return fallback;
     }
     final normalized = normalizeNoteStudentIds([
-      for (final studentId in decoded)
-        if (studentId is int)
-          studentId
-        else
-          int.tryParse(studentId.toString()) ?? -1,
+      for (final studentId in decoded) studentId.toString(),
     ]);
     return normalized.isEmpty ? fallback : normalized;
   } on FormatException {
@@ -50,7 +46,7 @@ List<int> decodeNoteStudentIds(
   }
 }
 
-List<int> noteStudentIds(TeacherNote note) {
+List<String> noteStudentIds(TeacherNote note) {
   return decodeNoteStudentIds(
     note.studentIdsJson,
     fallbackStudentId: note.studentId,
