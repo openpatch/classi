@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-05-05
+
+### Bug Fixes
+
+- Address code review issues in AppUpdater
+- Address second round of code review issues in AppUpdater
+
+
+### Features
+
+- Add auto-update for desktop apps using updat package
+
+
 ## [1.2.4] - 2026-05-04
 
 ### Bug Fixes
