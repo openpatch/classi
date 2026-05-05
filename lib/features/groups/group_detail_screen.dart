@@ -335,7 +335,7 @@ class GroupDetailScreen extends ConsumerWidget {
   Future<void> _addStudent(
     BuildContext context,
     WidgetRef ref,
-    int groupId,
+    String groupId,
   ) async {
     final result = await showStudentFormSheet(context: context);
     if (result == null) {
@@ -357,7 +357,7 @@ class GroupDetailScreen extends ConsumerWidget {
   Future<void> _batchCreateStudents(
     BuildContext context,
     WidgetRef ref,
-    int groupId,
+    String groupId,
   ) async {
     final drafts = await showStudentBatchCreateSheet(context: context);
     if (drafts == null || drafts.isEmpty) {
@@ -384,7 +384,7 @@ class GroupDetailScreen extends ConsumerWidget {
   Future<void> _importWebUntisStudents(
     BuildContext context,
     WidgetRef ref,
-    int groupId,
+    String groupId,
   ) async {
     final session = ref.read(appSessionProvider);
     session.suspendBackgroundLock();

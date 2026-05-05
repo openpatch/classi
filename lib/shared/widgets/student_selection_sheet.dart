@@ -8,15 +8,15 @@ import '../utils/grade_categories.dart';
 import '../utils/formatting.dart';
 import 'student_avatar.dart';
 
-Future<List<int>?> showStudentSelectionSheet({
+Future<List<String>?> showStudentSelectionSheet({
   required BuildContext context,
   required List<Group> groups,
   required List<Student> students,
-  required Set<int> selectedStudentIds,
-  int? preferredGroupId,
+  required Set<String> selectedStudentIds,
+  String? preferredGroupId,
   bool allowSelectAll = false,
 }) {
-  return showModalBottomSheet<List<int>>(
+  return showModalBottomSheet<List<String>>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -42,8 +42,8 @@ class _StudentSelectionSheet extends ConsumerStatefulWidget {
 
   final List<Group> groups;
   final List<Student> students;
-  final Set<int> selectedStudentIds;
-  final int? preferredGroupId;
+  final Set<String> selectedStudentIds;
+  final String? preferredGroupId;
   final bool allowSelectAll;
 
   @override
@@ -54,7 +54,7 @@ class _StudentSelectionSheet extends ConsumerStatefulWidget {
 class _StudentSelectionSheetState
     extends ConsumerState<_StudentSelectionSheet> {
   late final TextEditingController _searchController;
-  late final Set<int> _selectedStudentIds;
+  late final Set<String> _selectedStudentIds;
   String _query = '';
 
   @override
@@ -314,7 +314,7 @@ class _StudentSelectionSheetState
     return sections;
   }
 
-  void _toggleStudent(int studentId, bool selected) {
+  void _toggleStudent(String studentId, bool selected) {
     setState(() {
       if (selected) {
         _selectedStudentIds.add(studentId);

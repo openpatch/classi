@@ -317,7 +317,7 @@ class _GroupTrackingScreenState extends ConsumerState<GroupTrackingScreen> {
         );
   }
 
-  Future<void> _clearHomework(int studentId) {
+  Future<void> _clearHomework(String studentId) {
     return ref
         .read(homeworkRepositoryProvider)
         .clearLog(studentId: studentId, date: _selectedDate);

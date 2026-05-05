@@ -9,6 +9,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/security/security_preferences_service.dart';
 import '../../core/session/app_session_controller.dart';
 import '../../core/storage/library_backup_service.dart';
+import '../../core/storage/sync_preferences_service.dart';
 import '../../shared/utils/formatting.dart';
 import '../setup/database_selection_sheet.dart';
 import 'grade_system_controller.dart';
@@ -63,6 +64,11 @@ class SettingsScreen extends ConsumerWidget {
           _SectionCard(
             title: 'backups'.tr(),
             child: _BackupsSection(session: session),
+          ),
+          const SizedBox(height: 16),
+          const _SectionCard(
+            title: '',
+            child: _SyncSection(),
           ),
           const SizedBox(height: 16),
           _SectionCard(
@@ -827,5 +833,121 @@ class _BackupsSection extends ConsumerWidget {
     } else {
       await session.setAutoImportEnabled(nextValue);
     }
+  }
+}
+
+class _SyncSection extends ConsumerStatefulWidget {
+  const _SyncSection();
+
+  @override
+  ConsumerState<_SyncSection> createState() => _SyncSectionState();
+}
+
+class _SyncSectionState extends ConsumerState<_SyncSection> {
+  final _supabaseUrlController = TextEditingController();
+  final _supabaseAnonKeyController = TextEditingController();
+  final _powerSyncUrlController = TextEditingController();
+  bool _configLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfig();
+  }
+
+  Future<void> _loadConfig() async {
+    final prefs = ref.read(syncPreferencesServiceProvider);
+    final config = await prefs.loadConfig();
+    if (!mounted) return;
+    setState(() {
+      _supabaseUrlController.text = config?.supabaseUrl ?? '';
+      _supabaseAnonKeyController.text = config?.supabaseAnonKey ?? '';
+      _powerSyncUrlController.text = config?.powerSyncUrl ?? '';
+      _configLoaded = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    _supabaseUrlController.dispose();
+    _supabaseAnonKeyController.dispose();
+    _powerSyncUrlController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_configLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('sync'.tr(), style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Text('sync_not_configured'.tr()),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _supabaseUrlController,
+          decoration: InputDecoration(labelText: 'sync_supabase_url'.tr()),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _supabaseAnonKeyController,
+          decoration: InputDecoration(
+            labelText: 'sync_supabase_anon_key'.tr(),
+          ),
+          obscureText: true,
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _powerSyncUrlController,
+          decoration: InputDecoration(labelText: 'sync_powersync_url'.tr()),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            FilledButton(
+              onPressed: _saveConfig,
+              child: Text('sync_save'.tr()),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: _clearConfig,
+              child: Text('sync_clear'.tr()),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _saveConfig() async {
+    final prefs = ref.read(syncPreferencesServiceProvider);
+    await prefs.saveConfig(
+      SyncConfig(
+        supabaseUrl: _supabaseUrlController.text.trim(),
+        supabaseAnonKey: _supabaseAnonKeyController.text.trim(),
+        powerSyncUrl: _powerSyncUrlController.text.trim(),
+      ),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('sync_saved'.tr())));
+  }
+
+  Future<void> _clearConfig() async {
+    final prefs = ref.read(syncPreferencesServiceProvider);
+    await prefs.clearConfig();
+    if (!mounted) return;
+    setState(() {
+      _supabaseUrlController.clear();
+      _supabaseAnonKeyController.clear();
+      _powerSyncUrlController.clear();
+    });
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('sync_cleared'.tr())));
   }
 }

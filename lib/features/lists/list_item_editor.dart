@@ -8,7 +8,7 @@ import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/student_selection_sheet.dart';
 
-typedef ListItemEditorResult = ({String label, List<int> studentIds});
+typedef ListItemEditorResult = ({String label, List<String> studentIds});
 
 Future<ListItemEditorResult?> showListItemEditorSheet({
   required BuildContext context,
@@ -16,8 +16,8 @@ Future<ListItemEditorResult?> showListItemEditorSheet({
   required List<Student> students,
   required String title,
   String? initialLabel,
-  List<int>? initialStudentIds,
-  int? preferredGroupId,
+  List<String>? initialStudentIds,
+  String? preferredGroupId,
   bool allowSelectAllStudents = false,
 }) {
   return showModalBottomSheet<ListItemEditorResult>(
@@ -52,8 +52,8 @@ class _ListItemEditorSheet extends ConsumerStatefulWidget {
   final List<Student> students;
   final String title;
   final String? initialLabel;
-  final List<int>? initialStudentIds;
-  final int? preferredGroupId;
+  final List<String>? initialStudentIds;
+  final String? preferredGroupId;
   final bool allowSelectAllStudents;
 
   @override
@@ -64,7 +64,7 @@ class _ListItemEditorSheet extends ConsumerStatefulWidget {
 class _ListItemEditorSheetState extends ConsumerState<_ListItemEditorSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _labelController;
-  late final Set<int> _studentIds;
+  late final Set<String> _studentIds;
 
   @override
   void initState() {
@@ -72,7 +72,7 @@ class _ListItemEditorSheetState extends ConsumerState<_ListItemEditorSheet> {
     _labelController = TextEditingController(text: widget.initialLabel);
     final validStudentIds = {for (final student in widget.students) student.id};
     _studentIds = {
-      for (final studentId in widget.initialStudentIds ?? const <int>[])
+      for (final studentId in widget.initialStudentIds ?? const <String>[])
         if (validStudentIds.contains(studentId)) studentId,
     };
   }

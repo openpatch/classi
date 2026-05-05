@@ -5,7 +5,7 @@ import '../../core/database/app_database.dart';
 
 typedef ListEditorResult = ({
   String name,
-  int? groupId,
+  String? groupId,
   bool populateFromGroupStudents,
 });
 
@@ -14,7 +14,7 @@ Future<ListEditorResult?> showListEditorDialog({
   required List<Group> groups,
   required String title,
   required String actionLabel,
-  int? initialGroupId,
+  String? initialGroupId,
   String? initialName,
   bool allowGroupSelection = true,
   String? fixedGroupName,
@@ -47,7 +47,7 @@ class _ListEditorDialog extends StatefulWidget {
   final List<Group> groups;
   final String title;
   final String actionLabel;
-  final int? initialGroupId;
+  final String? initialGroupId;
   final String? initialName;
   final bool allowGroupSelection;
   final String? fixedGroupName;
@@ -58,7 +58,7 @@ class _ListEditorDialog extends StatefulWidget {
 
 class _ListEditorDialogState extends State<_ListEditorDialog> {
   late final TextEditingController _nameController;
-  late int? _selectedGroupId;
+  late String? _selectedGroupId;
   bool _populateFromGroupStudents = false;
 
   @override
@@ -82,16 +82,16 @@ class _ListEditorDialogState extends State<_ListEditorDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.allowGroupSelection)
-            DropdownButtonFormField<int?>(
+            DropdownButtonFormField<String?>(
               initialValue: _selectedGroupId,
               decoration: InputDecoration(labelText: 'list_scope'.tr()),
               items: [
-                DropdownMenuItem<int?>(
+                DropdownMenuItem<String?>(
                   value: null,
                   child: Text('global_list'.tr()),
                 ),
                 for (final group in widget.groups)
-                  DropdownMenuItem<int?>(
+                  DropdownMenuItem<String?>(
                     value: group.id,
                     child: Text(group.name),
                   ),
