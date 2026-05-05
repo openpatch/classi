@@ -38,6 +38,7 @@ class _ClassiAppState extends ConsumerState<ClassiApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return SecurityActivityBoundary(
       onActivity: () => ref.read(appSessionProvider).registerActivity(),
@@ -47,7 +48,7 @@ class _ClassiAppState extends ConsumerState<ClassiApp> {
         locale: context.locale,
         supportedLocales: context.supportedLocales,
         localizationsDelegates: context.localizationDelegates,
-        themeMode: ThemeMode.system,
+        themeMode: themeMode,
         theme: _buildTheme(Brightness.light),
         darkTheme: _buildTheme(Brightness.dark),
         routerConfig: router,

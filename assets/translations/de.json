@@ -249,5 +249,9 @@
   "biometric_reason": "Bestätige deine Identität, um Classi zu entsperren.",
   "unlock_with_biometrics": "Biometrie verwenden",
   "list_scope": "Listenbereich",
-  "global_list": "Globale Liste"
+  "global_list": "Globale Liste",
+  "theme": "Design",
+  "theme_light": "Hell",
+  "theme_dark": "Dunkel",
+  "theme_auto": "Auto"
 }
