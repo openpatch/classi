@@ -84,7 +84,7 @@ class AppScaffold extends StatelessWidget {
       );
     }
 
-    if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+    if (isDesktopPlatform) {
       return AppUpdater(child: scaffold);
     }
     return scaffold;
