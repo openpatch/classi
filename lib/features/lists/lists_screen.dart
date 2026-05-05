@@ -13,7 +13,7 @@ import '../../shared/widgets/swipe_action_background.dart';
 import 'list_editor.dart';
 import 'list_repository.dart';
 
-final listsProvider = StreamProvider.family<List<Checklist>, int>(
+final listsProvider = StreamProvider.family<List<Checklist>, String>(
   (ref, groupId) => ref.watch(listRepositoryProvider).watchLists(groupId),
 );
 
@@ -29,12 +29,12 @@ final listsGroupsProvider = FutureProvider<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).allActiveGroups(),
 );
 
-final listsGroupProvider = StreamProvider.family<Group?, int>(
+final listsGroupProvider = StreamProvider.family<Group?, String>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
 final listProgressProvider =
-    StreamProvider.family<Map<int, ListProgress>, int?>(
+    StreamProvider.family<Map<String, ListProgress>, String?>(
       (ref, groupId) =>
           ref.watch(listRepositoryProvider).watchListProgress(groupId: groupId),
     );
@@ -42,7 +42,7 @@ final listProgressProvider =
 class ListsScreen extends ConsumerStatefulWidget {
   const ListsScreen({this.groupId, super.key});
 
-  final int? groupId;
+  final String? groupId;
 
   @override
   ConsumerState<ListsScreen> createState() => _ListsScreenState();
@@ -103,7 +103,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
                           groupsValue: groupsValue,
                           progress:
                               progressValue.value ??
-                              const <int, ListProgress>{},
+                              const <String, ListProgress>{},
                           listPathBuilder: (list) => '/lists/${list.id}',
                           onArchiveList: (list) => ref
                               .read(listRepositoryProvider)
@@ -122,7 +122,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
                           groupsValue: groupsValue,
                           progress:
                               progressValue.value ??
-                              const <int, ListProgress>{},
+                              const <String, ListProgress>{},
                           listPathBuilder: (list) => '/lists/${list.id}',
                           archived: true,
                           onArchiveList: (list) => ref
@@ -146,7 +146,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
           : _ListsList(
               listsValue: listsValue,
               groupsValue: groupsValue,
-              progress: progressValue.value ?? const <int, ListProgress>{},
+              progress: progressValue.value ?? const <String, ListProgress>{},
               listPathBuilder: (list) =>
                   '/groups/${widget.groupId}/lists/${list.id}',
               onArchiveList: (list) =>
@@ -193,7 +193,7 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
   Future<void> _createListForGroup(
     BuildContext context,
     WidgetRef ref,
-    int groupId,
+    String groupId,
   ) async {
     final group = (await ref.read(listsGroupProvider(groupId).future))!;
     if (!context.mounted) {
@@ -253,7 +253,7 @@ class _ListsList extends StatelessWidget {
 
   final AsyncValue<List<Checklist>> listsValue;
   final AsyncValue<List<Group>> groupsValue;
-  final Map<int, ListProgress> progress;
+  final Map<String, ListProgress> progress;
   final String Function(Checklist list) listPathBuilder;
   final ValueChanged<Checklist> onArchiveList;
   final ValueChanged<Checklist> onUnarchiveList;

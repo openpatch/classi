@@ -11,8 +11,8 @@ import '../../shared/widgets/student_avatar.dart';
 typedef NoteEditorResult = ({
   DateTime createdAt,
   String body,
-  int? groupId,
-  List<int> studentIds,
+  String? groupId,
+  List<String> studentIds,
   bool isTodo,
 });
 
@@ -20,9 +20,9 @@ Future<NoteEditorResult?> showNoteEditorSheet({
   required BuildContext context,
   required List<Group> groups,
   required List<Student> students,
-  int? initialGroupId,
-  int? initialStudentId,
-  List<int>? initialStudentIds,
+  String? initialGroupId,
+  String? initialStudentId,
+  List<String>? initialStudentIds,
   String? initialBody,
   bool? initialIsTodo,
   DateTime? initialCreatedAt,
@@ -62,9 +62,9 @@ class _NoteEditorSheet extends ConsumerStatefulWidget {
 
   final List<Group> groups;
   final List<Student> students;
-  final int? initialGroupId;
-  final int? initialStudentId;
-  final List<int>? initialStudentIds;
+  final String? initialGroupId;
+  final String? initialStudentId;
+  final List<String>? initialStudentIds;
   final String? initialBody;
   final bool? initialIsTodo;
   final DateTime? initialCreatedAt;
@@ -78,8 +78,8 @@ class _NoteEditorSheetState extends ConsumerState<_NoteEditorSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _bodyController;
   bool _isTodo = false;
-  int? _groupId;
-  late final Set<int> _studentIds;
+  String? _groupId;
+  late final Set<String> _studentIds;
   late DateTime _selectedDate;
 
   @override
@@ -145,16 +145,16 @@ class _NoteEditorSheetState extends ConsumerState<_NoteEditorSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      DropdownButtonFormField<int?>(
+                      DropdownButtonFormField<String?>(
                         isExpanded: true,
                         initialValue: _groupId,
                         items: [
-                          DropdownMenuItem<int?>(
+                          DropdownMenuItem<String?>(
                             value: null,
                             child: Text('link_to_group'.tr()),
                           ),
                           for (final group in widget.groups)
-                            DropdownMenuItem<int?>(
+                            DropdownMenuItem<String?>(
                               value: group.id,
                               child: _GroupOptionLabel(group: group),
                             ),
@@ -289,7 +289,7 @@ class _NoteEditorSheetState extends ConsumerState<_NoteEditorSheet> {
     setState(() => _selectedDate = DateUtils.dateOnly(selected));
   }
 
-  void _toggleStudentSelection(int studentId, bool selected) {
+  void _toggleStudentSelection(String studentId, bool selected) {
     setState(() {
       if (selected) {
         _studentIds.add(studentId);
@@ -300,7 +300,7 @@ class _NoteEditorSheetState extends ConsumerState<_NoteEditorSheet> {
   }
 
   Future<void> _pickStudents() async {
-    final selectedStudentIds = await showModalBottomSheet<List<int>>(
+    final selectedStudentIds = await showModalBottomSheet<List<String>>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -356,8 +356,8 @@ class _StudentSelectionSheet extends ConsumerStatefulWidget {
 
   final List<Group> groups;
   final List<Student> students;
-  final Set<int> selectedStudentIds;
-  final int? preferredGroupId;
+  final Set<String> selectedStudentIds;
+  final String? preferredGroupId;
 
   @override
   ConsumerState<_StudentSelectionSheet> createState() =>
@@ -367,7 +367,7 @@ class _StudentSelectionSheet extends ConsumerStatefulWidget {
 class _StudentSelectionSheetState
     extends ConsumerState<_StudentSelectionSheet> {
   late final TextEditingController _searchController;
-  late final Set<int> _selectedStudentIds;
+  late final Set<String> _selectedStudentIds;
   String _query = '';
 
   @override
@@ -572,7 +572,7 @@ class _StudentSelectionSheetState
     return groups;
   }
 
-  void _toggleStudent(int studentId, bool selected) {
+  void _toggleStudent(String studentId, bool selected) {
     setState(() {
       if (selected) {
         _selectedStudentIds.add(studentId);

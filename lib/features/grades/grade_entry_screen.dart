@@ -11,18 +11,18 @@ import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 import 'grade_picker_dialog.dart';
 
-final gradeEntryGroupProvider = StreamProvider.family<Group?, int>(
+final gradeEntryGroupProvider = StreamProvider.family<Group?, String>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
-final gradeEntryStudentsProvider = StreamProvider.family<List<Student>, int>(
+final gradeEntryStudentsProvider = StreamProvider.family<List<Student>, String>(
   (ref, groupId) => ref
       .watch(studentRepositoryProvider)
       .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
 );
 
 final gradeSelectionsProvider =
-    FutureProvider.family<Map<int, String>, (int, DateTime, String, String)>(
+    FutureProvider.family<Map<String, String>, (String, DateTime, String, String)>(
       (ref, args) => ref
           .watch(gradeRepositoryProvider)
           .getSessionSelections(
@@ -36,7 +36,7 @@ final gradeSelectionsProvider =
 class GradeEntryScreen extends ConsumerStatefulWidget {
   const GradeEntryScreen({required this.groupId, super.key});
 
-  final int groupId;
+  final String groupId;
 
   @override
   ConsumerState<GradeEntryScreen> createState() => _GradeEntryScreenState();
@@ -99,7 +99,7 @@ class _GradeEntryScreenState extends ConsumerState<GradeEntryScreen> {
           ),
           body: studentsValue.when(
             data: (students) {
-              final selections = selectionsValue.value ?? const <int, String>{};
+              final selections = selectionsValue.value ?? const <String, String>{};
               final done = selections.length;
 
               return ListView(
@@ -271,7 +271,7 @@ class _GradeEntryScreenState extends ConsumerState<GradeEntryScreen> {
   }
 
   Future<void> _saveGrade({
-    required int studentId,
+    required String studentId,
     required GradeCategory category,
     required String value,
   }) async {
@@ -297,7 +297,7 @@ class _GradeEntryScreenState extends ConsumerState<GradeEntryScreen> {
   }
 
   Future<void> _setGradeValue({
-    required int studentId,
+    required String studentId,
     required GradeCategory category,
     required String? value,
   }) {
@@ -308,7 +308,7 @@ class _GradeEntryScreenState extends ConsumerState<GradeEntryScreen> {
   }
 
   Future<void> _pickGrade({
-    required int studentId,
+    required String studentId,
     required GradeCategory category,
     required String currentValue,
     required List<String> gradeScale,
@@ -332,7 +332,7 @@ class _GradeEntryScreenState extends ConsumerState<GradeEntryScreen> {
   }
 
   Future<void> _clearGrade({
-    required int studentId,
+    required String studentId,
     required GradeCategory category,
   }) async {
     final sessionLabel = _sessionController.text.trim();

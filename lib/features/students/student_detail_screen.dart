@@ -25,33 +25,33 @@ import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/swipe_action_background.dart';
 
-final studentProvider = StreamProvider.family<Student?, int>(
+final studentProvider = StreamProvider.family<Student?, String>(
   (ref, studentId) =>
       ref.watch(studentRepositoryProvider).watchStudent(studentId),
 );
 
-final studentGradesProvider = StreamProvider.family<List<GradeEntry>, int>(
+final studentGradesProvider = StreamProvider.family<List<GradeEntry>, String>(
   (ref, studentId) =>
       ref.watch(gradeRepositoryProvider).watchStudentGrades(studentId),
 );
 
-final studentMaterialProvider = StreamProvider.family<List<MaterialLog>, int>(
+final studentMaterialProvider = StreamProvider.family<List<MaterialLog>, String>(
   (ref, studentId) =>
       ref.watch(materialRepositoryProvider).watchStudentLogs(studentId),
 );
 
-final studentHomeworkProvider = StreamProvider.family<List<HomeworkLog>, int>(
+final studentHomeworkProvider = StreamProvider.family<List<HomeworkLog>, String>(
   (ref, studentId) =>
       ref.watch(homeworkRepositoryProvider).watchStudentLogs(studentId),
 );
 
-final studentNotesProvider = StreamProvider.family<List<TeacherNote>, int>(
+final studentNotesProvider = StreamProvider.family<List<TeacherNote>, String>(
   (ref, studentId) =>
       ref.watch(noteRepositoryProvider).watchNotesForStudent(studentId),
 );
 
 final studentListItemsProvider =
-    StreamProvider.family<List<({Checklist list, ChecklistItem item})>, int>(
+    StreamProvider.family<List<({Checklist list, ChecklistItem item})>, String>(
       (ref, studentId) =>
           ref.watch(listRepositoryProvider).watchItemsForStudent(studentId),
     );
@@ -69,7 +69,7 @@ final availableStudentsProvider = StreamProvider<List<Student>>(
 class StudentDetailScreen extends ConsumerWidget {
   const StudentDetailScreen({required this.studentId, super.key});
 
-  final int studentId;
+  final String studentId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -250,7 +250,7 @@ class _GradesTab extends ConsumerStatefulWidget {
     required this.gradeCategoriesJson,
   });
 
-  final int studentId;
+  final String studentId;
   final AsyncValue<List<GradeEntry>> gradesValue;
   final String? gradeScaleJson;
   final String? gradeCategoriesJson;
@@ -948,7 +948,7 @@ class _GradeCategoryBadge extends StatelessWidget {
 class _MaterialTab extends ConsumerWidget {
   const _MaterialTab({required this.studentId, required this.materialValue});
 
-  final int studentId;
+  final String studentId;
   final AsyncValue<List<MaterialLog>> materialValue;
 
   @override
@@ -1126,7 +1126,7 @@ class _MaterialTab extends ConsumerWidget {
 class _HomeworkTab extends ConsumerWidget {
   const _HomeworkTab({required this.studentId, required this.homeworkValue});
 
-  final int studentId;
+  final String studentId;
   final AsyncValue<List<HomeworkLog>> homeworkValue;
 
   @override
@@ -1309,7 +1309,7 @@ class _StudentNotesTab extends ConsumerWidget {
     required this.students,
   });
 
-  final int studentId;
+  final String studentId;
   final AsyncValue<List<TeacherNote>> notesValue;
   final List<Group> groups;
   final List<Student> students;
@@ -1567,7 +1567,7 @@ class _StudentNotesTab extends ConsumerWidget {
 class _ListsTab extends ConsumerWidget {
   const _ListsTab({required this.studentId, required this.listItemsValue});
 
-  final int studentId;
+  final String studentId;
   final AsyncValue<List<({Checklist list, ChecklistItem item})>> listItemsValue;
 
   @override

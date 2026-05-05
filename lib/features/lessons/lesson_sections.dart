@@ -182,11 +182,11 @@ class LessonStudentsTable extends StatelessWidget {
   });
 
   final List<Student> students;
-  final Set<int> absentStudents;
-  final Map<int, bool> materialSelections;
-  final Map<int, bool> homeworkSelections;
-  final Map<int, String> gradeSelections;
-  final Map<int, int> noteCountsByStudent;
+  final Set<String> absentStudents;
+  final Map<String, bool> materialSelections;
+  final Map<String, bool> homeworkSelections;
+  final Map<String, String> gradeSelections;
+  final Map<String, int> noteCountsByStudent;
   final ValueChanged<Student> onOpenStudent;
   final ValueChanged<Student> onSetAbsent;
   final ValueChanged<Student> onSetPresent;
@@ -259,7 +259,7 @@ class LessonStudentNotesSheet extends ConsumerWidget {
     super.key,
   });
 
-  final int groupId;
+  final String groupId;
   final DateTime selectedDate;
   final Student student;
   final List<Student> students;
@@ -677,7 +677,7 @@ class _LessonStudentNoteCard extends StatelessWidget {
 
   final TeacherNote note;
   final Student student;
-  final Map<int, Student> studentsById;
+  final Map<String, Student> studentsById;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 

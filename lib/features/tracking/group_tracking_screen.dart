@@ -10,32 +10,32 @@ import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 
-final groupTrackingGroupProvider = StreamProvider.family<Group?, int>(
+final groupTrackingGroupProvider = StreamProvider.family<Group?, String>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
-final groupTrackingStudentsProvider = StreamProvider.family<List<Student>, int>(
+final groupTrackingStudentsProvider = StreamProvider.family<List<Student>, String>(
   (ref, groupId) => ref
       .watch(studentRepositoryProvider)
       .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
 );
 
 final groupMaterialSelectionsProvider =
-    StreamProvider.family<Map<int, bool>, (int, DateTime)>(
+    StreamProvider.family<Map<String, bool>, (String, DateTime)>(
       (ref, args) => ref
           .watch(materialRepositoryProvider)
           .watchGroupSelections(groupId: args.$1, date: args.$2),
     );
 
 final groupHomeworkSelectionsProvider =
-    StreamProvider.family<Map<int, bool>, (int, DateTime)>(
+    StreamProvider.family<Map<String, bool>, (String, DateTime)>(
       (ref, args) => ref
           .watch(homeworkRepositoryProvider)
           .watchGroupSelections(groupId: args.$1, date: args.$2),
     );
 
 final groupAbsenceSelectionsProvider =
-    StreamProvider.family<Set<int>, (int, DateTime)>(
+    StreamProvider.family<Set<String>, (String, DateTime)>(
       (ref, args) => ref
           .watch(attendanceRepositoryProvider)
           .watchGroupSelections(groupId: args.$1, date: args.$2),
@@ -44,7 +44,7 @@ final groupAbsenceSelectionsProvider =
 class GroupTrackingScreen extends ConsumerStatefulWidget {
   const GroupTrackingScreen({required this.groupId, super.key});
 
-  final int groupId;
+  final String groupId;
 
   @override
   ConsumerState<GroupTrackingScreen> createState() =>
@@ -89,11 +89,11 @@ class _GroupTrackingScreenState extends ConsumerState<GroupTrackingScreen> {
           body: studentsValue.when(
             data: (students) {
               final materialSelections =
-                  materialSelectionsValue.value ?? const <int, bool>{};
+                  materialSelectionsValue.value ?? const <String, bool>{};
               final homeworkSelections =
-                  homeworkSelectionsValue.value ?? const <int, bool>{};
+                  homeworkSelectionsValue.value ?? const <String, bool>{};
               final absentStudents =
-                  absenceSelectionsValue.value ?? const <int>{};
+                  absenceSelectionsValue.value ?? const <String>{};
 
               return ListView(
                 padding: const EdgeInsets.all(16),
@@ -244,7 +244,7 @@ class _GroupTrackingScreenState extends ConsumerState<GroupTrackingScreen> {
   }
 
   Future<void> _setMaterialValue({
-    required int studentId,
+    required String studentId,
     required bool? value,
   }) async {
     await ref
@@ -259,7 +259,7 @@ class _GroupTrackingScreenState extends ConsumerState<GroupTrackingScreen> {
   }
 
   Future<void> _setHomeworkValue({
-    required int studentId,
+    required String studentId,
     required bool? value,
   }) async {
     await ref
@@ -273,7 +273,7 @@ class _GroupTrackingScreenState extends ConsumerState<GroupTrackingScreen> {
     await _saveHomework(studentId: studentId, hadHomework: value);
   }
 
-  Future<void> _setAbsent({required int studentId, required bool absent}) {
+  Future<void> _setAbsent({required String studentId, required bool absent}) {
     if (absent) {
       return ref
           .read(attendanceRepositoryProvider)
@@ -286,7 +286,7 @@ class _GroupTrackingScreenState extends ConsumerState<GroupTrackingScreen> {
   }
 
   Future<void> _saveMaterial({
-    required int studentId,
+    required String studentId,
     required bool hadMaterial,
   }) {
     return ref
@@ -298,14 +298,14 @@ class _GroupTrackingScreenState extends ConsumerState<GroupTrackingScreen> {
         );
   }
 
-  Future<void> _clearMaterial(int studentId) {
+  Future<void> _clearMaterial(String studentId) {
     return ref
         .read(materialRepositoryProvider)
         .clearLog(studentId: studentId, date: _selectedDate);
   }
 
   Future<void> _saveHomework({
-    required int studentId,
+    required String studentId,
     required bool hadHomework,
   }) {
     return ref

@@ -28,7 +28,7 @@ class LessonModeScreen extends ConsumerStatefulWidget {
     super.key,
   });
 
-  final int groupId;
+  final String groupId;
   final DateTime initialDate;
   final String? initialSessionLabel;
   final String? initialCategoryId;
@@ -119,18 +119,18 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
               }
 
               final materialSelections =
-                  materialSelectionsValue.value ?? const <int, bool>{};
+                  materialSelectionsValue.value ?? const <String, bool>{};
               final homeworkSelections =
-                  homeworkSelectionsValue.value ?? const <int, bool>{};
+                  homeworkSelectionsValue.value ?? const <String, bool>{};
               final absentStudents =
-                  absenceSelectionsValue.value ?? const <int>{};
+                  absenceSelectionsValue.value ?? const <String>{};
               final gradeSelections =
-                  gradeSelectionsValue.value ?? const <int, String>{};
+                  gradeSelectionsValue.value ?? const <String, String>{};
               final lessonNotes = notesForLessonDate(
                 notesValue.value ?? const <TeacherNote>[],
                 _selectedDate,
               );
-              final noteCountsByStudent = <int, int>{};
+              final noteCountsByStudent = <String, int>{};
               for (final note in lessonNotes) {
                 for (final studentId in noteStudentIds(note)) {
                   noteCountsByStudent.update(
@@ -381,7 +381,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
   }
 
   Future<void> _setMaterialValue({
-    required int studentId,
+    required String studentId,
     required bool? value,
   }) async {
     await ref
@@ -400,7 +400,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
   }
 
   Future<void> _setHomeworkValue({
-    required int studentId,
+    required String studentId,
     required bool? value,
   }) async {
     await ref
@@ -418,7 +418,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
         .saveLog(studentId: studentId, date: _selectedDate, hadHomework: value);
   }
 
-  Future<void> _setAbsent({required int studentId, required bool absent}) {
+  Future<void> _setAbsent({required String studentId, required bool absent}) {
     if (absent) {
       return ref
           .read(attendanceRepositoryProvider)
@@ -431,7 +431,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
   }
 
   Future<void> _saveGrade({
-    required int studentId,
+    required String studentId,
     required GradeCategory category,
     required String value,
   }) async {
@@ -457,7 +457,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
   }
 
   Future<void> _clearGrade({
-    required int studentId,
+    required String studentId,
     required GradeCategory category,
   }) async {
     final sessionLabel = _sessionController.text.trim();
@@ -480,7 +480,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
   }
 
   Future<void> _pickGrade({
-    required int studentId,
+    required String studentId,
     required GradeCategory category,
     required String currentValue,
     required List<String> gradeScale,

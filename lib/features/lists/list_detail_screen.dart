@@ -14,15 +14,15 @@ import '../../shared/widgets/student_link_chip.dart';
 import 'list_item_editor.dart';
 import 'list_item_links.dart';
 
-final checklistProvider = StreamProvider.family<Checklist?, int>(
+final checklistProvider = StreamProvider.family<Checklist?, String>(
   (ref, listId) => ref.watch(listRepositoryProvider).watchList(listId),
 );
 
-final checklistItemsProvider = StreamProvider.family<List<ChecklistItem>, int>(
+final checklistItemsProvider = StreamProvider.family<List<ChecklistItem>, String>(
   (ref, listId) => ref.watch(listRepositoryProvider).watchItems(listId),
 );
 
-final listDetailGroupProvider = StreamProvider.family<Group?, int>(
+final listDetailGroupProvider = StreamProvider.family<Group?, String>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
@@ -30,7 +30,7 @@ final listDetailGroupsProvider = StreamProvider<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).watchActiveGroups(),
 );
 
-final listDetailStudentsProvider = StreamProvider.family<List<Student>, int>(
+final listDetailStudentsProvider = StreamProvider.family<List<Student>, String>(
   (ref, groupId) => ref
       .watch(studentRepositoryProvider)
       .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
@@ -45,7 +45,7 @@ final listDetailAllStudentsProvider = StreamProvider<List<Student>>(
 class ListDetailScreen extends ConsumerStatefulWidget {
   const ListDetailScreen({required this.listId, super.key});
 
-  final int listId;
+  final String listId;
 
   @override
   ConsumerState<ListDetailScreen> createState() => _ListDetailScreenState();

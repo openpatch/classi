@@ -32,50 +32,50 @@ import '../students/student_import_parser.dart';
 import '../students/student_sorting.dart';
 import 'group_form.dart';
 
-final groupProvider = StreamProvider.family<Group?, int>(
+final groupProvider = StreamProvider.family<Group?, String>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
-final groupStudentsProvider = StreamProvider.family<List<Student>, int>(
+final groupStudentsProvider = StreamProvider.family<List<Student>, String>(
   (ref, groupId) => ref
       .watch(studentRepositoryProvider)
       .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
 );
 
-final groupAveragesProvider = StreamProvider.family<Map<int, double>, int>(
+final groupAveragesProvider = StreamProvider.family<Map<String, double>, String>(
   (ref, groupId) =>
       ref.watch(gradeRepositoryProvider).watchGroupAverages(groupId),
 );
 
 final groupCategoryAveragesProvider =
-    StreamProvider.family<Map<int, Map<String, double>>, int>(
+    StreamProvider.family<Map<String, Map<String, double>>, String>(
       (ref, groupId) => ref
           .watch(gradeRepositoryProvider)
           .watchGroupCategoryAverages(groupId),
     );
 
-final groupNotesProvider = StreamProvider.family<List<TeacherNote>, int>(
+final groupNotesProvider = StreamProvider.family<List<TeacherNote>, String>(
   (ref, groupId) =>
       ref.watch(noteRepositoryProvider).watchNotesForGroup(groupId),
 );
 
 final archivedGroupNotesProvider =
-    StreamProvider.family<List<TeacherNote>, int>(
+    StreamProvider.family<List<TeacherNote>, String>(
       (ref, groupId) =>
           ref.watch(noteRepositoryProvider).watchArchivedNotesForGroup(groupId),
     );
 
-final groupListsProvider = StreamProvider.family<List<Checklist>, int>(
+final groupListsProvider = StreamProvider.family<List<Checklist>, String>(
   (ref, groupId) => ref.watch(listRepositoryProvider).watchLists(groupId),
 );
 
-final archivedGroupListsProvider = StreamProvider.family<List<Checklist>, int>(
+final archivedGroupListsProvider = StreamProvider.family<List<Checklist>, String>(
   (ref, groupId) =>
       ref.watch(listRepositoryProvider).watchArchivedLists(groupId),
 );
 
 final groupListProgressProvider =
-    StreamProvider.family<Map<int, ListProgress>, int>(
+    StreamProvider.family<Map<String, ListProgress>, String>(
       (ref, groupId) =>
           ref.watch(listRepositoryProvider).watchListProgress(groupId: groupId),
     );
@@ -83,7 +83,7 @@ final groupListProgressProvider =
 class GroupDetailScreen extends ConsumerWidget {
   const GroupDetailScreen({required this.groupId, super.key});
 
-  final int groupId;
+  final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -288,7 +288,7 @@ class GroupDetailScreen extends ConsumerWidget {
                 activeListsValue: listsValue,
                 archivedListsValue: archivedListsValue,
                 progress:
-                    listProgressValue.value ?? const <int, ListProgress>{},
+                    listProgressValue.value ?? const <String, ListProgress>{},
                 onAddList: archived
                     ? null
                     : () => _createList(context, ref, group),
@@ -442,7 +442,7 @@ class GroupDetailScreen extends ConsumerWidget {
     }
   }
 
-  void _refreshStudentSection(WidgetRef ref, int groupId) {
+  void _refreshStudentSection(WidgetRef ref, String groupId) {
     ref.invalidate(groupStudentsProvider(groupId));
     ref.invalidate(groupAveragesProvider(groupId));
     ref.invalidate(groupCategoryAveragesProvider(groupId));
@@ -657,7 +657,7 @@ class GroupDetailScreen extends ConsumerWidget {
 class _LessonCalendarCard extends ConsumerStatefulWidget {
   const _LessonCalendarCard({required this.groupId, required this.groupColor});
 
-  final int groupId;
+  final String groupId;
   final Color groupColor;
 
   @override
@@ -782,10 +782,10 @@ class _GroupListsCard extends StatelessWidget {
     required this.onDeleteListDirect,
   });
 
-  final int groupId;
+  final String groupId;
   final AsyncValue<List<Checklist>> activeListsValue;
   final AsyncValue<List<Checklist>> archivedListsValue;
-  final Map<int, ListProgress> progress;
+  final Map<String, ListProgress> progress;
   final VoidCallback? onAddList;
   final ValueChanged<Checklist> onEditList;
   final ValueChanged<Checklist> onArchiveList;
@@ -1289,17 +1289,17 @@ class _StudentsSection extends StatelessWidget {
   final StudentSortField sortField;
   final List<GradeScaleEntry> gradeScaleEntries;
   final List<GradeCategory> categories;
-  final AsyncValue<Map<int, double>> averagesValue;
-  final AsyncValue<Map<int, Map<String, double>>> categoryAveragesValue;
+  final AsyncValue<Map<String, double>> averagesValue;
+  final AsyncValue<Map<String, Map<String, double>>> categoryAveragesValue;
   final VoidCallback? onAddStudent;
   final VoidCallback? onBatchCreateStudents;
   final VoidCallback? onImportStudents;
 
   @override
   Widget build(BuildContext context) {
-    final averages = averagesValue.value ?? const <int, double>{};
+    final averages = averagesValue.value ?? const <String, double>{};
     final categoryAverages =
-        categoryAveragesValue.value ?? const <int, Map<String, double>>{};
+        categoryAveragesValue.value ?? const <String, Map<String, double>>{};
 
     return Card(
       child: Padding(
