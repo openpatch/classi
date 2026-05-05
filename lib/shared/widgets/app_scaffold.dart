@@ -4,6 +4,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'app_updater.dart';
+
 class AppScaffold extends StatelessWidget {
   const AppScaffold({required this.child, super.key});
 
@@ -40,8 +42,9 @@ class AppScaffold extends StatelessWidget {
       ),
     ];
 
+    final Widget scaffold;
     if (isWide) {
-      return Scaffold(
+      scaffold = Scaffold(
         body: Row(
           children: [
             NavigationRail(
@@ -63,23 +66,28 @@ class AppScaffold extends StatelessWidget {
           ],
         ),
       );
+    } else {
+      scaffold = Scaffold(
+        body: child,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: selectedIndex,
+          onDestinationSelected: (index) => context.go(destinations[index].path),
+          destinations: [
+            for (final destination in destinations)
+              NavigationDestination(
+                icon: Icon(destination.icon),
+                selectedIcon: Icon(destination.selectedIcon),
+                label: destination.label.tr(),
+              ),
+          ],
+        ),
+      );
     }
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) => context.go(destinations[index].path),
-        destinations: [
-          for (final destination in destinations)
-            NavigationDestination(
-              icon: Icon(destination.icon),
-              selectedIcon: Icon(destination.selectedIcon),
-              label: destination.label.tr(),
-            ),
-        ],
-      ),
-    );
+    if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+      return AppUpdater(child: scaffold);
+    }
+    return scaffold;
   }
 
   int _selectedIndex(BuildContext context) {
