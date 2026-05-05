@@ -10,6 +10,10 @@ const _owner = 'openpatch';
 const _repo = 'classi';
 const _apiBase = 'https://api.github.com/repos/$_owner/$_repo/releases';
 
+/// Whether the current platform supports desktop auto-updates.
+bool get isDesktopPlatform =>
+    Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+
 /// Wraps [child] with [UpdatWindowManager] on desktop platforms
 /// (Linux, macOS, Windows) to provide automatic update notifications.
 ///
@@ -54,51 +58,65 @@ class _AppUpdaterState extends State<AppUpdater> {
   }
 
   Future<String?> _getLatestVersion() async {
-    final response = await http.get(
-      Uri.parse('$_apiBase/latest'),
-    );
-    if (response.statusCode != 200) return null;
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/latest'),
+      );
+      if (response.statusCode != 200) return null;
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final tagName = data['tag_name'] as String;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final tagName = data['tag_name'] as String;
 
-    // Strip the leading 'v' so comparison with PackageInfo.version works.
-    return tagName.startsWith('v') ? tagName.substring(1) : tagName;
+      // Strip the leading 'v' so comparison with PackageInfo.version works.
+      return tagName.startsWith('v') ? tagName.substring(1) : tagName;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<String> _getBinaryUrl(String? version) async {
-    final response = await http.get(
-      Uri.parse('$_apiBase/tags/v$version'),
-    );
-    if (response.statusCode != 200) {
-      throw StateError(
-        'Failed to fetch release assets for v$version: ${response.statusCode}',
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/tags/v$version'),
       );
-    }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final assets = data['assets'] as List<dynamic>;
-
-    final suffix = _platformAssetSuffix;
-    for (final asset in assets) {
-      final name = asset['name'] as String;
-      if (name.endsWith(suffix)) {
-        return asset['browser_download_url'] as String;
+      if (response.statusCode != 200) {
+        throw StateError(
+          'Failed to fetch release assets for v$version: ${response.statusCode}',
+        );
       }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final assets = data['assets'] as List<dynamic>;
+
+      final suffix = _platformAssetSuffix;
+      for (final asset in assets) {
+        final name = asset['name'] as String;
+        if (name.endsWith(suffix)) {
+          return asset['browser_download_url'] as String;
+        }
+      }
+      throw StateError(
+        'No release asset found for platform "$suffix" in release v$version',
+      );
+    } on StateError {
+      rethrow;
+    } catch (e) {
+      throw StateError('Failed to get binary URL for v$version: $e');
     }
-    throw StateError(
-      'No release asset found for platform "$suffix" in release v$version',
-    );
   }
 
   Future<String?> _getChangelog() async {
-    final response = await http.get(
-      Uri.parse('$_apiBase/latest'),
-    );
-    if (response.statusCode != 200) return null;
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/latest'),
+      );
+      if (response.statusCode != 200) return null;
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    return data['body'] as String?;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['body'] as String?;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Returns the platform-specific asset file suffix for the current desktop
@@ -106,7 +124,9 @@ class _AppUpdaterState extends State<AppUpdater> {
   String get _platformAssetSuffix {
     if (Platform.isLinux) return '-linux.AppImage';
     if (Platform.isMacOS) return '-macos.dmg';
-    // Platform.isWindows
-    return '-windows-setup.exe';
+    if (Platform.isWindows) return '-windows-setup.exe';
+    throw UnsupportedError(
+      'AppUpdater is not supported on platform: ${Platform.operatingSystem}',
+    );
   }
 }
