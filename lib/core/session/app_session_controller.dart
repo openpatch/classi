@@ -434,6 +434,7 @@ class AppSessionController extends ChangeNotifier {
   Future<String?> selectDatabase(
     String databasePath, {
     required bool createNew,
+    bool overwrite = false,
   }) async {
     if (_isBusy) {
       return 'database_busy';
@@ -442,11 +443,22 @@ class AppSessionController extends ChangeNotifier {
     final targetExists = await _databasePathService.databasePathExists(
       databasePath,
     );
-    if (createNew && targetExists) {
+    if (createNew && targetExists && !overwrite) {
       return 'database_already_exists';
     }
     if (!createNew && !targetExists) {
       return 'database_not_found';
+    }
+
+    if (createNew && targetExists && overwrite) {
+      if (DatabasePathService.isPackagePath(databasePath)) {
+        await Directory(databasePath).delete(recursive: true);
+      } else {
+        for (final path in DatabasePathService.artifactPathsFor(databasePath)) {
+          final file = File(path);
+          if (await file.exists()) await file.delete();
+        }
+      }
     }
 
     _isBusy = true;

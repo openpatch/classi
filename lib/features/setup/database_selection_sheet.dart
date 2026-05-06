@@ -148,11 +148,19 @@ Future<void> _createNewDatabase({
     return;
   }
 
+  final overwrite = await ref
+      .read(databasePathServiceProvider)
+      .databasePathExists(databasePath);
+  if (!context.mounted) {
+    return;
+  }
+
   await _applyDatabaseSelection(
     context: context,
     ref: ref,
     databasePath: databasePath,
     createNew: true,
+    overwrite: overwrite,
   );
 }
 
@@ -180,11 +188,18 @@ Future<void> _restoreFromWebDavDatabase({
     return;
   }
 
+  final overwrite = await ref
+      .read(databasePathServiceProvider)
+      .databasePathExists(databasePath);
+  if (!context.mounted) {
+    return;
+  }
+
   await restoreWebDavBackupFlow(
     context: context,
     ref: ref,
     destinationPath: databasePath,
-    createNew: true,
+    createNew: !overwrite,
     selectedBackup: backup,
   );
 }
@@ -223,12 +238,15 @@ class _CreateDatabaseDialog extends StatefulWidget {
 class _CreateDatabaseDialogState extends State<_CreateDatabaseDialog> {
   late final TextEditingController _nameController;
   late String _selectedFolder;
+  bool _targetExists = false;
+  int _pathCheckGen = 0;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
     _selectedFolder = widget.initialFolder;
+    _checkPathExists();
   }
 
   @override
@@ -247,6 +265,16 @@ class _CreateDatabaseDialogState extends State<_CreateDatabaseDialog> {
     );
   }
 
+  Future<void> _checkPathExists() async {
+    final gen = ++_pathCheckGen;
+    final exists = await widget.ref
+        .read(databasePathServiceProvider)
+        .databasePathExists(_fullPath);
+    if (mounted && gen == _pathCheckGen) {
+      setState(() => _targetExists = exists);
+    }
+  }
+
   Future<void> _chooseFolder() async {
     final session = widget.ref.read(appSessionProvider);
     session.suspendBackgroundLock();
@@ -261,6 +289,7 @@ class _CreateDatabaseDialogState extends State<_CreateDatabaseDialog> {
     }
     if (folder != null) {
       setState(() => _selectedFolder = folder!);
+      await _checkPathExists();
     }
   }
 
@@ -301,10 +330,24 @@ class _CreateDatabaseDialogState extends State<_CreateDatabaseDialog> {
               hintText: 'database_name_hint'.tr(),
               suffixText: '.classi',
             ),
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              setState(() {});
+              _checkPathExists();
+            },
           ),
           const SizedBox(height: 12),
           Text(_fullPath, style: Theme.of(context).textTheme.bodySmall),
+          if (_targetExists) ...[
+            const SizedBox(height: 8),
+            Text(
+              'database_overwrite_warning'.tr(),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ],
         ],
       ),
       actions: [
@@ -316,7 +359,14 @@ class _CreateDatabaseDialogState extends State<_CreateDatabaseDialog> {
           onPressed: _nameController.text.trim().isEmpty
               ? null
               : () => Navigator.of(context).pop(_fullPath),
-          child: Text('create_database'.tr()),
+          style: _targetExists
+              ? FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                )
+              : null,
+          child: Text(
+            _targetExists ? 'overwrite'.tr() : 'create_database'.tr(),
+          ),
         ),
       ],
     );
@@ -328,10 +378,11 @@ Future<void> _applyDatabaseSelection({
   required WidgetRef ref,
   required String databasePath,
   required bool createNew,
+  bool overwrite = false,
 }) async {
   final errorCode = await ref
       .read(appSessionProvider)
-      .selectDatabase(databasePath, createNew: createNew);
+      .selectDatabase(databasePath, createNew: createNew, overwrite: overwrite);
   if (errorCode == null || !context.mounted) {
     return;
   }

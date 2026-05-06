@@ -53,12 +53,25 @@ Future<WebDavBackupEntry?> showWebDavBackupPicker({
   try {
     backups = await ref.read(appSessionProvider).listWebDavBackups();
   } catch (_) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('webdav_connection_failed'.tr())));
+    if (!context.mounted) return null;
+
+    // Connection failed – let the user correct their credentials and retry once.
+    final corrected = await _showWebDavCredentialsSheet(
+      context: context,
+      session: ref.read(appSessionProvider),
+    );
+    if (!corrected || !context.mounted) return null;
+
+    try {
+      backups = await ref.read(appSessionProvider).listWebDavBackups();
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('webdav_connection_failed'.tr())));
+      }
+      return null;
     }
-    return null;
   }
   if (!context.mounted) {
     return null;
@@ -120,7 +133,15 @@ Future<bool> _ensureWebDavConfiguration({
   if (session.isWebDavConfigured) {
     return true;
   }
+  return _showWebDavCredentialsSheet(context: context, session: session);
+}
 
+/// Shows the WebDAV credentials sheet pre-populated with any current values
+/// and saves the result to [session]. Returns `true` if the user confirmed.
+Future<bool> _showWebDavCredentialsSheet({
+  required BuildContext context,
+  required AppSessionController session,
+}) async {
   final credentials = await showModalBottomSheet<_WebDavRestoreCredentials>(
     context: context,
     isScrollControlled: true,
