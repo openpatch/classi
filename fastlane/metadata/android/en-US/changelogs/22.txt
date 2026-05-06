@@ -1,7 +1,7 @@
-## [Unreleased]
-
 Miscellaneous Tasks
 
 - Auto-generate fastlane changelog on push to main
+- Remove ## [Unreleased] header from fastlane changelog
+- Update fastlane changelog [skip ci]
 
 
