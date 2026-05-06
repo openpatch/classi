@@ -12,15 +12,15 @@ import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/empty_state.dart';
 import 'group_form.dart';
 
-final activeGroupsProvider = StreamProvider<List<Group>>(
+final activeGroupsProvider = StreamProvider.autoDispose<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).watchActiveGroups(),
 );
 
-final archivedGroupsProvider = StreamProvider<List<Group>>(
+final archivedGroupsProvider = StreamProvider.autoDispose<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).watchArchivedGroups(),
 );
 
-final groupStudentCountsProvider = StreamProvider<Map<int, int>>(
+final groupStudentCountsProvider = StreamProvider.autoDispose<Map<int, int>>(
   (ref) => ref.watch(studentRepositoryProvider).watchGroupStudentCounts(),
 );
 

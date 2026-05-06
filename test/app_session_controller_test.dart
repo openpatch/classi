@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:webdav_client/webdav_client.dart' as webdav;
 
+import 'package:classi/core/database/app_database.dart';
 import 'package:classi/core/security/biometric_service.dart';
 import 'package:classi/core/security/key_service.dart';
 import 'package:classi/core/security/security_preferences_service.dart';
@@ -16,20 +20,24 @@ void main() {
 
   late Directory tempDirectory;
   late AppSessionController controller;
+  late LibraryBackupService backupService;
+  late KeyService keyService;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     tempDirectory = await Directory.systemTemp.createTemp(
       'classi-session-controller',
     );
+    backupService = LibraryBackupService();
+    keyService = _TestKeyService();
     controller = AppSessionController(
-      keyService: KeyService(),
+      keyService: keyService,
       databasePathService: _TestDatabasePathService(
         '${tempDirectory.path}/test.classi',
       ),
       securityPreferencesService: SecurityPreferencesService(),
       libraryBackupPreferencesService: LibraryBackupPreferencesService(),
-      libraryBackupService: LibraryBackupService(),
+      libraryBackupService: backupService,
       biometricService: BiometricService(),
     );
   });
@@ -37,7 +45,11 @@ void main() {
   tearDown(() async {
     controller.dispose();
     if (await tempDirectory.exists()) {
-      await tempDirectory.delete(recursive: true);
+      try {
+        await tempDirectory.delete(recursive: true);
+      } on PathNotFoundException {
+        // Another async cleanup already removed the temp directory.
+      }
     }
   });
 
@@ -104,30 +116,175 @@ void main() {
     expect(controller.status, AppSessionStatus.ready);
   });
 
+  test('lock keeps the database available until export finishes', () async {
+    final delayingBackupService = _DelayingLibraryBackupService();
+    controller.dispose();
+    controller = AppSessionController(
+      keyService: keyService,
+      databasePathService: _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      ),
+      securityPreferencesService: SecurityPreferencesService(),
+      libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+      libraryBackupService: delayingBackupService,
+      biometricService: BiometricService(),
+    );
+    await controller.initialize();
+    await controller.createDatabase('test');
+    controller.clearPendingRecoveryKey();
+    await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+    await controller.setWebDavAutoExportEnabled(true);
+
+    expect(controller.status, AppSessionStatus.ready);
+
+    final lockFuture = controller.lock();
+    await delayingBackupService.started.future;
+
+    expect(controller.isExporting, isTrue);
+    expect(
+      controller.status,
+      AppSessionStatus.ready,
+      reason: 'status stays ready until upload completes',
+    );
+    expect(
+      controller.database,
+      isNotNull,
+      reason: 'the unlocked UI still depends on the current database',
+    );
+
+    delayingBackupService.finish.complete();
+    await lockFuture;
+    expect(controller.isExporting, isFalse);
+    expect(controller.status, AppSessionStatus.locked);
+    expect(controller.database, isNull);
+  });
+
+  test('lock switches to locked before database close completes', () async {
+    controller.dispose();
+    final delayedCloseController = _CloseDelayingAppSessionController(
+      keyService: keyService,
+      databasePathService: _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      ),
+      securityPreferencesService: SecurityPreferencesService(),
+      libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+      libraryBackupService: backupService,
+      biometricService: BiometricService(),
+    );
+    controller = delayedCloseController;
+
+    await controller.initialize();
+    await controller.createDatabase('test');
+    controller.clearPendingRecoveryKey();
+
+    var completed = false;
+    final lockFuture = controller.lock().then((_) => completed = true);
+
+    await delayedCloseController.closeStarted.future;
+
+    expect(controller.status, AppSessionStatus.locked);
+    expect(controller.isExporting, isFalse);
+    expect(controller.database, isNull);
+    expect(completed, isFalse);
+
+    delayedCloseController.finishClose.complete();
+    await lockFuture;
+
+    expect(completed, isTrue);
+    expect(controller.database, isNull);
+  });
+
+  test('unlock waits for pending post-lock cleanup', () async {
+    controller.dispose();
+    final delayedCloseController = _CloseDelayingAppSessionController(
+      keyService: keyService,
+      databasePathService: _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      ),
+      securityPreferencesService: SecurityPreferencesService(),
+      libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+      libraryBackupService: backupService,
+      biometricService: BiometricService(),
+    );
+    controller = delayedCloseController;
+
+    await controller.initialize();
+    await controller.createDatabase('test');
+    controller.clearPendingRecoveryKey();
+
+    final lockFuture = controller.lock();
+    await delayedCloseController.closeStarted.future;
+
+    var unlockCompleted = false;
+    final unlockFuture = controller.unlock('test').then((value) {
+      unlockCompleted = true;
+      return value;
+    });
+
+    await Future<void>.delayed(Duration.zero);
+    expect(unlockCompleted, isFalse);
+
+    delayedCloseController.finishClose.complete();
+
+    expect(await unlockFuture, isTrue);
+    await lockFuture;
+    expect(controller.status, AppSessionStatus.ready);
+  });
+
   test(
-    'lock exports before transitioning to locked status',
+    'restoreWebDavBackup restores a remote backup into a new library',
     () async {
+      final sourceLibraryDirectory = Directory(
+        '${tempDirectory.path}/source.classi',
+      );
+      await sourceLibraryDirectory.create(recursive: true);
+      await File('${sourceLibraryDirectory.path}/data.db').writeAsString('db');
+      await File(
+        '${sourceLibraryDirectory.path}/data.db-wal',
+      ).writeAsString('wal');
+      await File(
+        '${sourceLibraryDirectory.path}/data.db-shm',
+      ).writeAsString('shm');
+      await File(
+        '${sourceLibraryDirectory.path}/data.db.security.json',
+      ).writeAsString('security');
+      await File(
+        '${sourceLibraryDirectory.path}/data.db.integrity.json',
+      ).writeAsString('integrity');
+
+      final archiveBytes = await LibraryBackupService().buildBackupArchive(
+        sourceLibraryDirectory.path,
+      );
+      final restoreService = _RestoringLibraryBackupService(archiveBytes);
+      controller.dispose();
+      controller = _RestoringAppSessionController(
+        keyService: keyService,
+        databasePathService: _TestDatabasePathService(
+          '${tempDirectory.path}/blank.classi',
+        ),
+        securityPreferencesService: SecurityPreferencesService(),
+        libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+        libraryBackupService: restoreService,
+        biometricService: BiometricService(),
+      );
+
       await controller.initialize();
-      await controller.createDatabase('test');
-      controller.clearPendingRecoveryKey();
 
-      expect(controller.status, AppSessionStatus.ready);
+      final destinationPath = '${tempDirectory.path}/restored.classi';
+      final errorCode = await controller.restoreWebDavBackup(
+        remotePath: '/backups/remote.classi-backup',
+        destinationPath: destinationPath,
+      );
 
-      // Start locking without awaiting – export starts synchronously.
-      final lockFuture = controller.lock();
-      expect(
-        controller.isExporting,
-        isTrue,
-        reason: 'isExporting must be true while upload is in progress',
-      );
-      expect(
-        controller.status,
-        AppSessionStatus.ready,
-        reason: 'status stays ready until upload completes',
-      );
-      await lockFuture;
-      expect(controller.isExporting, isFalse);
+      expect(errorCode, isNull);
+      expect(restoreService.lastRemotePath, '/backups/remote.classi-backup');
       expect(controller.status, AppSessionStatus.locked);
+      expect(await controller.currentDatabasePath(), destinationPath);
+      expect(await File('$destinationPath/data.db').readAsString(), 'db');
+      expect(
+        await File('$destinationPath/data.db.security.json').readAsString(),
+        'security',
+      );
     },
   );
 
@@ -201,4 +358,80 @@ class _TestDatabasePathService extends DatabasePathService {
   @override
   Future<String> defaultLibrariesDirectory() async =>
       Directory(_databasePath).parent.path;
+}
+
+class _TestKeyService extends KeyService {
+  @override
+  Future<String?> getWebDavPassword() async => '';
+}
+
+class _DelayingLibraryBackupService extends LibraryBackupService {
+  final Completer<void> started = Completer<void>();
+  final Completer<void> finish = Completer<void>();
+
+  @override
+  Future<void> exportBackupToWebDav({
+    required webdav.Client client,
+    required String sourceDatabasePath,
+    required String serverPath,
+  }) async {
+    if (!started.isCompleted) {
+      started.complete();
+    }
+    await finish.future;
+  }
+}
+
+class _CloseDelayingAppSessionController extends AppSessionController {
+  _CloseDelayingAppSessionController({
+    required super.keyService,
+    required super.databasePathService,
+    required super.securityPreferencesService,
+    required super.libraryBackupPreferencesService,
+    required super.libraryBackupService,
+    required super.biometricService,
+  });
+
+  final Completer<void> closeStarted = Completer<void>();
+  final Completer<void> finishClose = Completer<void>();
+
+  @override
+  Future<void> closeDatabaseAfterLockTransition(AppDatabase? database) async {
+    if (!closeStarted.isCompleted) {
+      closeStarted.complete();
+    }
+    await finishClose.future;
+    await super.closeDatabaseAfterLockTransition(database);
+  }
+}
+
+class _RestoringLibraryBackupService extends LibraryBackupService {
+  _RestoringLibraryBackupService(this.archiveBytes);
+
+  final Uint8List archiveBytes;
+  String? lastRemotePath;
+
+  @override
+  Future<Uint8List> downloadBackupFromWebDav({
+    required webdav.Client client,
+    required String remotePath,
+  }) async {
+    lastRemotePath = remotePath;
+    return archiveBytes;
+  }
+}
+
+class _RestoringAppSessionController extends AppSessionController {
+  _RestoringAppSessionController({
+    required super.keyService,
+    required super.databasePathService,
+    required super.securityPreferencesService,
+    required super.libraryBackupPreferencesService,
+    required super.libraryBackupService,
+    required super.biometricService,
+  });
+
+  @override
+  Future<webdav.Client?> createWebDavClient() async =>
+      webdav.newClient('https://example.invalid');
 }

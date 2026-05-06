@@ -13,28 +13,28 @@ import '../../shared/widgets/swipe_action_background.dart';
 import 'list_editor.dart';
 import 'list_repository.dart';
 
-final listsProvider = StreamProvider.family<List<Checklist>, int>(
+final listsProvider = StreamProvider.autoDispose.family<List<Checklist>, int>(
   (ref, groupId) => ref.watch(listRepositoryProvider).watchLists(groupId),
 );
 
-final allListsProvider = StreamProvider<List<Checklist>>(
+final allListsProvider = StreamProvider.autoDispose<List<Checklist>>(
   (ref) => ref.watch(listRepositoryProvider).watchAllLists(),
 );
 
-final archivedAllListsProvider = StreamProvider<List<Checklist>>(
+final archivedAllListsProvider = StreamProvider.autoDispose<List<Checklist>>(
   (ref) => ref.watch(listRepositoryProvider).watchArchivedAllLists(),
 );
 
-final listsGroupsProvider = FutureProvider<List<Group>>(
+final listsGroupsProvider = FutureProvider.autoDispose<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).allActiveGroups(),
 );
 
-final listsGroupProvider = StreamProvider.family<Group?, int>(
+final listsGroupProvider = StreamProvider.autoDispose.family<Group?, int>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
-final listProgressProvider =
-    StreamProvider.family<Map<int, ListProgress>, int?>(
+final listProgressProvider = StreamProvider.autoDispose
+    .family<Map<int, ListProgress>, int?>(
       (ref, groupId) =>
           ref.watch(listRepositoryProvider).watchListProgress(groupId: groupId),
     );

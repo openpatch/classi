@@ -10,32 +10,37 @@ import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 
-final groupTrackingGroupProvider = StreamProvider.family<Group?, int>(
-  (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
-);
+final groupTrackingGroupProvider = StreamProvider.autoDispose
+    .family<Group?, int>(
+      (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
+    );
 
-final groupTrackingStudentsProvider = StreamProvider.family<List<Student>, int>(
-  (ref, groupId) => ref
-      .watch(studentRepositoryProvider)
-      .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
-);
+final groupTrackingStudentsProvider = StreamProvider.autoDispose
+    .family<List<Student>, int>(
+      (ref, groupId) => ref
+          .watch(studentRepositoryProvider)
+          .watchByGroup(
+            groupId,
+            sortField: ref.watch(studentSortFieldProvider),
+          ),
+    );
 
-final groupMaterialSelectionsProvider =
-    StreamProvider.family<Map<int, bool>, (int, DateTime)>(
+final groupMaterialSelectionsProvider = StreamProvider.autoDispose
+    .family<Map<int, bool>, (int, DateTime)>(
       (ref, args) => ref
           .watch(materialRepositoryProvider)
           .watchGroupSelections(groupId: args.$1, date: args.$2),
     );
 
-final groupHomeworkSelectionsProvider =
-    StreamProvider.family<Map<int, bool>, (int, DateTime)>(
+final groupHomeworkSelectionsProvider = StreamProvider.autoDispose
+    .family<Map<int, bool>, (int, DateTime)>(
       (ref, args) => ref
           .watch(homeworkRepositoryProvider)
           .watchGroupSelections(groupId: args.$1, date: args.$2),
     );
 
-final groupAbsenceSelectionsProvider =
-    StreamProvider.family<Set<int>, (int, DateTime)>(
+final groupAbsenceSelectionsProvider = StreamProvider.autoDispose
+    .family<Set<int>, (int, DateTime)>(
       (ref, args) => ref
           .watch(attendanceRepositoryProvider)
           .watchGroupSelections(groupId: args.$1, date: args.$2),

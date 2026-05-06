@@ -3,18 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
 
-final lessonGroupProvider = StreamProvider.family<Group?, int>(
+final lessonGroupProvider = StreamProvider.autoDispose.family<Group?, int>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
-final lessonStudentsProvider = StreamProvider.family<List<Student>, int>(
-  (ref, groupId) => ref
-      .watch(studentRepositoryProvider)
-      .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
-);
+final lessonStudentsProvider = StreamProvider.autoDispose
+    .family<List<Student>, int>(
+      (ref, groupId) => ref
+          .watch(studentRepositoryProvider)
+          .watchByGroup(
+            groupId,
+            sortField: ref.watch(studentSortFieldProvider),
+          ),
+    );
 
-final lessonMaterialSelectionsProvider =
-    StreamProvider.family<Map<int, bool>, (int, DateTime)>(
+final lessonMaterialSelectionsProvider = StreamProvider.autoDispose
+    .family<Map<int, bool>, (int, DateTime)>(
       (ref, args) => ref
           .watch(materialRepositoryProvider)
           .watchGroupSelections(
@@ -23,8 +27,8 @@ final lessonMaterialSelectionsProvider =
           ),
     );
 
-final lessonHomeworkSelectionsProvider =
-    StreamProvider.family<Map<int, bool>, (int, DateTime)>(
+final lessonHomeworkSelectionsProvider = StreamProvider.autoDispose
+    .family<Map<int, bool>, (int, DateTime)>(
       (ref, args) => ref
           .watch(homeworkRepositoryProvider)
           .watchGroupSelections(
@@ -33,8 +37,8 @@ final lessonHomeworkSelectionsProvider =
           ),
     );
 
-final lessonAbsenceSelectionsProvider =
-    StreamProvider.family<Set<int>, (int, DateTime)>(
+final lessonAbsenceSelectionsProvider = StreamProvider.autoDispose
+    .family<Set<int>, (int, DateTime)>(
       (ref, args) => ref
           .watch(attendanceRepositoryProvider)
           .watchGroupSelections(
@@ -43,18 +47,20 @@ final lessonAbsenceSelectionsProvider =
           ),
     );
 
-final lessonNotesProvider = StreamProvider.family<List<TeacherNote>, int>(
-  (ref, groupId) =>
-      ref.watch(noteRepositoryProvider).watchNotesForGroup(groupId),
-);
+final lessonNotesProvider = StreamProvider.autoDispose
+    .family<List<TeacherNote>, int>(
+      (ref, groupId) =>
+          ref.watch(noteRepositoryProvider).watchNotesForGroup(groupId),
+    );
 
-final lessonEntryDatesProvider = StreamProvider.family<Set<DateTime>, int>(
-  (ref, groupId) =>
-      ref.watch(lessonRepositoryProvider).watchGroupEntryDates(groupId),
-);
+final lessonEntryDatesProvider = StreamProvider.autoDispose
+    .family<Set<DateTime>, int>(
+      (ref, groupId) =>
+          ref.watch(lessonRepositoryProvider).watchGroupEntryDates(groupId),
+    );
 
-final lessonGradeSelectionsProvider =
-    FutureProvider.family<Map<int, String>, (int, DateTime, String, String)>(
+final lessonGradeSelectionsProvider = FutureProvider.autoDispose
+    .family<Map<int, String>, (int, DateTime, String, String)>(
       (ref, args) => ref
           .watch(gradeRepositoryProvider)
           .getSessionSelections(

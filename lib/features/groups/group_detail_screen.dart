@@ -32,50 +32,58 @@ import '../students/student_import_parser.dart';
 import '../students/student_sorting.dart';
 import 'group_form.dart';
 
-final groupProvider = StreamProvider.family<Group?, int>(
+final groupProvider = StreamProvider.autoDispose.family<Group?, int>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
-final groupStudentsProvider = StreamProvider.family<List<Student>, int>(
-  (ref, groupId) => ref
-      .watch(studentRepositoryProvider)
-      .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
-);
+final groupStudentsProvider = StreamProvider.autoDispose
+    .family<List<Student>, int>(
+      (ref, groupId) => ref
+          .watch(studentRepositoryProvider)
+          .watchByGroup(
+            groupId,
+            sortField: ref.watch(studentSortFieldProvider),
+          ),
+    );
 
-final groupAveragesProvider = StreamProvider.family<Map<int, double>, int>(
-  (ref, groupId) =>
-      ref.watch(gradeRepositoryProvider).watchGroupAverages(groupId),
-);
+final groupAveragesProvider = StreamProvider.autoDispose
+    .family<Map<int, double>, int>(
+      (ref, groupId) =>
+          ref.watch(gradeRepositoryProvider).watchGroupAverages(groupId),
+    );
 
-final groupCategoryAveragesProvider =
-    StreamProvider.family<Map<int, Map<String, double>>, int>(
+final groupCategoryAveragesProvider = StreamProvider.autoDispose
+    .family<Map<int, Map<String, double>>, int>(
       (ref, groupId) => ref
           .watch(gradeRepositoryProvider)
           .watchGroupCategoryAverages(groupId),
     );
 
-final groupNotesProvider = StreamProvider.family<List<TeacherNote>, int>(
-  (ref, groupId) =>
-      ref.watch(noteRepositoryProvider).watchNotesForGroup(groupId),
-);
+final groupNotesProvider = StreamProvider.autoDispose
+    .family<List<TeacherNote>, int>(
+      (ref, groupId) =>
+          ref.watch(noteRepositoryProvider).watchNotesForGroup(groupId),
+    );
 
-final archivedGroupNotesProvider =
-    StreamProvider.family<List<TeacherNote>, int>(
+final archivedGroupNotesProvider = StreamProvider.autoDispose
+    .family<List<TeacherNote>, int>(
       (ref, groupId) =>
           ref.watch(noteRepositoryProvider).watchArchivedNotesForGroup(groupId),
     );
 
-final groupListsProvider = StreamProvider.family<List<Checklist>, int>(
-  (ref, groupId) => ref.watch(listRepositoryProvider).watchLists(groupId),
-);
+final groupListsProvider = StreamProvider.autoDispose
+    .family<List<Checklist>, int>(
+      (ref, groupId) => ref.watch(listRepositoryProvider).watchLists(groupId),
+    );
 
-final archivedGroupListsProvider = StreamProvider.family<List<Checklist>, int>(
-  (ref, groupId) =>
-      ref.watch(listRepositoryProvider).watchArchivedLists(groupId),
-);
+final archivedGroupListsProvider = StreamProvider.autoDispose
+    .family<List<Checklist>, int>(
+      (ref, groupId) =>
+          ref.watch(listRepositoryProvider).watchArchivedLists(groupId),
+    );
 
-final groupListProgressProvider =
-    StreamProvider.family<Map<int, ListProgress>, int>(
+final groupListProgressProvider = StreamProvider.autoDispose
+    .family<Map<int, ListProgress>, int>(
       (ref, groupId) =>
           ref.watch(listRepositoryProvider).watchListProgress(groupId: groupId),
     );

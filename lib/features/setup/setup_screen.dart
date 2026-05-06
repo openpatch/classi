@@ -14,6 +14,7 @@ import '../../core/session/app_session_controller.dart';
 import '../../core/storage/database_path_service.dart';
 import 'auto_import_prompt_card.dart';
 import 'database_selection_sheet.dart';
+import 'webdav_restore_flow.dart';
 
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key});
@@ -65,8 +66,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   Future<void> _checkBiometricAvailability() async {
-    final available =
-        await ref.read(appSessionProvider).isBiometricAvailable();
+    final available = await ref.read(appSessionProvider).isBiometricAvailable();
     if (mounted) setState(() => _biometricAvailable = available);
   }
 
@@ -130,24 +130,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
     try {
       final session = ref.read(appSessionProvider);
-
-      await session.setLockOnBackground(_lockOnBackground);
-      await session.setInactivityTimeout(_inactivityTimeout);
-      await session.setBiometricEnabled(_biometricEnabled);
-
-      final webDavUrl = _webDavUrlController.text.trim();
-      if (webDavUrl.isNotEmpty) {
-        await session.setWebDavUrl(webDavUrl);
-        await session.setWebDavUsername(_webDavUsernameController.text.trim());
-        final password = _webDavPasswordController.text;
-        if (password.isNotEmpty) await session.setWebDavPassword(password);
-        final serverPath = _webDavServerPathController.text.trim();
-        await session.setWebDavServerPath(
-          serverPath.isEmpty ? '/' : serverPath,
-        );
-        await session.setWebDavAutoExportEnabled(true);
-        await session.setWebDavAutoImportEnabled(true);
-      }
+      await _persistSetupPreferences(session);
 
       await session.setNewDatabasePath(_databasePath);
       if (!mounted) return;
@@ -158,9 +141,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       if (session.status == AppSessionStatus.ready) {
         context.go('/setup/recovery');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('error_loading_database'.tr())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('error_loading_database'.tr())));
       }
     } catch (e, st) {
       developer.log(
@@ -171,13 +154,76 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         stackTrace: st,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('error_loading_database'.tr())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('error_loading_database'.tr())));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  Future<void> _restoreFromWebDav() async {
+    setState(() => _isSaving = true);
+
+    try {
+      final session = ref.read(appSessionProvider);
+      await _persistSetupPreferences(session);
+      if (!mounted) {
+        return;
+      }
+      await restoreWebDavBackupFlow(
+        context: context,
+        ref: ref,
+        destinationPath: _databasePath,
+        createNew: true,
+      );
+    } catch (e, st) {
+      developer.log(
+        'Failed to restore database from WebDAV',
+        name: 'classi.setup',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('backup_import_failed'.tr())));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  Future<void> _persistSetupPreferences(AppSessionController session) async {
+    await session.setLockOnBackground(_lockOnBackground);
+    await session.setInactivityTimeout(_inactivityTimeout);
+    await session.setBiometricEnabled(_biometricEnabled);
+
+    final webDavUrl = _webDavUrlController.text.trim();
+    if (webDavUrl.isNotEmpty) {
+      await session.setWebDavUrl(webDavUrl);
+      await session.setWebDavUsername(_webDavUsernameController.text.trim());
+      final password = _webDavPasswordController.text;
+      if (password.isNotEmpty) {
+        await session.setWebDavPassword(password);
+      }
+      final serverPath = _webDavServerPathController.text.trim();
+      await session.setWebDavServerPath(serverPath.isEmpty ? '/' : serverPath);
+      await session.setWebDavAutoExportEnabled(true);
+      await session.setWebDavAutoImportEnabled(true);
+      return;
+    }
+
+    await session.setWebDavUrl(null);
+    await session.setWebDavUsername(null);
+    await session.setWebDavPassword(null);
+    await session.setWebDavServerPath(null);
+    await session.setWebDavAutoExportEnabled(false);
+    await session.setWebDavAutoImportEnabled(false);
   }
 
   Future<void> _pickFolder() async {
@@ -219,8 +265,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                           children: [
                             Text(
                               'setup_title'.tr(),
-                              style:
-                                  Theme.of(context).textTheme.headlineMedium,
+                              style: Theme.of(context).textTheme.headlineMedium,
                             ),
                             const SizedBox(height: 8),
                             _WizardStepIndicator(
@@ -250,6 +295,23 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                                       ),
                               ),
                             ),
+                            if (isLastStep) ...[
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: _isSaving
+                                      ? null
+                                      : _restoreFromWebDav,
+                                  icon: const Icon(
+                                    Icons.cloud_download_outlined,
+                                  ),
+                                  label: Text(
+                                    'restore_from_webdav_backup'.tr(),
+                                  ),
+                                ),
+                              ),
+                            ],
                             if (_currentStep > 0) ...[
                               const SizedBox(height: 8),
                               SizedBox(
@@ -268,9 +330,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                                   onPressed: _isSaving
                                       ? null
                                       : () => showDatabaseSelectionSheet(
-                                            context: context,
-                                            ref: ref,
-                                          ),
+                                          context: context,
+                                          ref: ref,
+                                        ),
                                   icon: const Icon(Icons.storage_outlined),
                                   label: Text('choose_database'.tr()),
                                 ),
@@ -329,6 +391,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           usernameController: _webDavUsernameController,
           passwordController: _webDavPasswordController,
           serverPathController: _webDavServerPathController,
+          onChanged: () => setState(() {}),
         );
       default:
         return const SizedBox.shrink();
@@ -436,9 +499,9 @@ class _LibraryStep extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'library_folder_required'.tr(),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.error,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
             ),
           ],
           if (Platform.isAndroid) ...[
@@ -524,9 +587,7 @@ class _SecurityStep extends StatelessWidget {
           TextFormField(
             controller: passphraseController,
             obscureText: true,
-            decoration: InputDecoration(
-              labelText: 'setup_passphrase'.tr(),
-            ),
+            decoration: InputDecoration(labelText: 'setup_passphrase'.tr()),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'passphrase_required'.tr();
@@ -538,9 +599,7 @@ class _SecurityStep extends StatelessWidget {
           TextFormField(
             controller: confirmController,
             obscureText: true,
-            decoration: InputDecoration(
-              labelText: 'confirm_passphrase'.tr(),
-            ),
+            decoration: InputDecoration(labelText: 'confirm_passphrase'.tr()),
             validator: (value) {
               if (value != passphraseController.text) {
                 return 'passphrase_mismatch'.tr();
@@ -629,12 +688,14 @@ class _BackupStep extends StatelessWidget {
     required this.usernameController,
     required this.passwordController,
     required this.serverPathController,
+    required this.onChanged,
   });
 
   final TextEditingController urlController;
   final TextEditingController usernameController;
   final TextEditingController passwordController;
   final TextEditingController serverPathController;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -651,12 +712,14 @@ class _BackupStep extends StatelessWidget {
           ),
           keyboardType: TextInputType.url,
           autocorrect: false,
+          onChanged: (_) => onChanged(),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: usernameController,
           decoration: InputDecoration(labelText: 'webdav_username'.tr()),
           autocorrect: false,
+          onChanged: (_) => onChanged(),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -664,6 +727,7 @@ class _BackupStep extends StatelessWidget {
           decoration: InputDecoration(labelText: 'webdav_password'.tr()),
           obscureText: true,
           autocorrect: false,
+          onChanged: (_) => onChanged(),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -673,6 +737,7 @@ class _BackupStep extends StatelessWidget {
             hintText: '/backups/',
           ),
           autocorrect: false,
+          onChanged: (_) => onChanged(),
         ),
         const SizedBox(height: 8),
         Text(
