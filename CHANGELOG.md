@@ -2,23 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
-
-### Features
-
-- *(backup)* Replace local-folder backup with WebDAV backup and restore
-- *(backup)* Prompt for WebDAV credentials on restore when server is unconfigured
-- *(settings)* Add configurable theme setting (light/dark/auto)
-
-### Bug Fixes
-
-- *(backup)* Upload backup before locking and show progress indicator
-- *(backup)* Test WebDAV connection using current field values
-
-### Refactoring
-
-- *(setup)* Extract create database dialog into a proper StatefulWidget
-
 ## [1.3.0] - 2026-05-05
 
 ### Bug Fixes
