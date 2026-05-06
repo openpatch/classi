@@ -51,9 +51,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   Duration _inactivityTimeout =
       SecurityPreferencesService.defaultInactivityTimeout;
 
-  // Step 4: Backup preferences.
-  bool _autoExportEnabled = false;
-  String? _autoExportFolderPath;
+  // Step 4: WebDAV backup credentials (optional).
+  final _webDavUrlController = TextEditingController();
+  final _webDavUsernameController = TextEditingController();
+  final _webDavPasswordController = TextEditingController();
+  final _webDavServerPathController = TextEditingController();
 
   @override
   void initState() {
@@ -96,6 +98,10 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     _nameController.dispose();
     _passphraseController.dispose();
     _confirmController.dispose();
+    _webDavUrlController.dispose();
+    _webDavUsernameController.dispose();
+    _webDavPasswordController.dispose();
+    _webDavServerPathController.dispose();
     super.dispose();
   }
 
@@ -119,26 +125,6 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   void _onBack() => setState(() => _currentStep -= 1);
 
-  Future<void> _toggleAutoExport(bool value) async {
-    if (value && _autoExportFolderPath == null) {
-      final session = ref.read(appSessionProvider);
-      session.suspendBackgroundLock();
-      try {
-        final folder = await FilePicker.getDirectoryPath();
-        if (!mounted) return;
-        if (folder == null) return;
-        setState(() {
-          _autoExportFolderPath = folder;
-          _autoExportEnabled = true;
-        });
-      } finally {
-        session.resumeBackgroundLock();
-      }
-    } else {
-      setState(() => _autoExportEnabled = value);
-    }
-  }
-
   Future<void> _submit() async {
     setState(() => _isSaving = true);
 
@@ -149,9 +135,18 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       await session.setInactivityTimeout(_inactivityTimeout);
       await session.setBiometricEnabled(_biometricEnabled);
 
-      if (_autoExportEnabled && _autoExportFolderPath != null) {
-        await session.setAutoExportFolderPath(_autoExportFolderPath);
-        await session.setAutoExportEnabled(true);
+      final webDavUrl = _webDavUrlController.text.trim();
+      if (webDavUrl.isNotEmpty) {
+        await session.setWebDavUrl(webDavUrl);
+        await session.setWebDavUsername(_webDavUsernameController.text.trim());
+        final password = _webDavPasswordController.text;
+        if (password.isNotEmpty) await session.setWebDavPassword(password);
+        final serverPath = _webDavServerPathController.text.trim();
+        await session.setWebDavServerPath(
+          serverPath.isEmpty ? '/' : serverPath,
+        );
+        await session.setWebDavAutoExportEnabled(true);
+        await session.setWebDavAutoImportEnabled(true);
       }
 
       await session.setNewDatabasePath(_databasePath);
@@ -330,9 +325,10 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         );
       case 3:
         return _BackupStep(
-          autoExportEnabled: _autoExportEnabled,
-          autoExportFolderPath: _autoExportFolderPath,
-          onAutoExportToggled: _toggleAutoExport,
+          urlController: _webDavUrlController,
+          usernameController: _webDavUsernameController,
+          passwordController: _webDavPasswordController,
+          serverPathController: _webDavServerPathController,
         );
       default:
         return const SizedBox.shrink();
@@ -629,14 +625,16 @@ class _LockingStep extends StatelessWidget {
 
 class _BackupStep extends StatelessWidget {
   const _BackupStep({
-    required this.autoExportEnabled,
-    required this.autoExportFolderPath,
-    required this.onAutoExportToggled,
+    required this.urlController,
+    required this.usernameController,
+    required this.passwordController,
+    required this.serverPathController,
   });
 
-  final bool autoExportEnabled;
-  final String? autoExportFolderPath;
-  final void Function(bool) onAutoExportToggled;
+  final TextEditingController urlController;
+  final TextEditingController usernameController;
+  final TextEditingController passwordController;
+  final TextEditingController serverPathController;
 
   @override
   Widget build(BuildContext context) {
@@ -645,20 +643,42 @@ class _BackupStep extends StatelessWidget {
       children: [
         Text('setup_backup_intro'.tr()),
         const SizedBox(height: 16),
-        SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
-          title: Text('auto_export'.tr()),
-          subtitle: Text('auto_export_hint'.tr()),
-          value: autoExportEnabled,
-          onChanged: onAutoExportToggled,
-        ),
-        if (autoExportFolderPath != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            autoExportFolderPath!,
-            style: Theme.of(context).textTheme.bodySmall,
+        TextField(
+          controller: urlController,
+          decoration: InputDecoration(
+            labelText: 'webdav_url'.tr(),
+            hintText: 'https://my.server/remote.php/dav/files/user/',
           ),
-        ],
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: usernameController,
+          decoration: InputDecoration(labelText: 'webdav_username'.tr()),
+          autocorrect: false,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: passwordController,
+          decoration: InputDecoration(labelText: 'webdav_password'.tr()),
+          obscureText: true,
+          autocorrect: false,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: serverPathController,
+          decoration: InputDecoration(
+            labelText: 'webdav_server_path'.tr(),
+            hintText: '/backups/',
+          ),
+          autocorrect: false,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'webdav_not_configured'.tr(),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ],
     );
   }

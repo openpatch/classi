@@ -34,13 +34,6 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
             ),
             const SizedBox(height: 8),
             Text('newer_backup_available_hint'.tr()),
-            if (session.pendingAutoImportBackupPath != null) ...[
-              const SizedBox(height: 12),
-              SelectableText(
-                session.pendingAutoImportBackupPath!,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,

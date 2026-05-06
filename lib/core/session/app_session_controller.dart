@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:webdav_client/webdav_client.dart' as webdav;
+
 import '../database/app_database.dart';
 import '../security/biometric_service.dart';
 import '../security/key_service.dart';
@@ -62,11 +64,12 @@ class AppSessionController extends ChangeNotifier {
   Timer? _inactivityTimer;
   String? _currentPassphrase;
   String? _pendingRecoveryKey;
-  bool _autoExportEnabled = false;
-  String? _autoExportFolderPath;
-  bool _autoImportEnabled = false;
-  String? _autoImportBackupPath;
-  String? _pendingAutoImportBackupPath;
+  bool _webDavAutoExportEnabled = false;
+  bool _webDavAutoImportEnabled = false;
+  String? _webDavUrl;
+  String? _webDavUsername;
+  String? _webDavServerPath;
+  bool _pendingWebDavImport = false;
   String? _lastBackupMessageCode;
   bool _lastBackupMessageIsError = false;
 
@@ -78,12 +81,13 @@ class AppSessionController extends ChangeNotifier {
   bool get biometricEnabled => _biometricEnabled;
   Duration get inactivityTimeout => _inactivityTimeout;
   String? get pendingRecoveryKey => _pendingRecoveryKey;
-  bool get autoExportEnabled => _autoExportEnabled;
-  String? get autoExportFolderPath => _autoExportFolderPath;
-  bool get autoImportEnabled => _autoImportEnabled;
-  String? get autoImportBackupPath => _autoImportBackupPath;
-  bool get hasPendingAutoImport => _pendingAutoImportBackupPath != null;
-  String? get pendingAutoImportBackupPath => _pendingAutoImportBackupPath;
+  bool get webDavAutoExportEnabled => _webDavAutoExportEnabled;
+  bool get webDavAutoImportEnabled => _webDavAutoImportEnabled;
+  String? get webDavUrl => _webDavUrl;
+  String? get webDavUsername => _webDavUsername;
+  String? get webDavServerPath => _webDavServerPath;
+  bool get isWebDavConfigured => _webDavUrl != null && _webDavUrl!.isNotEmpty;
+  bool get hasPendingAutoImport => _pendingWebDavImport;
   String? get lastBackupMessageCode => _lastBackupMessageCode;
   bool get lastBackupMessageIsError => _lastBackupMessageIsError;
   bool get hasPendingRecoveryKey => _pendingRecoveryKey != null;
@@ -126,7 +130,7 @@ class AppSessionController extends ChangeNotifier {
       await _keyService.saveBiometricPassphrase(dbFile, passphrase);
     }
     _pendingRecoveryKey = bootstrapResult.recoveryKey;
-    _pendingAutoImportBackupPath = null;
+    _pendingWebDavImport = false;
     _errorCode = null;
     _status = AppSessionStatus.ready;
     notifyListeners();
@@ -277,6 +281,7 @@ class AppSessionController extends ChangeNotifier {
     }
 
     _cancelInactivityTimer();
+    await _flushAndAutoExport();
   }
 
   void registerActivity() {
@@ -483,120 +488,64 @@ class AppSessionController extends ChangeNotifier {
     return unlock(passphrase);
   }
 
-  Future<void> setAutoExportEnabled(bool value) async {
-    _autoExportEnabled = value;
+  Future<void> setWebDavUrl(String? url) async {
+    _webDavUrl = (url == null || url.trim().isEmpty) ? null : url.trim();
+    await _libraryBackupPreferencesService.setWebDavUrl(_webDavUrl);
+    notifyListeners();
+  }
+
+  Future<void> setWebDavUsername(String? username) async {
+    _webDavUsername =
+        (username == null || username.trim().isEmpty) ? null : username.trim();
+    await _libraryBackupPreferencesService.setWebDavUsername(_webDavUsername);
+    notifyListeners();
+  }
+
+  Future<void> setWebDavPassword(String? password) async {
+    if (password == null || password.isEmpty) {
+      await _keyService.clearWebDavPassword();
+    } else {
+      await _keyService.setWebDavPassword(password);
+    }
+  }
+
+  Future<void> setWebDavServerPath(String? path) async {
+    _webDavServerPath =
+        (path == null || path.trim().isEmpty) ? null : path.trim();
+    await _libraryBackupPreferencesService.setWebDavServerPath(
+      _webDavServerPath,
+    );
+    notifyListeners();
+  }
+
+  Future<void> setWebDavAutoExportEnabled(bool value) async {
+    _webDavAutoExportEnabled = value;
     await _libraryBackupPreferencesService.setAutoExportEnabled(value);
     notifyListeners();
   }
 
-  Future<void> setAutoExportFolderPath(String? folderPath) async {
-    _autoExportFolderPath = folderPath;
-    await _libraryBackupPreferencesService.setAutoExportFolderPath(folderPath);
-    notifyListeners();
-  }
-
-  Future<void> setAutoImportEnabled(bool value) async {
-    _autoImportEnabled = value;
+  Future<void> setWebDavAutoImportEnabled(bool value) async {
+    _webDavAutoImportEnabled = value;
     await _libraryBackupPreferencesService.setAutoImportEnabled(value);
     await _updatePendingAutoImportAvailability();
     notifyListeners();
   }
 
-  Future<void> setAutoImportBackupPath(String? backupPath) async {
-    _autoImportBackupPath = backupPath;
-    await _libraryBackupPreferencesService.setAutoImportBackupPath(backupPath);
-    await _updatePendingAutoImportAvailability();
-    notifyListeners();
-  }
-
-  Future<String?> exportBackupToFolder(String folderPath) async {
-    final passphrase = _currentPassphrase;
-    if (_database == null || passphrase == null) {
-      return 'backup_export_failed';
-    }
-
+  /// Returns `true` if the WebDAV connection test succeeded.
+  Future<bool> testWebDavConnection() async {
+    final client = await _createWebDavClient();
+    if (client == null) return false;
     try {
-      await _prepareDatabaseSnapshot();
-      await _libraryBackupService.exportBackup(
-        sourceDatabasePath: await _databasePathService.getCurrentDatabasePath(),
-        destinationFolderPath: folderPath,
-      );
-      await _openDatabase(passphrase);
-      _resetInactivityTimer();
-      _setBackupMessage('backup_exported');
-      notifyListeners();
-      return null;
-    } catch (error, stackTrace) {
-      _logUnexpectedError(
-        operation: 'export backup to folder',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (_database == null) {
-        await _openDatabase(passphrase);
-        _resetInactivityTimer();
-      }
-      _setBackupMessage('backup_export_failed', isError: true);
-      notifyListeners();
-      return 'backup_export_failed';
-    }
-  }
-
-  Future<String?> importBackup(String backupFilePath) async {
-    if (_isBusy) {
-      return 'database_busy';
-    }
-    if (!await File(backupFilePath).exists()) {
-      return 'backup_file_not_found';
-    }
-
-    _isBusy = true;
-    _beginLoading();
-
-    try {
-      await _loadSecurityPreferences();
-      await _loadBackupPreferences();
-      await _persistOpenDatabaseState(markSessionClean: true);
-
-      final destinationPath = await _databasePathService
-          .createUniqueImportedDatabasePath(
-            LibraryBackupService.libraryNameForBackupFile(backupFilePath),
-          );
-      await _libraryBackupService.importBackup(
-        backupFilePath: backupFilePath,
-        destinationDatabasePath: destinationPath,
-      );
-      await _databasePathService.setDatabaseFilePath(destinationPath);
-      await _resolveCurrentDatabaseState();
-      _setBackupMessage('backup_imported');
-      return null;
-    } catch (error, stackTrace) {
-      await _handleFatalError(
-        operation: 'import backup',
-        error: error,
-        stackTrace: stackTrace,
-        errorCode: AppSessionErrorCode.errorLoadingDatabase,
-      );
-      _setBackupMessage('backup_import_failed', isError: true);
-      return 'backup_import_failed';
-    } finally {
-      _isBusy = false;
-      notifyListeners();
+      await client.ping();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
   Future<String?> restorePendingAutoImport() async {
-    final backupPath = _pendingAutoImportBackupPath;
-    if (_isBusy) {
-      return 'database_busy';
-    }
-    if (backupPath == null) {
-      return 'no_newer_backup_available';
-    }
-    if (!await File(backupPath).exists()) {
-      await _updatePendingAutoImportAvailability();
-      return 'backup_file_not_found';
-    }
+    if (_isBusy) return 'database_busy';
+    if (!_pendingWebDavImport) return 'no_newer_backup_available';
 
     _isBusy = true;
     _beginLoading();
@@ -606,10 +555,21 @@ class AppSessionController extends ChangeNotifier {
       await _loadBackupPreferences();
       await _persistOpenDatabaseState(markSessionClean: true);
 
-      final destinationPath = await _databasePathService
-          .getCurrentDatabasePath();
-      await _libraryBackupService.importBackup(
-        backupFilePath: backupPath,
+      final client = await _createWebDavClient();
+      if (client == null) throw StateError('WebDAV is not configured.');
+
+      final destinationPath =
+          await _databasePathService.getCurrentDatabasePath();
+      final remotePath = LibraryBackupService.remoteBackupPath(
+        _webDavServerPath ?? '/',
+        destinationPath,
+      );
+      final bytes = await _libraryBackupService.downloadBackupFromWebDav(
+        client: client,
+        remotePath: remotePath,
+      );
+      await _libraryBackupService.restoreBackupFromBytes(
+        bytes: bytes,
         destinationDatabasePath: destinationPath,
       );
       await _resolveCurrentDatabaseState();
@@ -617,7 +577,7 @@ class AppSessionController extends ChangeNotifier {
       return null;
     } catch (error, stackTrace) {
       await _handleFatalError(
-        operation: 'restore pending auto import',
+        operation: 'restore pending WebDAV auto import',
         error: error,
         stackTrace: stackTrace,
         errorCode: AppSessionErrorCode.errorLoadingDatabase,
@@ -729,14 +689,14 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<void> _loadBackupPreferences() async {
-    _autoExportEnabled = await _libraryBackupPreferencesService
-        .autoExportEnabled();
-    _autoExportFolderPath = await _libraryBackupPreferencesService
-        .autoExportFolderPath();
-    _autoImportEnabled = await _libraryBackupPreferencesService
-        .autoImportEnabled();
-    _autoImportBackupPath = await _libraryBackupPreferencesService
-        .autoImportBackupPath();
+    _webDavAutoExportEnabled =
+        await _libraryBackupPreferencesService.autoExportEnabled();
+    _webDavAutoImportEnabled =
+        await _libraryBackupPreferencesService.autoImportEnabled();
+    _webDavUrl = await _libraryBackupPreferencesService.webDavUrl();
+    _webDavUsername = await _libraryBackupPreferencesService.webDavUsername();
+    _webDavServerPath =
+        await _libraryBackupPreferencesService.webDavServerPath();
   }
 
   Future<void> _resolveCurrentDatabaseState() async {
@@ -785,23 +745,46 @@ class AppSessionController extends ChangeNotifier {
     );
   }
 
-  Future<void> _runAutoExportIfConfigured() async {
-    final folderPath = _autoExportFolderPath;
-    if (!_autoExportEnabled ||
-        folderPath == null ||
-        folderPath.trim().isEmpty) {
+  /// Checkpoints the WAL and runs auto-export without locking the app.
+  ///
+  /// Used when the app is backgrounded with lock-on-background disabled.
+  /// The database remains open so the user can resume seamlessly.
+  Future<void> _flushAndAutoExport() async {
+    final database = _database;
+    if (database == null || _currentPassphrase == null) return;
+
+    try {
+      await database.checkpointAndTruncate();
+    } catch (error, stackTrace) {
+      _logUnexpectedError(
+        operation: 'checkpoint before background auto export',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return;
     }
 
+    await _runAutoExportIfConfigured();
+    await _updatePendingAutoImportAvailability();
+  }
+
+  Future<void> _runAutoExportIfConfigured() async {
+    if (!_webDavAutoExportEnabled || !isWebDavConfigured) return;
+
+    final client = await _createWebDavClient();
+    if (client == null) return;
+
     try {
-      await _libraryBackupService.exportBackup(
-        sourceDatabasePath: await _databasePathService.getCurrentDatabasePath(),
-        destinationFolderPath: folderPath,
+      await _libraryBackupService.exportBackupToWebDav(
+        client: client,
+        sourceDatabasePath:
+            await _databasePathService.getCurrentDatabasePath(),
+        serverPath: _webDavServerPath ?? '/',
       );
       _setBackupMessage('backup_exported');
     } catch (error, stackTrace) {
       _logUnexpectedError(
-        operation: 'run auto export',
+        operation: 'run auto WebDAV export',
         error: error,
         stackTrace: stackTrace,
       );
@@ -810,44 +793,67 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<void> _updatePendingAutoImportAvailability() async {
-    final backupPath = _autoImportBackupPath;
-    if (!_autoImportEnabled ||
-        backupPath == null ||
-        backupPath.trim().isEmpty ||
-        !LibraryBackupService.isBackupFilePath(backupPath)) {
-      _pendingAutoImportBackupPath = null;
+    if (!_webDavAutoImportEnabled || !isWebDavConfigured) {
+      _pendingWebDavImport = false;
       return;
     }
 
-    final backupFile = File(backupPath);
-    if (!await backupFile.exists()) {
-      _pendingAutoImportBackupPath = null;
+    final client = await _createWebDavClient();
+    if (client == null) {
+      _pendingWebDavImport = false;
       return;
     }
 
-    final backupModified = await backupFile.lastModified();
-    final currentDatabasePath = await _databasePathService
-        .getCurrentDatabasePath();
-    DateTime? latestLocalModified;
-    for (final artifactPath in DatabasePathService.artifactPathsFor(
-      currentDatabasePath,
-    )) {
-      final artifactFile = File(artifactPath);
-      if (!await artifactFile.exists()) {
-        continue;
-      }
-      final modifiedAt = await artifactFile.lastModified();
-      if (latestLocalModified == null ||
-          modifiedAt.isAfter(latestLocalModified)) {
-        latestLocalModified = modifiedAt;
-      }
-    }
+    try {
+      final currentDatabasePath =
+          await _databasePathService.getCurrentDatabasePath();
+      final backupFileName = LibraryBackupService.backupFileNameForDatabasePath(
+        currentDatabasePath,
+      );
+      final backupModified =
+          await _libraryBackupService.getRemoteBackupModifiedAt(
+            client: client,
+            serverPath: _webDavServerPath ?? '/',
+            backupFileName: backupFileName,
+          );
 
-    _pendingAutoImportBackupPath =
-        latestLocalModified == null ||
-            backupModified.isAfter(latestLocalModified)
-        ? backupPath
-        : null;
+      if (backupModified == null) {
+        _pendingWebDavImport = false;
+        return;
+      }
+
+      DateTime? latestLocalModified;
+      for (final artifactPath
+          in DatabasePathService.artifactPathsFor(currentDatabasePath)) {
+        final artifactFile = File(artifactPath);
+        if (!await artifactFile.exists()) continue;
+        final modifiedAt = await artifactFile.lastModified();
+        if (latestLocalModified == null ||
+            modifiedAt.isAfter(latestLocalModified)) {
+          latestLocalModified = modifiedAt;
+        }
+      }
+
+      _pendingWebDavImport = latestLocalModified == null ||
+          backupModified.isAfter(latestLocalModified);
+    } catch (error, stackTrace) {
+      _logUnexpectedError(
+        operation: 'check WebDAV backup availability',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _pendingWebDavImport = false;
+    }
+  }
+
+  /// Creates a [webdav.Client] from the stored credentials, or returns `null`
+  /// if the WebDAV URL is not configured.
+  Future<webdav.Client?> _createWebDavClient() async {
+    final url = _webDavUrl;
+    if (url == null || url.isEmpty) return null;
+    final username = _webDavUsername ?? '';
+    final password = await _keyService.getWebDavPassword() ?? '';
+    return webdav.newClient(url, user: username, password: password);
   }
 
   void _beginLoading() {

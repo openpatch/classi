@@ -9,15 +9,12 @@ void main() {
 
   late Directory tempDirectory;
   late Directory sourceLibraryDirectory;
-  late Directory exportDirectory;
   late LibraryBackupService service;
 
   setUp(() async {
     tempDirectory = await Directory.systemTemp.createTemp('classi-backup-test');
     sourceLibraryDirectory = Directory('${tempDirectory.path}/source.classi');
-    exportDirectory = Directory('${tempDirectory.path}/exports');
     await sourceLibraryDirectory.create(recursive: true);
-    await exportDirectory.create(recursive: true);
     service = LibraryBackupService();
 
     await File('${sourceLibraryDirectory.path}/data.db').writeAsString('db');
@@ -41,27 +38,24 @@ void main() {
     }
   });
 
-  test('exportBackup writes a portable archive file', () async {
-    final exportedPath = await service.exportBackup(
-      sourceDatabasePath: sourceLibraryDirectory.path,
-      destinationFolderPath: exportDirectory.path,
+  test('buildBackupArchive creates a portable archive', () async {
+    final archiveBytes = await service.buildBackupArchive(
+      sourceLibraryDirectory.path,
     );
 
-    expect(exportedPath, endsWith('source.classi-backup'));
-    expect(await File(exportedPath).exists(), isTrue);
+    expect(archiveBytes, isNotEmpty);
   });
 
   test(
-    'importBackup restores database artifacts into a package folder',
+    'restoreBackupFromBytes restores database artifacts into a package folder',
     () async {
-      final exportedPath = await service.exportBackup(
-        sourceDatabasePath: sourceLibraryDirectory.path,
-        destinationFolderPath: exportDirectory.path,
+      final archiveBytes = await service.buildBackupArchive(
+        sourceLibraryDirectory.path,
       );
 
       final importedPath = '${tempDirectory.path}/imported.classi';
-      await service.importBackup(
-        backupFilePath: exportedPath,
+      await service.restoreBackupFromBytes(
+        bytes: archiveBytes,
         destinationDatabasePath: importedPath,
       );
 

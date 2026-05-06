@@ -1,14 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path/path.dart' as p;
 
 import '../../core/providers/app_providers.dart';
 import '../../core/security/security_preferences_service.dart';
 import '../../core/session/app_session_controller.dart';
-import '../../core/storage/library_backup_service.dart';
 import '../../shared/utils/formatting.dart';
 import '../setup/database_selection_sheet.dart';
 import 'grade_system_controller.dart';
@@ -578,281 +575,203 @@ class _DatabaseSection extends ConsumerWidget {
   }
 }
 
-class _BackupsSection extends ConsumerWidget {
+class _BackupsSection extends ConsumerStatefulWidget {
   const _BackupsSection({required this.session});
 
   final AppSessionController session;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<String>(
-      future: session.currentDatabasePath(),
-      builder: (context, snapshot) {
-        final databasePath = snapshot.data ?? '';
-        final autoExportFolderPath = session.autoExportFolderPath;
-        final autoImportBackupPath = session.autoImportBackupPath;
-        final autoExportTargetPath =
-            autoExportFolderPath == null || databasePath.isEmpty
-            ? null
-            : p.join(
-                autoExportFolderPath,
-                LibraryBackupService.backupFileNameForDatabasePath(
-                  databasePath,
-                ),
-              );
+  ConsumerState<_BackupsSection> createState() => _BackupsSectionState();
+}
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+class _BackupsSectionState extends ConsumerState<_BackupsSection> {
+  final _urlController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _serverPathController = TextEditingController();
+
+  bool _testingConnection = false;
+  bool? _connectionOk;
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController.text = widget.session.webDavUrl ?? '';
+    _usernameController.text = widget.session.webDavUsername ?? '';
+    _serverPathController.text = widget.session.webDavServerPath ?? '/';
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _serverPathController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveSettings() async {
+    final session = ref.read(appSessionProvider);
+    await session.setWebDavUrl(_urlController.text);
+    await session.setWebDavUsername(_usernameController.text);
+    if (_passwordController.text.isNotEmpty) {
+      await session.setWebDavPassword(_passwordController.text);
+    }
+    final path = _serverPathController.text.trim();
+    await session.setWebDavServerPath(path.isEmpty ? '/' : path);
+    if (mounted) setState(() => _connectionOk = null);
+  }
+
+  Future<void> _testConnection() async {
+    setState(() {
+      _testingConnection = true;
+      _connectionOk = null;
+    });
+    final ok = await ref.read(appSessionProvider).testWebDavConnection();
+    if (mounted) {
+      setState(() {
+        _testingConnection = false;
+        _connectionOk = ok;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = widget.session;
+    final isConfigured = session.isWebDavConfigured;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('webdav_settings'.tr()),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _urlController,
+          decoration: InputDecoration(
+            labelText: 'webdav_url'.tr(),
+            hintText: 'https://my.server/remote.php/dav/files/user/',
+          ),
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _usernameController,
+          decoration: InputDecoration(labelText: 'webdav_username'.tr()),
+          autocorrect: false,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _passwordController,
+          decoration: InputDecoration(labelText: 'webdav_password'.tr()),
+          obscureText: true,
+          autocorrect: false,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _serverPathController,
+          decoration: InputDecoration(
+            labelText: 'webdav_server_path'.tr(),
+            hintText: '/backups/',
+          ),
+          autocorrect: false,
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            Text('export_library_hint'.tr()),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                FilledButton.icon(
-                  onPressed: () => _exportNow(context, ref),
-                  icon: const Icon(Icons.upload_file_outlined),
-                  label: Text('export_library'.tr()),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _importBackup(context, ref),
-                  icon: const Icon(Icons.download_outlined),
-                  label: Text('import_library'.tr()),
-                ),
-              ],
+            FilledButton(
+              onPressed: _saveSettings,
+              child: Text('save'.tr()),
             ),
-            const SizedBox(height: 16),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              title: Text('auto_export'.tr()),
-              subtitle: Text('auto_export_hint'.tr()),
-              value: session.autoExportEnabled,
-              onChanged: (value) => _toggleAutoExport(
-                context: context,
-                ref: ref,
-                nextValue: value,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              title: Text('auto_import'.tr()),
-              subtitle: Text('auto_import_hint'.tr()),
-              value: session.autoImportEnabled,
-              onChanged: (value) => _toggleAutoImport(
-                context: context,
-                ref: ref,
-                nextValue: value,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'backup_folder'.tr(),
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: 8),
-            SelectableText(autoExportFolderPath ?? ''),
-            if (autoExportTargetPath != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'auto_export_target'.tr(
-                  namedArgs: {'path': autoExportTargetPath},
-                ),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-            const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: () => _pickAutoExportFolder(context, ref),
-              icon: const Icon(Icons.folder_open_outlined),
-              label: Text('choose_backup_folder'.tr()),
+              onPressed: _testingConnection ? null : _testConnection,
+              icon: _testingConnection
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      _connectionOk == null
+                          ? Icons.wifi_find_outlined
+                          : (_connectionOk!
+                              ? Icons.check_circle_outline
+                              : Icons.error_outline),
+                      color: _connectionOk == null
+                          ? null
+                          : (_connectionOk!
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.error),
+                    ),
+              label: Text('webdav_test_connection'.tr()),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'auto_import_file'.tr(),
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: 8),
-            SelectableText(autoImportBackupPath ?? ''),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => _pickAutoImportFile(context, ref),
-              icon: const Icon(Icons.insert_drive_file_outlined),
-              label: Text('choose_import_backup'.tr()),
-            ),
-            if (session.hasPendingAutoImport) ...[
-              const SizedBox(height: 8),
-              Text(
-                'newer_backup_available'.tr(),
-                style: TextStyle(color: Theme.of(context).colorScheme.primary),
-              ),
-            ],
-            if (session.lastBackupMessageCode != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                session.lastBackupMessageCode!.tr(),
-                style: TextStyle(
-                  color: session.lastBackupMessageIsError
-                      ? Theme.of(context).colorScheme.error
-                      : Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ],
           ],
-        );
-      },
+        ),
+        if (_connectionOk != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            (_connectionOk!
+                    ? 'webdav_connection_ok'
+                    : 'webdav_connection_failed')
+                .tr(),
+            style: TextStyle(
+              color: _connectionOk!
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text('auto_export'.tr()),
+          subtitle: Text('auto_export_hint'.tr()),
+          value: session.webDavAutoExportEnabled,
+          onChanged: isConfigured
+              ? (value) => ref
+                    .read(appSessionProvider)
+                    .setWebDavAutoExportEnabled(value)
+              : null,
+        ),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text('auto_import'.tr()),
+          subtitle: Text('auto_import_hint'.tr()),
+          value: session.webDavAutoImportEnabled,
+          onChanged: isConfigured
+              ? (value) => ref
+                    .read(appSessionProvider)
+                    .setWebDavAutoImportEnabled(value)
+              : null,
+        ),
+        if (!isConfigured) ...[
+          const SizedBox(height: 4),
+          Text(
+            'webdav_not_configured'.tr(),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+        if (session.hasPendingAutoImport) ...[
+          const SizedBox(height: 8),
+          Text(
+            'newer_backup_available'.tr(),
+            style: TextStyle(color: Theme.of(context).colorScheme.primary),
+          ),
+        ],
+        if (session.lastBackupMessageCode != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            session.lastBackupMessageCode!.tr(),
+            style: TextStyle(
+              color: session.lastBackupMessageIsError
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ],
+      ],
     );
-  }
-
-  Future<void> _exportNow(BuildContext context, WidgetRef ref) async {
-    final session = ref.read(appSessionProvider);
-    session.suspendBackgroundLock();
-    try {
-      final folder = await FilePicker.getDirectoryPath();
-      if (folder == null || !context.mounted) {
-        return;
-      }
-
-      final errorCode = await ref
-          .read(appSessionProvider)
-          .exportBackupToFolder(folder);
-      if (!context.mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text((errorCode ?? 'backup_exported').tr())),
-      );
-    } finally {
-      session.resumeBackgroundLock();
-    }
-  }
-
-  Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
-    final session = ref.read(appSessionProvider);
-    session.suspendBackgroundLock();
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['classi-backup'],
-      );
-      final backupPath = result?.files.single.path;
-      if (backupPath == null || !context.mounted) {
-        return;
-      }
-
-      final errorCode = await ref
-          .read(appSessionProvider)
-          .importBackup(backupPath);
-      if (!context.mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text((errorCode ?? 'backup_imported').tr())),
-      );
-    } finally {
-      session.resumeBackgroundLock();
-    }
-  }
-
-  Future<void> _pickAutoExportFolder(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    final session = ref.read(appSessionProvider);
-    session.suspendBackgroundLock();
-    try {
-      final folder = await FilePicker.getDirectoryPath();
-      if (folder == null) {
-        return;
-      }
-
-      await ref.read(appSessionProvider).setAutoExportFolderPath(folder);
-    } finally {
-      session.resumeBackgroundLock();
-    }
-  }
-
-  Future<void> _pickAutoImportFile(BuildContext context, WidgetRef ref) async {
-    final session = ref.read(appSessionProvider);
-    session.suspendBackgroundLock();
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['classi-backup'],
-      );
-      final backupPath = result?.files.single.path;
-      if (backupPath == null) {
-        return;
-      }
-
-      await ref.read(appSessionProvider).setAutoImportBackupPath(backupPath);
-    } finally {
-      session.resumeBackgroundLock();
-    }
-  }
-
-  Future<void> _toggleAutoExport({
-    required BuildContext context,
-    required WidgetRef ref,
-    required bool nextValue,
-  }) async {
-    final session = ref.read(appSessionProvider);
-    if (nextValue && session.autoExportFolderPath == null) {
-      session.suspendBackgroundLock();
-      try {
-        final folder = await FilePicker.getDirectoryPath();
-        if (folder == null) {
-          if (!context.mounted) {
-            return;
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('auto_export_requires_folder'.tr())),
-          );
-          return;
-        }
-        await session.setAutoExportFolderPath(folder);
-        await session.setAutoExportEnabled(nextValue);
-      } finally {
-        session.resumeBackgroundLock();
-      }
-    } else {
-      await session.setAutoExportEnabled(nextValue);
-    }
-  }
-
-  Future<void> _toggleAutoImport({
-    required BuildContext context,
-    required WidgetRef ref,
-    required bool nextValue,
-  }) async {
-    final session = ref.read(appSessionProvider);
-    if (nextValue && session.autoImportBackupPath == null) {
-      session.suspendBackgroundLock();
-      try {
-        final result = await FilePicker.pickFiles(
-          type: FileType.custom,
-          allowedExtensions: const ['classi-backup'],
-        );
-        final backupPath = result?.files.single.path;
-        if (backupPath == null) {
-          if (!context.mounted) {
-            return;
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('auto_import_requires_file'.tr())),
-          );
-          return;
-        }
-        await session.setAutoImportBackupPath(backupPath);
-        await session.setAutoImportEnabled(nextValue);
-      } finally {
-        session.resumeBackgroundLock();
-      }
-    } else {
-      await session.setAutoImportEnabled(nextValue);
-    }
   }
 }
