@@ -47,13 +47,15 @@ jobs:
             echo "ERROR: could not derive version from tag '${{ github.ref_name }}'" >&2
             exit 1
           fi
-          sed -i "s/^version: .*/version: ${VERSION}+${{ github.run_number }}/" pubspec.yaml
+          VERSION_CODE=$(cat version_code.txt)
+          sed -i "s/^version: .*/version: ${VERSION}+${VERSION_CODE}/" pubspec.yaml
+          echo $((VERSION_CODE + 1)) > version_code.txt
 
-      - name: Commit CHANGELOG.md and pubspec.yaml
+      - name: Commit CHANGELOG.md, pubspec.yaml and version code
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore(release): bump version to ${{ github.ref_name }}"
-          file_pattern: CHANGELOG.md pubspec.yaml
+          file_pattern: CHANGELOG.md pubspec.yaml version_code.txt
 
   build-android:
     name: Build Android
