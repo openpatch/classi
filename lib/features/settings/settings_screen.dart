@@ -627,7 +627,13 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
       _testingConnection = true;
       _connectionOk = null;
     });
-    final ok = await ref.read(appSessionProvider).testWebDavConnection();
+    final ok = await ref.read(appSessionProvider).testWebDavConnection(
+      url: _urlController.text,
+      username: _usernameController.text,
+      password: _passwordController.text.isNotEmpty
+          ? _passwordController.text
+          : null,
+    );
     if (mounted) {
       setState(() {
         _testingConnection = false;

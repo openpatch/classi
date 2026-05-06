@@ -209,7 +209,7 @@
   "webdav_username": "Username",
   "webdav_password": "Password",
   "webdav_server_path": "Server path",
-  "webdav_settings": "Connect a WebDAV server to enable automatic backup and restore. Save your settings before testing the connection or enabling the toggles.",
+  "webdav_settings": "Connect a WebDAV server to enable automatic backup and restore. Save your settings to enable the auto-backup toggles.",
   "webdav_test_connection": "Test connection",
   "webdav_connection_ok": "Connection successful.",
   "webdav_connection_failed": "Connection failed. Check the URL and credentials.",
