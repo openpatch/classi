@@ -1,0 +1,45 @@
+name: Changelog
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update-fastlane-changelog:
+    name: Update fastlane changelog
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Read next version code
+        id: version
+        run: echo "code=$(cat version_code.txt)" >> $GITHUB_OUTPUT
+
+      - name: Generate unreleased changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --unreleased --strip all --output fastlane/metadata/android/en-US/changelogs/${{ steps.version.outputs.code }}.txt
+
+      - name: Strip markdown formatting for fastlane
+        run: |
+          sed -i \
+            -e 's/^### //' \
+            -e 's/\*([^)]*)\* //g' \
+            -e 's/\[\*\*breaking\*\*\] /[breaking] /g' \
+            fastlane/metadata/android/en-US/changelogs/${{ steps.version.outputs.code }}.txt
+
+      - name: Commit fastlane changelog
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "chore: update fastlane changelog [skip ci]"
+          file_pattern: fastlane/metadata/android/en-US/changelogs/${{ steps.version.outputs.code }}.txt
