@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-05-06
+
+### Bug Fixes
+
+- *(setup)* Overwrite prompt for duplicate DB names and WebDAV credential correction
+
+
+### Features
+
+- *(sync)* Improve WebDAV sync reliability and UX
+
+
 ## [1.4.0] - 2026-05-06
 
 ### Bug Fixes
