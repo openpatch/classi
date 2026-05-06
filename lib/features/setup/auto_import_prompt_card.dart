@@ -26,6 +26,24 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
     final lastExportedAt = session.lastExportedAt;
     final localeTag = Localizations.localeOf(context).toLanguageTag();
 
+    if (_isRestoring) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const SizedBox.square(
+                dimension: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 12),
+              Text('restoring_backup'.tr()),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

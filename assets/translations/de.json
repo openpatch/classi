@@ -206,6 +206,7 @@
   "reset": "Zurücksetzen",
   "restore_backup": "Backup wiederherstellen",
   "restore_backup_confirm": "Soll die aktuelle lokale Bibliothek durch das neuere Backup ersetzt werden?",
+  "restoring_backup": "Backup wird wiederhergestellt…",
   "restore_from_webdav_backup": "Aus WebDAV-Backup wiederherstellen",
   "restore_from_webdav_backup_hint": "Lade ein entferntes Classi-Backup herunter und öffne es auf diesem Gerät.",
   "restore_will_discard_since": "Alle lokalen Änderungen seit {datetime} gehen dabei verloren.",
