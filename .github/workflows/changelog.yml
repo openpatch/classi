@@ -42,5 +42,5 @@ jobs:
       - name: Commit fastlane changelog
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "chore: update fastlane changelog [skip ci]"
+          commit_message: "chore: update fastlane changelog"
           file_pattern: fastlane/metadata/android/en-US/changelogs/${{ steps.version.outputs.code }}.txt
