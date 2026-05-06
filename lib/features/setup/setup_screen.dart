@@ -168,7 +168,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
     try {
       final session = ref.read(appSessionProvider);
-      await _persistSetupPreferences(session);
+      // Only save the step-3 WebDAV form if the user filled it in, so that
+      // credentials entered via the picker's credential sheet are preserved
+      // across retries when the form is left empty.
+      if (_webDavUrlController.text.trim().isNotEmpty) {
+        await _persistSetupPreferences(session);
+      }
       if (!mounted) {
         return;
       }
