@@ -532,9 +532,21 @@ class AppSessionController extends ChangeNotifier {
   }
 
   /// Returns `true` if the WebDAV connection test succeeded.
-  Future<bool> testWebDavConnection() async {
-    final client = await _createWebDavClient();
-    if (client == null) return false;
+  Future<bool> testWebDavConnection({
+    String? url,
+    String? username,
+    String? password,
+  }) async {
+    final effectiveUrl = url ?? _webDavUrl;
+    if (effectiveUrl == null || effectiveUrl.isEmpty) return false;
+    final effectiveUsername = username ?? _webDavUsername ?? '';
+    final effectivePassword =
+        password ?? await _keyService.getWebDavPassword() ?? '';
+    final client = webdav.newClient(
+      effectiveUrl,
+      user: effectiveUsername,
+      password: effectivePassword,
+    );
     try {
       await client.ping();
       return true;

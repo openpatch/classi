@@ -209,7 +209,7 @@
   "webdav_username": "Benutzername",
   "webdav_password": "Passwort",
   "webdav_server_path": "Serverpfad",
-  "webdav_settings": "Verbinde einen WebDAV-Server für automatische Backups und Wiederherstellung. Speichere die Einstellungen, bevor du die Verbindung testest oder die Schalter aktivierst.",
+  "webdav_settings": "Verbinde einen WebDAV-Server für automatische Backups und Wiederherstellung. Speichere die Einstellungen, um die Automatik-Schalter zu aktivieren.",
   "webdav_test_connection": "Verbindung testen",
   "webdav_connection_ok": "Verbindung erfolgreich.",
   "webdav_connection_failed": "Verbindung fehlgeschlagen. Prüfe URL und Zugangsdaten.",
