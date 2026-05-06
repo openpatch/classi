@@ -56,6 +56,20 @@ class KeyService {
   Future<void> clearBiometricPassphrase(File dbFile) =>
       _storage.delete(key: _biometricPassphraseKey(dbFile));
 
+  static const String _webDavPasswordKey = 'backup.webdav_password';
+
+  /// Returns the stored WebDAV password, or `null` if none has been set.
+  Future<String?> getWebDavPassword() =>
+      _storage.read(key: _webDavPasswordKey);
+
+  /// Stores the WebDAV password in secure storage.
+  Future<void> setWebDavPassword(String password) =>
+      _storage.write(key: _webDavPasswordKey, value: password);
+
+  /// Removes the stored WebDAV password.
+  Future<void> clearWebDavPassword() =>
+      _storage.delete(key: _webDavPasswordKey);
+
   Future<SecurityBootstrapResult> bootstrapSecurity({
     required File dbFile,
     required String passphrase,

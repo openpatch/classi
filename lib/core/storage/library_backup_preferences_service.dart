@@ -1,11 +1,12 @@
-import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Persists WebDAV backup settings to [SharedPreferences].
 class LibraryBackupPreferencesService {
   static const String _autoExportEnabledKey = 'backup.auto_export_enabled';
-  static const String _autoExportFolderPathKey = 'backup.auto_export_folder';
   static const String _autoImportEnabledKey = 'backup.auto_import_enabled';
-  static const String _autoImportBackupPathKey = 'backup.auto_import_backup';
+  static const String _webDavUrlKey = 'backup.webdav_url';
+  static const String _webDavUsernameKey = 'backup.webdav_username';
+  static const String _webDavServerPathKey = 'backup.webdav_server_path';
 
   Future<bool> autoExportEnabled() async {
     final prefs = await SharedPreferences.getInstance();
@@ -15,24 +16,6 @@ class LibraryBackupPreferencesService {
   Future<void> setAutoExportEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_autoExportEnabledKey, value);
-  }
-
-  Future<String?> autoExportFolderPath() async {
-    final prefs = await SharedPreferences.getInstance();
-    final folderPath = prefs.getString(_autoExportFolderPathKey);
-    if (folderPath == null || folderPath.isEmpty) {
-      return null;
-    }
-    return p.normalize(folderPath);
-  }
-
-  Future<void> setAutoExportFolderPath(String? folderPath) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (folderPath == null || folderPath.trim().isEmpty) {
-      await prefs.remove(_autoExportFolderPathKey);
-      return;
-    }
-    await prefs.setString(_autoExportFolderPathKey, p.normalize(folderPath));
   }
 
   Future<bool> autoImportEnabled() async {
@@ -45,21 +28,48 @@ class LibraryBackupPreferencesService {
     await prefs.setBool(_autoImportEnabledKey, value);
   }
 
-  Future<String?> autoImportBackupPath() async {
+  Future<String?> webDavUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    final backupPath = prefs.getString(_autoImportBackupPathKey);
-    if (backupPath == null || backupPath.isEmpty) {
-      return null;
-    }
-    return p.normalize(backupPath);
+    final value = prefs.getString(_webDavUrlKey);
+    return (value != null && value.isNotEmpty) ? value : null;
   }
 
-  Future<void> setAutoImportBackupPath(String? backupPath) async {
+  Future<void> setWebDavUrl(String? url) async {
     final prefs = await SharedPreferences.getInstance();
-    if (backupPath == null || backupPath.trim().isEmpty) {
-      await prefs.remove(_autoImportBackupPathKey);
-      return;
+    if (url == null || url.trim().isEmpty) {
+      await prefs.remove(_webDavUrlKey);
+    } else {
+      await prefs.setString(_webDavUrlKey, url.trim());
     }
-    await prefs.setString(_autoImportBackupPathKey, p.normalize(backupPath));
+  }
+
+  Future<String?> webDavUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_webDavUsernameKey);
+    return (value != null && value.isNotEmpty) ? value : null;
+  }
+
+  Future<void> setWebDavUsername(String? username) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (username == null || username.trim().isEmpty) {
+      await prefs.remove(_webDavUsernameKey);
+    } else {
+      await prefs.setString(_webDavUsernameKey, username.trim());
+    }
+  }
+
+  Future<String?> webDavServerPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_webDavServerPathKey);
+    return (value != null && value.isNotEmpty) ? value : null;
+  }
+
+  Future<void> setWebDavServerPath(String? path) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (path == null || path.trim().isEmpty) {
+      await prefs.remove(_webDavServerPathKey);
+    } else {
+      await prefs.setString(_webDavServerPathKey, path.trim());
+    }
   }
 }

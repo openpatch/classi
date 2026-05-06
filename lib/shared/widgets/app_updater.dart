@@ -56,7 +56,7 @@ class _AppUpdaterState extends State<AppUpdater> {
       getLatestVersion: _getLatestVersion,
       getBinaryUrl: _getBinaryUrl,
       appName: 'Classi',
-      getChangelog: (_, __) => _getChangelog(),
+      getChangelog: (version, changelog) => _getChangelog(),
       child: widget.child,
     );
   }

@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
+import 'package:webdav_client/webdav_client.dart' as webdav;
 
 import 'database_path_service.dart';
 
@@ -12,22 +14,10 @@ const int _backupFormatVersion = 1;
 const String _canonicalDatabaseFileName = 'data.db';
 
 class LibraryBackupService {
-  Future<String> exportBackup({
-    required String sourceDatabasePath,
-    required String destinationFolderPath,
-  }) async {
+  /// Builds a `.classi-backup` ZIP archive from the current database files
+  /// and returns the raw bytes.
+  Future<Uint8List> buildBackupArchive(String sourceDatabasePath) async {
     final normalizedSourcePath = p.normalize(sourceDatabasePath);
-    final outputFile = File(
-      p.join(
-        destinationFolderPath,
-        backupFileNameForDatabasePath(normalizedSourcePath),
-      ),
-    );
-    await outputFile.parent.create(recursive: true);
-    if (await outputFile.exists()) {
-      await outputFile.delete();
-    }
-
     final archive = Archive();
     archive.addFile(
       ArchiveFile.string(
@@ -42,32 +32,22 @@ class LibraryBackupService {
 
     for (final entry in _artifactEntryNamesFor(normalizedSourcePath).entries) {
       final sourceFile = File(entry.key);
-      if (!await sourceFile.exists()) {
-        continue;
-      }
+      if (!await sourceFile.exists()) continue;
       final bytes = await sourceFile.readAsBytes();
       archive.addFile(ArchiveFile(entry.value, bytes.length, bytes));
     }
 
-    final encodedArchive = ZipEncoder().encode(archive);
-    await outputFile.writeAsBytes(encodedArchive, flush: true);
-    return outputFile.path;
+    return Uint8List.fromList(ZipEncoder().encode(archive));
   }
 
-  Future<void> importBackup({
-    required String backupFilePath,
+  /// Restores a backup archive from [bytes] into [destinationDatabasePath].
+  Future<void> restoreBackupFromBytes({
+    required Uint8List bytes,
     required String destinationDatabasePath,
   }) async {
-    final backupFile = File(backupFilePath);
-    if (!await backupFile.exists()) {
-      throw StateError('Backup file not found.');
-    }
-
-    final archive = ZipDecoder().decodeBytes(await backupFile.readAsBytes());
+    final archive = ZipDecoder().decodeBytes(bytes);
     final manifestFile = archive.findFile(_backupManifestFileName);
-    if (manifestFile == null) {
-      throw StateError('Backup manifest missing.');
-    }
+    if (manifestFile == null) throw StateError('Backup manifest missing.');
 
     final manifestBytes = manifestFile.content as List<int>;
     final manifestJson =
@@ -83,20 +63,16 @@ class LibraryBackupService {
       }
       await destinationDirectory.create(recursive: true);
     } else {
-      for (final artifactPath in DatabasePathService.artifactPathsFor(
-        destinationDatabasePath,
-      )) {
+      for (final artifactPath
+          in DatabasePathService.artifactPathsFor(destinationDatabasePath)) {
         final file = File(artifactPath);
-        if (await file.exists()) {
-          await file.delete();
-        }
+        if (await file.exists()) await file.delete();
       }
     }
 
     final destinationByEntryName = {
-      for (final entry in _artifactEntryNamesFor(
-        destinationDatabasePath,
-      ).entries)
+      for (final entry
+          in _artifactEntryNamesFor(destinationDatabasePath).entries)
         entry.value: entry.key,
     };
 
@@ -104,25 +80,18 @@ class LibraryBackupService {
     var restoredSecurityMetadata = false;
 
     for (final file in archive.files) {
-      if (!file.isFile || file.name == _backupManifestFileName) {
-        continue;
-      }
+      if (!file.isFile || file.name == _backupManifestFileName) continue;
 
       final destinationPath = destinationByEntryName[file.name];
-      if (destinationPath == null) {
-        continue;
-      }
+      if (destinationPath == null) continue;
 
-      final bytes = file.content as List<int>;
+      final fileBytes = file.content as List<int>;
       final destinationFile = File(destinationPath);
       await destinationFile.parent.create(recursive: true);
-      await destinationFile.writeAsBytes(bytes, flush: true);
+      await destinationFile.writeAsBytes(fileBytes, flush: true);
 
-      if (file.name == _canonicalDatabaseFileName) {
-        restoredDatabase = true;
-      } else if (file.name.endsWith('.security.json')) {
-        restoredSecurityMetadata = true;
-      }
+      if (file.name == _canonicalDatabaseFileName) restoredDatabase = true;
+      if (file.name.endsWith('.security.json')) restoredSecurityMetadata = true;
     }
 
     if (!restoredDatabase || !restoredSecurityMetadata) {
@@ -130,30 +99,70 @@ class LibraryBackupService {
     }
   }
 
-  static String backupFileNameForDatabasePath(String databasePath) {
-    return '${_libraryNameForPath(databasePath)}$classiBackupExtension';
+  /// Builds a backup archive in memory and uploads it to the WebDAV server.
+  Future<void> exportBackupToWebDav({
+    required webdav.Client client,
+    required String sourceDatabasePath,
+    required String serverPath,
+  }) async {
+    final bytes = await buildBackupArchive(sourceDatabasePath);
+    final remotePath = remoteBackupPath(serverPath, sourceDatabasePath);
+    await client.mkdirAll(serverPath);
+    await client.write(remotePath, bytes);
   }
 
-  static String libraryNameForBackupFile(String backupFilePath) {
-    return _libraryNameForPath(backupFilePath);
+  /// Downloads the backup at [remotePath] and returns its raw bytes.
+  Future<Uint8List> downloadBackupFromWebDav({
+    required webdav.Client client,
+    required String remotePath,
+  }) async {
+    final bytes = await client.read(remotePath);
+    return Uint8List.fromList(bytes);
   }
 
-  static bool isBackupFilePath(String path) {
-    return p.basename(path).toLowerCase().endsWith(classiBackupExtension);
+  /// Returns the last-modified time of the backup file on the WebDAV server,
+  /// or `null` if the file does not exist or cannot be reached.
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async {
+    try {
+      final remotePath = _joinServerPath(serverPath, backupFileName);
+      final props = await client.readProps(remotePath);
+      return props.mTime;
+    } catch (_) {
+      return null;
+    }
   }
 
-  static String _libraryNameForPath(String path) {
-    return p.basenameWithoutExtension(p.normalize(path));
+  /// Builds the full remote path for a backup from [serverPath] and [databasePath].
+  static String remoteBackupPath(String serverPath, String databasePath) =>
+      _joinServerPath(serverPath, backupFileNameForDatabasePath(databasePath));
+
+  static String backupFileNameForDatabasePath(String databasePath) =>
+      '${_libraryNameForPath(databasePath)}$classiBackupExtension';
+
+  static String libraryNameForBackupFile(String backupFilePath) =>
+      _libraryNameForPath(backupFilePath);
+
+  static bool isBackupFilePath(String path) =>
+      p.basename(path).toLowerCase().endsWith(classiBackupExtension);
+
+  static String _joinServerPath(String dir, String fileName) {
+    final normalized = dir.endsWith('/') ? dir : '$dir/';
+    return '$normalized$fileName';
   }
+
+  static String _libraryNameForPath(String path) =>
+      p.basenameWithoutExtension(p.normalize(path));
 
   Map<String, String> _artifactEntryNamesFor(String databasePath) {
-    final databaseFilePath = DatabasePathService.databaseFilePathFor(
-      databasePath,
-    );
+    final databaseFilePath =
+        DatabasePathService.databaseFilePathFor(databasePath);
     return {
-      for (final artifactPath in DatabasePathService.artifactPathsFor(
-        databasePath,
-      ))
+      for (final artifactPath
+          in DatabasePathService.artifactPathsFor(databasePath))
         artifactPath:
             '$_canonicalDatabaseFileName${artifactPath.substring(databaseFilePath.length)}',
     };

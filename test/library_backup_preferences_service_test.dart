@@ -15,20 +15,23 @@ void main() {
 
     expect(await service.autoExportEnabled(), isFalse);
     expect(await service.autoImportEnabled(), isFalse);
-    expect(await service.autoExportFolderPath(), isNull);
-    expect(await service.autoImportBackupPath(), isNull);
+    expect(await service.webDavUrl(), isNull);
+    expect(await service.webDavUsername(), isNull);
+    expect(await service.webDavServerPath(), isNull);
 
     await service.setAutoExportEnabled(true);
-    await service.setAutoExportFolderPath('/tmp/exports');
     await service.setAutoImportEnabled(true);
-    await service.setAutoImportBackupPath('/tmp/exports/class-a.classi-backup');
+    await service.setWebDavUrl('https://dav.example.com/remote.php/dav/files/user/');
+    await service.setWebDavUsername('alice');
+    await service.setWebDavServerPath('/classi-backups/');
 
     expect(await service.autoExportEnabled(), isTrue);
     expect(await service.autoImportEnabled(), isTrue);
-    expect(await service.autoExportFolderPath(), '/tmp/exports');
     expect(
-      await service.autoImportBackupPath(),
-      '/tmp/exports/class-a.classi-backup',
+      await service.webDavUrl(),
+      'https://dav.example.com/remote.php/dav/files/user/',
     );
+    expect(await service.webDavUsername(), 'alice');
+    expect(await service.webDavServerPath(), '/classi-backups/');
   });
 }
