@@ -4,17 +4,8 @@
 
 Classi is a local-first Flutter app for teachers. It stores groups, students,
 grades, notes, checklists, and material tracking data in encrypted `.classi`
-libraries, with portable `.classi-backup` export/import for sync.
-
-## Initial release
-
-This first release focuses on the local-first teaching workflow:
-
-- encrypted local libraries with passphrase setup and recovery key support
-- groups, students, notes, checklists, homework, and material tracking
-- grade entry with configurable systems and chart-based history
-- Android, macOS, Windows, and Linux desktop support
-- GitHub Actions for CI and release artifact builds
+libraries. Automatic backup and restore to a WebDAV server keeps your data safe
+and portable across devices.
 
 ## Supported platforms
 
@@ -23,23 +14,25 @@ This first release focuses on the local-first teaching workflow:
 - Windows
 - Linux
 
-## Implemented foundation
+## Features
 
-- SQLCipher-backed Drift database with the planned seven-table schema
-- First-run passphrase setup with secure storage
+- SQLCipher-backed Drift database with passphrase setup and recovery key support
 - Adaptive navigation for groups, notes, and settings
-- Working groups and students flow, including archive, unarchive, and clone
+- Groups and students flow, including archive, unarchive, clone, and deletion
 - Batch student creation and WebUntis class-list import
 - Grade entry, chart-based grade history, checklist management, note management,
-  material tracking, and delete actions for student history items
+  and material tracking
 - Avatar editing powered by `avatar_maker`, persisted per student in the local
   database
+- WebDAV backup with automatic upload on lock and automatic restore on startup
+- Configurable light, dark, and system theme
+- Auto-update for desktop platforms (macOS, Windows, Linux) via the `updat` package
 - English and German translations through `easy_localization`
 
 ## Data storage
 
 Classi stores your library in a `.classi` folder that you choose during the
-first-run setup.  The setup wizard always requires an explicit folder selection
+first-run setup. The setup wizard always requires an explicit folder selection
 so your data is never silently placed inside an app-private directory.
 
 **Recommended locations:**
@@ -50,9 +43,18 @@ so your data is never silently placed inside an app-private directory.
 | macOS (App Store) | `~/Documents/Classi` or another location outside `~/Library/Containers/` |
 | macOS / Windows / Linux | Any folder in your home directory or an accessible drive |
 
-Regardless of platform, enabling **auto-export backups** in Settings (or during
-setup) is strongly recommended so you always have a portable `.classi-backup`
-file in a separate location.
+### WebDAV backups
+
+Classi can automatically back up your library to any WebDAV server (e.g.
+Nextcloud, ownCloud, or a self-hosted server). Configure the server URL,
+credentials, and remote folder path in **Settings → Backups**. Once saved:
+
+- **Auto-export** uploads a `.classi-backup` archive whenever Classi locks or
+  switches libraries.
+- **Auto-import** checks for a newer backup on startup and offers to restore it.
+
+You can also trigger a manual restore from the setup screen by choosing
+*Restore from WebDAV backup*.
 
 ## Local development
 
