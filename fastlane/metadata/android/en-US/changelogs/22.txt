@@ -1,12 +1,14 @@
 Bug Fixes
 
 - Add INTERNET permission to release manifest
+- Close window when app is in lock mode
 
 
 Miscellaneous Tasks
 
 - Auto-generate fastlane changelog on push to main
 - Remove ## [Unreleased] header from fastlane changelog
+- Update fastlane changelog [skip ci]
 - Update fastlane changelog [skip ci]
 - Update fastlane changelog [skip ci]
 
