@@ -370,15 +370,17 @@ class _DelayingLibraryBackupService extends LibraryBackupService {
   final Completer<void> finish = Completer<void>();
 
   @override
-  Future<void> exportBackupToWebDav({
+  Future<DateTime> exportBackupToWebDav({
     required webdav.Client client,
     required String sourceDatabasePath,
     required String serverPath,
+    int maxVersions = 3,
   }) async {
     if (!started.isCompleted) {
       started.complete();
     }
     await finish.future;
+    return DateTime.now().toUtc();
   }
 }
 

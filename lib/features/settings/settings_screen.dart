@@ -592,6 +592,7 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
 
   bool _testingConnection = false;
   bool? _connectionOk;
+  bool _isExportingNow = false;
 
   @override
   void initState() {
@@ -642,10 +643,30 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     }
   }
 
+  Future<void> _exportNow() async {
+    setState(() => _isExportingNow = true);
+    try {
+      final errorCode = await ref.read(appSessionProvider).exportNow();
+      if (!mounted) return;
+      final code = errorCode ?? ref.read(appSessionProvider).lastBackupMessageCode ?? 'backup_exported';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(code.tr())));
+    } finally {
+      if (mounted) setState(() => _isExportingNow = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
     final isConfigured = session.isWebDavConfigured;
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
+
+    String? formatDateTime(DateTime? dt) {
+      if (dt == null) return null;
+      return DateFormat.yMd(localeTag).add_Hm().format(dt.toLocal());
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -759,12 +780,59 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
+        if (isConfigured) ...[
+          const SizedBox(height: 12),
+          _MaxVersionsPicker(session: session),
+        ],
+        if (isConfigured && session.webDavAutoExportEnabled) ...[
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: (_isExportingNow || session.isExporting)
+                  ? null
+                  : _exportNow,
+              icon: (_isExportingNow || session.isExporting)
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.cloud_upload_outlined),
+              label: Text('export_now'.tr()),
+            ),
+          ),
+        ],
         if (session.hasPendingAutoImport) ...[
           const SizedBox(height: 8),
           Text(
             'newer_backup_available'.tr(),
             style: TextStyle(color: Theme.of(context).colorScheme.primary),
           ),
+        ],
+        if (session.lastExportedAt != null ||
+            session.lastImportedAt != null) ...[
+          const SizedBox(height: 12),
+          if (session.lastExportedAt != null)
+            Text(
+              'last_exported_at'.tr(
+                namedArgs: {
+                  'datetime': formatDateTime(session.lastExportedAt)!,
+                },
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          if (session.lastImportedAt != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                'last_imported_at'.tr(
+                  namedArgs: {
+                    'datetime': formatDateTime(session.lastImportedAt)!,
+                  },
+                ),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
         ],
         if (session.lastBackupMessageCode != null) ...[
           const SizedBox(height: 12),
@@ -778,6 +846,55 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _MaxVersionsPicker extends StatelessWidget {
+  const _MaxVersionsPicker({required this.session});
+
+  final AppSessionController session;
+
+  static const List<int> _options = [1, 3, 5, 10];
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'backup_max_versions'.tr(),
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SegmentedButton<int>(
+              segments: [
+                for (final n in _options)
+                  ButtonSegment(
+                    value: n,
+                    label: Text(
+                      n == 1
+                          ? 'backup_versions_no_history'.tr()
+                          : n.toString(),
+                    ),
+                  ),
+              ],
+              selected: {session.webDavMaxVersions},
+              onSelectionChanged: (selection) => ref
+                  .read(appSessionProvider)
+                  .setWebDavMaxVersions(selection.first),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'backup_max_versions_hint'.tr(),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 }

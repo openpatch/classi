@@ -22,6 +22,10 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
       return const SizedBox.shrink();
     }
 
+    final remoteModifiedAt = session.pendingImportRemoteModifiedAt;
+    final lastExportedAt = session.lastExportedAt;
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -33,20 +37,55 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
-            Text('newer_backup_available_hint'.tr()),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: _isRestoring ? null : _restoreBackup,
-                icon: _isRestoring
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.restore_outlined),
-                label: Text('restore_backup'.tr()),
+            if (remoteModifiedAt != null)
+              Text(
+                'newer_backup_exported_at'.tr(
+                  namedArgs: {
+                    'datetime': DateFormat.yMd(localeTag)
+                        .add_Hm()
+                        .format(remoteModifiedAt.toLocal()),
+                  },
+                ),
+              )
+            else
+              Text('newer_backup_available_hint'.tr()),
+            if (lastExportedAt != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'restore_will_discard_since'.tr(
+                  namedArgs: {
+                    'datetime': DateFormat.yMd(localeTag)
+                        .add_Hm()
+                        .format(lastExportedAt.toLocal()),
+                  },
+                ),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                ),
               ),
+            ],
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: _isRestoring ? null : _dismiss,
+                  child: Text('dismiss'.tr()),
+                ),
+                FilledButton.icon(
+                  onPressed: _isRestoring ? null : _restoreBackup,
+                  icon: _isRestoring
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.restore_outlined),
+                  label: Text('restore_backup'.tr()),
+                ),
+              ],
             ),
           ],
         ),
@@ -54,18 +93,65 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
     );
   }
 
+  Future<void> _dismiss() async {
+    await ref.read(appSessionProvider).dismissPendingImport();
+  }
+
   Future<void> _restoreBackup() async {
+    final session = ref.read(appSessionProvider);
+    final remoteModifiedAt = session.pendingImportRemoteModifiedAt;
+    final lastExportedAt = session.lastExportedAt;
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('newer_backup_available'.tr()),
-        content: Text('restore_backup_confirm'.tr()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('restore_backup_confirm'.tr()),
+            if (lastExportedAt != null || remoteModifiedAt != null) ...[
+              const SizedBox(height: 12),
+              if (remoteModifiedAt != null)
+                Text(
+                  'newer_backup_exported_at'.tr(
+                    namedArgs: {
+                      'datetime': DateFormat.yMd(localeTag)
+                          .add_Hm()
+                          .format(remoteModifiedAt.toLocal()),
+                    },
+                  ),
+                ),
+              if (lastExportedAt != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'restore_will_discard_since'.tr(
+                      namedArgs: {
+                        'datetime': DateFormat.yMd(localeTag)
+                            .add_Hm()
+                            .format(lastExportedAt.toLocal()),
+                      },
+                    ),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+            ],
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text('cancel'.tr()),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text('restore_backup'.tr()),
           ),

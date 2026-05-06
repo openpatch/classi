@@ -69,7 +69,11 @@ class AppSessionController extends ChangeNotifier {
   String? _webDavUrl;
   String? _webDavUsername;
   String? _webDavServerPath;
+  int _webDavMaxVersions = LibraryBackupPreferencesService.defaultMaxVersions;
   bool _pendingWebDavImport = false;
+  DateTime? _pendingImportRemoteModifiedAt;
+  DateTime? _lastExportedAt;
+  DateTime? _lastImportedAt;
   bool _isExporting = false;
   Future<void>? _pendingLockCleanup;
   String? _lastBackupMessageCode;
@@ -88,8 +92,16 @@ class AppSessionController extends ChangeNotifier {
   String? get webDavUrl => _webDavUrl;
   String? get webDavUsername => _webDavUsername;
   String? get webDavServerPath => _webDavServerPath;
+  int get webDavMaxVersions => _webDavMaxVersions;
   bool get isWebDavConfigured => _webDavUrl != null && _webDavUrl!.isNotEmpty;
   bool get hasPendingAutoImport => _pendingWebDavImport;
+
+  /// The server mTime of the remote backup that triggered the pending import
+  /// prompt, or `null` when no import is pending.
+  DateTime? get pendingImportRemoteModifiedAt => _pendingImportRemoteModifiedAt;
+
+  DateTime? get lastExportedAt => _lastExportedAt;
+  DateTime? get lastImportedAt => _lastImportedAt;
   bool get isExporting => _isExporting;
   String? get lastBackupMessageCode => _lastBackupMessageCode;
   bool get lastBackupMessageIsError => _lastBackupMessageIsError;
@@ -558,6 +570,49 @@ class AppSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setWebDavMaxVersions(int value) async {
+    _webDavMaxVersions = value;
+    await _libraryBackupPreferencesService.setMaxVersions(value);
+    notifyListeners();
+  }
+
+  /// Dismisses the pending import prompt for the current remote backup version.
+  ///
+  /// The prompt will reappear if the remote backup is replaced by a newer one.
+  Future<void> dismissPendingImport() async {
+    final remoteModifiedAt = _pendingImportRemoteModifiedAt;
+    if (remoteModifiedAt == null) return;
+    await _libraryBackupPreferencesService.setPendingImportDismissedAt(
+      remoteModifiedAt,
+    );
+    _pendingWebDavImport = false;
+    _pendingImportRemoteModifiedAt = null;
+    notifyListeners();
+  }
+
+  /// Immediately checkpoints the database and uploads a backup to WebDAV.
+  ///
+  /// Only available when the session is [AppSessionStatus.ready] and WebDAV
+  /// auto-export is configured. Returns a translation key on error or `null`
+  /// on success.
+  Future<String?> exportNow() async {
+    if (_isBusy || _isExporting) return 'database_busy';
+    if (_database == null || _currentPassphrase == null) return 'database_busy';
+    if (!_webDavAutoExportEnabled || !isWebDavConfigured) {
+      return 'webdav_not_configured';
+    }
+
+    _isExporting = true;
+    notifyListeners();
+    try {
+      await _flushAndAutoExport();
+      return null;
+    } finally {
+      _isExporting = false;
+      notifyListeners();
+    }
+  }
+
   /// Returns `true` if the WebDAV connection test succeeded.
   Future<bool> testWebDavConnection({
     String? url,
@@ -774,6 +829,9 @@ class AppSessionController extends ChangeNotifier {
     _webDavUsername = await _libraryBackupPreferencesService.webDavUsername();
     _webDavServerPath = await _libraryBackupPreferencesService
         .webDavServerPath();
+    _webDavMaxVersions = await _libraryBackupPreferencesService.maxVersions();
+    _lastExportedAt = await _libraryBackupPreferencesService.lastExportedAt();
+    _lastImportedAt = await _libraryBackupPreferencesService.lastImportedAt();
   }
 
   Future<void> _resolveCurrentDatabaseState() async {
@@ -880,11 +938,14 @@ class AppSessionController extends ChangeNotifier {
       name: 'classi.backup',
     );
     try {
-      await _libraryBackupService.exportBackupToWebDav(
+      final exportedAt = await _libraryBackupService.exportBackupToWebDav(
         client: client,
         sourceDatabasePath: await _databasePathService.getCurrentDatabasePath(),
         serverPath: _webDavServerPath ?? '/',
+        maxVersions: _webDavMaxVersions,
       );
+      _lastExportedAt = exportedAt;
+      await _libraryBackupPreferencesService.setLastExportedAt(exportedAt);
       developer.log('WebDAV export succeeded', name: 'classi.backup');
       _setBackupMessage('backup_exported');
     } catch (error, stackTrace) {
@@ -900,12 +961,14 @@ class AppSessionController extends ChangeNotifier {
   Future<void> _updatePendingAutoImportAvailability() async {
     if (!_webDavAutoImportEnabled || !isWebDavConfigured) {
       _pendingWebDavImport = false;
+      _pendingImportRemoteModifiedAt = null;
       return;
     }
 
     final client = await createWebDavClient();
     if (client == null) {
       _pendingWebDavImport = false;
+      _pendingImportRemoteModifiedAt = null;
       return;
     }
 
@@ -924,25 +987,46 @@ class AppSessionController extends ChangeNotifier {
 
       if (backupModified == null) {
         _pendingWebDavImport = false;
+        _pendingImportRemoteModifiedAt = null;
         return;
       }
 
-      DateTime? latestLocalModified;
-      for (final artifactPath in DatabasePathService.artifactPathsFor(
-        currentDatabasePath,
-      )) {
-        final artifactFile = File(artifactPath);
-        if (!await artifactFile.exists()) continue;
-        final modifiedAt = await artifactFile.lastModified();
-        if (latestLocalModified == null ||
-            modifiedAt.isAfter(latestLocalModified)) {
-          latestLocalModified = modifiedAt;
-        }
+      // Check if the user already dismissed this exact remote version.
+      final dismissedAt = await _libraryBackupPreferencesService
+          .pendingImportDismissedAt();
+      if (dismissedAt != null &&
+          !backupModified.isAfter(dismissedAt)) {
+        _pendingWebDavImport = false;
+        _pendingImportRemoteModifiedAt = null;
+        return;
       }
 
-      _pendingWebDavImport =
-          latestLocalModified == null ||
-          backupModified.isAfter(latestLocalModified);
+      // Prefer comparing against our own last-exported timestamp (clock-safe).
+      // Fall back to local file mTime for devices that have never exported.
+      final lastExported = _lastExportedAt;
+      final bool isNewer;
+      if (lastExported != null) {
+        isNewer = backupModified.isAfter(lastExported);
+      } else {
+        DateTime? latestLocalModified;
+        for (final artifactPath in DatabasePathService.artifactPathsFor(
+          currentDatabasePath,
+        )) {
+          final artifactFile = File(artifactPath);
+          if (!await artifactFile.exists()) continue;
+          final modifiedAt = await artifactFile.lastModified();
+          if (latestLocalModified == null ||
+              modifiedAt.isAfter(latestLocalModified)) {
+            latestLocalModified = modifiedAt;
+          }
+        }
+        isNewer =
+            latestLocalModified == null ||
+            backupModified.isAfter(latestLocalModified);
+      }
+
+      _pendingWebDavImport = isNewer;
+      _pendingImportRemoteModifiedAt = isNewer ? backupModified : null;
     } catch (error, stackTrace) {
       _logUnexpectedError(
         operation: 'check WebDAV backup availability',
@@ -950,6 +1034,7 @@ class AppSessionController extends ChangeNotifier {
         stackTrace: stackTrace,
       );
       _pendingWebDavImport = false;
+      _pendingImportRemoteModifiedAt = null;
     }
   }
 
@@ -990,6 +1075,12 @@ class AppSessionController extends ChangeNotifier {
         bytes: bytes,
         destinationDatabasePath: destinationPath,
       );
+
+      final importedAt = DateTime.now().toUtc();
+      _lastImportedAt = importedAt;
+      await _libraryBackupPreferencesService.setLastImportedAt(importedAt);
+      await _libraryBackupPreferencesService.setPendingImportDismissedAt(null);
+
       await _resolveCurrentDatabaseState();
       _setBackupMessage('backup_restored');
       return null;
