@@ -1,0 +1,8 @@
+Bug Fixes
+
+- Address code review issues in AppUpdater
+- Address second round of code review issues in AppUpdater
+
+Features
+
+- Add auto-update for desktop apps using updat package

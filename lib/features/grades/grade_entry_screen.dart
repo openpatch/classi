@@ -11,18 +11,22 @@ import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 import 'grade_picker_dialog.dart';
 
-final gradeEntryGroupProvider = StreamProvider.family<Group?, int>(
+final gradeEntryGroupProvider = StreamProvider.autoDispose.family<Group?, int>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
 );
 
-final gradeEntryStudentsProvider = StreamProvider.family<List<Student>, int>(
-  (ref, groupId) => ref
-      .watch(studentRepositoryProvider)
-      .watchByGroup(groupId, sortField: ref.watch(studentSortFieldProvider)),
-);
+final gradeEntryStudentsProvider = StreamProvider.autoDispose
+    .family<List<Student>, int>(
+      (ref, groupId) => ref
+          .watch(studentRepositoryProvider)
+          .watchByGroup(
+            groupId,
+            sortField: ref.watch(studentSortFieldProvider),
+          ),
+    );
 
-final gradeSelectionsProvider =
-    FutureProvider.family<Map<int, String>, (int, DateTime, String, String)>(
+final gradeSelectionsProvider = FutureProvider.autoDispose
+    .family<Map<int, String>, (int, DateTime, String, String)>(
       (ref, args) => ref
           .watch(gradeRepositoryProvider)
           .getSessionSelections(

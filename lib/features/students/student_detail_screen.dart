@@ -25,42 +25,46 @@ import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/swipe_action_background.dart';
 
-final studentProvider = StreamProvider.family<Student?, int>(
+final studentProvider = StreamProvider.autoDispose.family<Student?, int>(
   (ref, studentId) =>
       ref.watch(studentRepositoryProvider).watchStudent(studentId),
 );
 
-final studentGradesProvider = StreamProvider.family<List<GradeEntry>, int>(
-  (ref, studentId) =>
-      ref.watch(gradeRepositoryProvider).watchStudentGrades(studentId),
-);
+final studentGradesProvider = StreamProvider.autoDispose
+    .family<List<GradeEntry>, int>(
+      (ref, studentId) =>
+          ref.watch(gradeRepositoryProvider).watchStudentGrades(studentId),
+    );
 
-final studentMaterialProvider = StreamProvider.family<List<MaterialLog>, int>(
-  (ref, studentId) =>
-      ref.watch(materialRepositoryProvider).watchStudentLogs(studentId),
-);
+final studentMaterialProvider = StreamProvider.autoDispose
+    .family<List<MaterialLog>, int>(
+      (ref, studentId) =>
+          ref.watch(materialRepositoryProvider).watchStudentLogs(studentId),
+    );
 
-final studentHomeworkProvider = StreamProvider.family<List<HomeworkLog>, int>(
-  (ref, studentId) =>
-      ref.watch(homeworkRepositoryProvider).watchStudentLogs(studentId),
-);
+final studentHomeworkProvider = StreamProvider.autoDispose
+    .family<List<HomeworkLog>, int>(
+      (ref, studentId) =>
+          ref.watch(homeworkRepositoryProvider).watchStudentLogs(studentId),
+    );
 
-final studentNotesProvider = StreamProvider.family<List<TeacherNote>, int>(
-  (ref, studentId) =>
-      ref.watch(noteRepositoryProvider).watchNotesForStudent(studentId),
-);
+final studentNotesProvider = StreamProvider.autoDispose
+    .family<List<TeacherNote>, int>(
+      (ref, studentId) =>
+          ref.watch(noteRepositoryProvider).watchNotesForStudent(studentId),
+    );
 
-final studentListItemsProvider =
-    StreamProvider.family<List<({Checklist list, ChecklistItem item})>, int>(
+final studentListItemsProvider = StreamProvider.autoDispose
+    .family<List<({Checklist list, ChecklistItem item})>, int>(
       (ref, studentId) =>
           ref.watch(listRepositoryProvider).watchItemsForStudent(studentId),
     );
 
-final availableGroupsProvider = FutureProvider<List<Group>>(
+final availableGroupsProvider = FutureProvider.autoDispose<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).allActiveGroups(),
 );
 
-final availableStudentsProvider = StreamProvider<List<Student>>(
+final availableStudentsProvider = StreamProvider.autoDispose<List<Student>>(
   (ref) => ref
       .watch(studentRepositoryProvider)
       .watchAllStudents(sortField: ref.watch(studentSortFieldProvider)),
@@ -196,9 +200,7 @@ class StudentDetailScreen extends ConsumerWidget {
       initialAvatarJson: student.avatarJson,
       title: 'edit'.tr(),
       onDelete: () async {
-        await ref
-            .read(studentRepositoryProvider)
-            .deleteStudent(student.id);
+        await ref.read(studentRepositoryProvider).deleteStudent(student.id);
         deleted = true;
       },
     );

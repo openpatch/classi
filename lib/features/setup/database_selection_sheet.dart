@@ -6,8 +6,9 @@ import 'package:path/path.dart' as p;
 
 import '../../core/providers/app_providers.dart';
 import '../../core/storage/database_path_service.dart';
+import 'webdav_restore_flow.dart';
 
-enum _DatabaseSelectionAction { openExisting, createNew }
+enum _DatabaseSelectionAction { openExisting, createNew, restoreFromWebDav }
 
 Future<void> showDatabaseSelectionSheet({
   required BuildContext context,
@@ -24,38 +25,53 @@ Future<void> showDatabaseSelectionSheet({
     showDragHandle: true,
     builder: (context) {
       return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'database_management'.tr(),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              SelectableText(currentPath),
-              const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.folder_open_outlined),
-                title: Text('open_existing_database'.tr()),
-                subtitle: Text('open_existing_database_hint'.tr()),
-                onTap: () => Navigator.of(
-                  context,
-                ).pop(_DatabaseSelectionAction.openExisting),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.create_new_folder_outlined),
-                title: Text('create_another_database'.tr()),
-                subtitle: Text('create_another_database_hint'.tr()),
-                onTap: () => Navigator.of(
-                  context,
-                ).pop(_DatabaseSelectionAction.createNew),
-              ),
-            ],
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'database_management'.tr(),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                SelectableText(currentPath),
+                const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.folder_open_outlined),
+                  title: Text('open_existing_database'.tr()),
+                  subtitle: Text('open_existing_database_hint'.tr()),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_DatabaseSelectionAction.openExisting),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.create_new_folder_outlined),
+                  title: Text('create_another_database'.tr()),
+                  subtitle: Text('create_another_database_hint'.tr()),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_DatabaseSelectionAction.createNew),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.cloud_download_outlined),
+                  title: Text('restore_from_webdav_backup'.tr()),
+                  subtitle: Text(
+                    session.isWebDavConfigured
+                        ? 'restore_from_webdav_backup_hint'.tr()
+                        : 'webdav_not_configured'.tr(),
+                  ),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_DatabaseSelectionAction.restoreFromWebDav),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -72,6 +88,9 @@ Future<void> showDatabaseSelectionSheet({
       break;
     case _DatabaseSelectionAction.createNew:
       await _createNewDatabase(context: context, ref: ref);
+      break;
+    case _DatabaseSelectionAction.restoreFromWebDav:
+      await _restoreFromWebDavDatabase(context: context, ref: ref);
       break;
   }
 }
@@ -134,6 +153,39 @@ Future<void> _createNewDatabase({
     ref: ref,
     databasePath: databasePath,
     createNew: true,
+  );
+}
+
+Future<void> _restoreFromWebDavDatabase({
+  required BuildContext context,
+  required WidgetRef ref,
+}) async {
+  final backup = await showWebDavBackupPicker(context: context, ref: ref);
+  if (backup == null || !context.mounted) {
+    return;
+  }
+
+  final currentPath = await ref.read(appSessionProvider).currentDatabasePath();
+  if (!context.mounted) {
+    return;
+  }
+  final defaultFolder = DatabasePathService.containerParentPathFor(currentPath);
+  final databasePath = await _showCreateDatabaseDialog(
+    context: context,
+    ref: ref,
+    initialFolder: defaultFolder,
+    initialName: backup.libraryName,
+  );
+  if (databasePath == null || !context.mounted) {
+    return;
+  }
+
+  await restoreWebDavBackupFlow(
+    context: context,
+    ref: ref,
+    destinationPath: databasePath,
+    createNew: true,
+    selectedBackup: backup,
   );
 }
 
@@ -213,10 +265,7 @@ Future<String?> _showCreateDatabaseDialog({
                     onChanged: (_) => setState(() {}),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    fullPath,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text(fullPath, style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
               actions: [

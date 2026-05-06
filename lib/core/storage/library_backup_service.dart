@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -13,11 +14,31 @@ const String _backupManifestFileName = 'backup.json';
 const int _backupFormatVersion = 1;
 const String _canonicalDatabaseFileName = 'data.db';
 
+class WebDavBackupEntry {
+  const WebDavBackupEntry({
+    required this.fileName,
+    required this.libraryName,
+    required this.remotePath,
+    this.modifiedAt,
+    this.sizeBytes,
+  });
+
+  final String fileName;
+  final String libraryName;
+  final String remotePath;
+  final DateTime? modifiedAt;
+  final int? sizeBytes;
+}
+
 class LibraryBackupService {
   /// Builds a `.classi-backup` ZIP archive from the current database files
   /// and returns the raw bytes.
   Future<Uint8List> buildBackupArchive(String sourceDatabasePath) async {
     final normalizedSourcePath = p.normalize(sourceDatabasePath);
+    developer.log(
+      'buildBackupArchive: path=$normalizedSourcePath',
+      name: 'classi.backup',
+    );
     final archive = Archive();
     archive.addFile(
       ArchiveFile.string(
@@ -32,12 +53,27 @@ class LibraryBackupService {
 
     for (final entry in _artifactEntryNamesFor(normalizedSourcePath).entries) {
       final sourceFile = File(entry.key);
-      if (!await sourceFile.exists()) continue;
+      if (!await sourceFile.exists()) {
+        developer.log(
+          'buildBackupArchive: skipping missing file ${entry.key}',
+          name: 'classi.backup',
+        );
+        continue;
+      }
       final bytes = await sourceFile.readAsBytes();
+      developer.log(
+        'buildBackupArchive: adding ${entry.value} (${bytes.length} bytes)',
+        name: 'classi.backup',
+      );
       archive.addFile(ArchiveFile(entry.value, bytes.length, bytes));
     }
 
-    return Uint8List.fromList(ZipEncoder().encode(archive));
+    final encoded = Uint8List.fromList(ZipEncoder().encode(archive));
+    developer.log(
+      'buildBackupArchive: archive size=${encoded.length} bytes',
+      name: 'classi.backup',
+    );
+    return encoded;
   }
 
   /// Restores a backup archive from [bytes] into [destinationDatabasePath].
@@ -63,16 +99,18 @@ class LibraryBackupService {
       }
       await destinationDirectory.create(recursive: true);
     } else {
-      for (final artifactPath
-          in DatabasePathService.artifactPathsFor(destinationDatabasePath)) {
+      for (final artifactPath in DatabasePathService.artifactPathsFor(
+        destinationDatabasePath,
+      )) {
         final file = File(artifactPath);
         if (await file.exists()) await file.delete();
       }
     }
 
     final destinationByEntryName = {
-      for (final entry
-          in _artifactEntryNamesFor(destinationDatabasePath).entries)
+      for (final entry in _artifactEntryNamesFor(
+        destinationDatabasePath,
+      ).entries)
         entry.value: entry.key,
     };
 
@@ -107,6 +145,10 @@ class LibraryBackupService {
   }) async {
     final bytes = await buildBackupArchive(sourceDatabasePath);
     final remotePath = remoteBackupPath(serverPath, sourceDatabasePath);
+    developer.log(
+      'exportBackupToWebDav: remotePath=$remotePath size=${bytes.length}',
+      name: 'classi.backup',
+    );
     await client.mkdirAll(serverPath);
     await client.write(remotePath, bytes);
   }
@@ -136,6 +178,57 @@ class LibraryBackupService {
     }
   }
 
+  /// Lists backup archives available on the WebDAV server path.
+  Future<List<WebDavBackupEntry>> listRemoteBackups({
+    required webdav.Client client,
+    required String serverPath,
+  }) async {
+    final files = await client.readDir(serverPath);
+    final backups = <WebDavBackupEntry>[];
+
+    for (final file in files) {
+      if (file.isDir == true) {
+        continue;
+      }
+
+      final fileName = file.name ?? p.basename(file.path ?? '');
+      if (fileName.isEmpty || !isBackupFilePath(fileName)) {
+        continue;
+      }
+
+      backups.add(
+        WebDavBackupEntry(
+          fileName: fileName,
+          libraryName: libraryNameForBackupFile(fileName),
+          remotePath: _joinServerPath(serverPath, fileName),
+          modifiedAt: file.mTime,
+          sizeBytes: file.size,
+        ),
+      );
+    }
+
+    backups.sort((left, right) {
+      final leftModified = left.modifiedAt;
+      final rightModified = right.modifiedAt;
+      if (leftModified != null && rightModified != null) {
+        final byModified = rightModified.compareTo(leftModified);
+        if (byModified != 0) {
+          return byModified;
+        }
+      } else if (rightModified != null) {
+        return 1;
+      } else if (leftModified != null) {
+        return -1;
+      }
+
+      return left.libraryName.toLowerCase().compareTo(
+        right.libraryName.toLowerCase(),
+      );
+    });
+
+    return backups;
+  }
+
   /// Builds the full remote path for a backup from [serverPath] and [databasePath].
   static String remoteBackupPath(String serverPath, String databasePath) =>
       _joinServerPath(serverPath, backupFileNameForDatabasePath(databasePath));
@@ -158,11 +251,13 @@ class LibraryBackupService {
       p.basenameWithoutExtension(p.normalize(path));
 
   Map<String, String> _artifactEntryNamesFor(String databasePath) {
-    final databaseFilePath =
-        DatabasePathService.databaseFilePathFor(databasePath);
+    final databaseFilePath = DatabasePathService.databaseFilePathFor(
+      databasePath,
+    );
     return {
-      for (final artifactPath
-          in DatabasePathService.artifactPathsFor(databasePath))
+      for (final artifactPath in DatabasePathService.artifactPathsFor(
+        databasePath,
+      ))
         artifactPath:
             '$_canonicalDatabaseFileName${artifactPath.substring(databaseFilePath.length)}',
     };

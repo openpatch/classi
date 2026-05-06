@@ -17,23 +17,23 @@ import 'note_editor.dart';
 import 'note_links.dart';
 import 'note_repository.dart';
 
-final allNotesProvider = StreamProvider<List<TeacherNote>>(
+final allNotesProvider = StreamProvider.autoDispose<List<TeacherNote>>(
   (ref) => ref.watch(noteRepositoryProvider).watchNotes(NoteFilter.all),
 );
 
-final todoNotesProvider = StreamProvider<List<TeacherNote>>(
+final todoNotesProvider = StreamProvider.autoDispose<List<TeacherNote>>(
   (ref) => ref.watch(noteRepositoryProvider).watchNotes(NoteFilter.todos),
 );
 
-final doneNotesProvider = StreamProvider<List<TeacherNote>>(
+final doneNotesProvider = StreamProvider.autoDispose<List<TeacherNote>>(
   (ref) => ref.watch(noteRepositoryProvider).watchNotes(NoteFilter.done),
 );
 
-final archivedNotesProvider = StreamProvider<List<TeacherNote>>(
+final archivedNotesProvider = StreamProvider.autoDispose<List<TeacherNote>>(
   (ref) => ref.watch(noteRepositoryProvider).watchArchivedNotes(),
 );
 
-final allStudentsProvider = StreamProvider<List<Student>>(
+final allStudentsProvider = StreamProvider.autoDispose<List<Student>>(
   (ref) => ref
       .watch(studentRepositoryProvider)
       .watchAllStudents(sortField: ref.watch(studentSortFieldProvider)),
