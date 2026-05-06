@@ -105,7 +105,7 @@ void main() {
   });
 
   test(
-    'lock sets status to locked immediately before async cleanup',
+    'lock exports before transitioning to locked status',
     () async {
       await controller.initialize();
       await controller.createDatabase('test');
@@ -113,14 +113,20 @@ void main() {
 
       expect(controller.status, AppSessionStatus.ready);
 
-      // Start locking but do not await – the status should change synchronously.
+      // Start locking without awaiting – export starts synchronously.
       final lockFuture = controller.lock();
       expect(
+        controller.isExporting,
+        isTrue,
+        reason: 'isExporting must be true while upload is in progress',
+      );
+      expect(
         controller.status,
-        AppSessionStatus.locked,
-        reason: 'status must be locked before async cleanup completes',
+        AppSessionStatus.ready,
+        reason: 'status stays ready until upload completes',
       );
       await lockFuture;
+      expect(controller.isExporting, isFalse);
       expect(controller.status, AppSessionStatus.locked);
     },
   );

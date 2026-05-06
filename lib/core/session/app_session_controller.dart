@@ -70,6 +70,7 @@ class AppSessionController extends ChangeNotifier {
   String? _webDavUsername;
   String? _webDavServerPath;
   bool _pendingWebDavImport = false;
+  bool _isExporting = false;
   String? _lastBackupMessageCode;
   bool _lastBackupMessageIsError = false;
 
@@ -88,6 +89,7 @@ class AppSessionController extends ChangeNotifier {
   String? get webDavServerPath => _webDavServerPath;
   bool get isWebDavConfigured => _webDavUrl != null && _webDavUrl!.isNotEmpty;
   bool get hasPendingAutoImport => _pendingWebDavImport;
+  bool get isExporting => _isExporting;
   String? get lastBackupMessageCode => _lastBackupMessageCode;
   bool get lastBackupMessageIsError => _lastBackupMessageIsError;
   bool get hasPendingRecoveryKey => _pendingRecoveryKey != null;
@@ -229,15 +231,21 @@ class AppSessionController extends ChangeNotifier {
     if (isRecoveryKeyHandoffActive) {
       return;
     }
-    if (_status != AppSessionStatus.ready) {
+    if (_status != AppSessionStatus.ready || _isExporting) {
       return;
     }
 
     _cancelInactivityTimer();
-    _status = AppSessionStatus.locked;
     _errorCode = null;
+    _isExporting = true;
     notifyListeners();
-    await _persistOpenDatabaseState(markSessionClean: true);
+    try {
+      await _persistOpenDatabaseState(markSessionClean: true);
+    } finally {
+      _isExporting = false;
+      _status = AppSessionStatus.locked;
+      notifyListeners();
+    }
   }
 
   Future<void> handleAppResumed() async {
@@ -266,7 +274,7 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<void> handleAppBackgrounded() async {
-    if (_status != AppSessionStatus.ready) {
+    if (_status != AppSessionStatus.ready || _isExporting) {
       return;
     }
 
@@ -776,8 +784,15 @@ class AppSessionController extends ChangeNotifier {
       return;
     }
 
-    await _runAutoExportIfConfigured();
-    await _updatePendingAutoImportAvailability();
+    _isExporting = true;
+    notifyListeners();
+    try {
+      await _runAutoExportIfConfigured();
+      await _updatePendingAutoImportAvailability();
+    } finally {
+      _isExporting = false;
+      notifyListeners();
+    }
   }
 
   Future<void> _runAutoExportIfConfigured() async {

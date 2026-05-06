@@ -2,17 +2,22 @@ import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers/app_providers.dart';
 import 'app_updater.dart';
 
-class AppScaffold extends StatelessWidget {
+class AppScaffold extends ConsumerWidget {
   const AppScaffold({required this.child, super.key});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isExporting = ref.watch(
+      appSessionProvider.select((s) => s.isExporting),
+    );
     final isWide = MediaQuery.sizeOf(context).width > 700 || Platform.isWindows;
     final selectedIndex = _selectedIndex(context);
     final destinations = [
@@ -84,10 +89,23 @@ class AppScaffold extends StatelessWidget {
       );
     }
 
-    if (isDesktopPlatform) {
-      return AppUpdater(child: scaffold);
+    Widget result = isDesktopPlatform ? AppUpdater(child: scaffold) : scaffold;
+
+    if (isExporting) {
+      result = Stack(
+        children: [
+          AbsorbPointer(child: result),
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(),
+          ),
+        ],
+      );
     }
-    return scaffold;
+
+    return result;
   }
 
   int _selectedIndex(BuildContext context) {
