@@ -15,7 +15,8 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}
     ### {{ group | striptags | trim | upper_first }}
 
-    {% for commit in commits %}\
+    {% for msg, group_commits in commits | group_by(attribute="message") %}\
+        {% set commit = group_commits | first %}\
         - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
         {% if commit.breaking %}[**breaking**] {% endif %}\
         {{ commit.message | upper_first }}
@@ -46,6 +47,7 @@ commit_parsers = [
   { message = "^test", group = "Testing" },
   { message = "^chore\\(release\\)", skip = true },
   { message = "^chore\\(deps", skip = true },
+  { message = "(?i)fastlane changelog", skip = true },
   { message = "^chore|^ci", group = "Miscellaneous Tasks" },
   { body = ".*security", group = "Security" },
   { message = "^revert", group = "Reverts" },
