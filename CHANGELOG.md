@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Bug Fixes
+
+- *(changelog)* Skip fastlane changelog commits and deduplicate entries
+
+
 ## [1.4.2] - 2026-05-06
 
 ### Bug Fixes
@@ -9,17 +16,7 @@ All notable changes to this project will be documented in this file.
 - *(android)* Add INTERNET permission to release manifest
 - *(linux)* Close window when app is in lock mode
 - *(ci)* Remove [skip ci] from fastlane changelog commit
-
-
-### Miscellaneous Tasks
-
-- Auto-generate fastlane changelog on push to main
-- Remove ## [Unreleased] header from fastlane changelog
-- Update fastlane changelog [skip ci]
-- Update fastlane changelog [skip ci]
-- Update fastlane changelog [skip ci]
-- Update fastlane changelog [skip ci]
-- Update fastlane changelog
+- *(backup)* Clear pending-import flag after restore and show restoring state
 
 
 ## [1.4.1] - 2026-05-06
@@ -265,8 +262,6 @@ All notable changes to this project will be documented in this file.
 - *(ci)* On-demand per-platform PR builds with artifact comment
 - *(ci)* Trigger per-platform builds via PR comment with direct artifact link
 - *(setup)* Convert SetupScreen into a 4-step database creation wizard
-- *(ci)* On-demand per-platform PR builds with artifact comment
-- *(ci)* Trigger per-platform builds via PR comment with direct artifact link
 
 
 ### Miscellaneous Tasks
