@@ -2,14 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Bug Fixes
+
+- *(changelog)* Skip fastlane changelog commits and deduplicate entries
+
+
 ## [1.4.2] - 2026-05-06
 
 ### Bug Fixes
 
 - *(android)* Add INTERNET permission to release manifest
-- *(backup)* Clear pending-import flag after restore and show restoring state
 - *(linux)* Close window when app is in lock mode
 - *(ci)* Remove [skip ci] from fastlane changelog commit
+- *(backup)* Clear pending-import flag after restore and show restoring state
 
 
 ## [1.4.1] - 2026-05-06
@@ -34,8 +41,8 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
-- Remove section from changelog
 - Update README and CHANGELOG for WebDAV backup and theme settings
+- Remove section from changelog
 
 
 ### Features
@@ -67,9 +74,9 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- *(students)* Match displayed names to sort order
 - Await delete before popping sheet and navigate cleanly after deletion
 - *(backup)* Extend suspendBackgroundLock to cover all async state updates
-- *(students)* Match displayed names to sort order
 
 
 ### Features
@@ -136,8 +143,8 @@ All notable changes to this project will be documented in this file.
 
 ### Features
 
-- *(students)* Add Lists tab to student detail screen
 - Better lists
+- *(students)* Add Lists tab to student detail screen
 
 
 ### Refactoring
@@ -201,8 +208,8 @@ All notable changes to this project will be documented in this file.
 
 ### Features
 
-- Add PR build app name suffix and version info in settings
 - Add fingerprint/biometric unlock support on Android, iOS, and macOS
+- Add PR build app name suffix and version info in settings
 
 
 ## [1.1.3] - 2026-04-27
@@ -210,8 +217,8 @@ All notable changes to this project will be documented in this file.
 ### Bug Fixes
 
 - *(session)* Centralize app session errors
-- *(data)* Query group student counts
 - *(ui)* Replace raw error output
+- *(data)* Query group student counts
 
 
 ### Refactoring
@@ -235,16 +242,16 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- PR builds use .pr applicationId suffix to avoid overwriting the real app
 - *(ci)* Bump pubspec.yaml version on release
+- PR builds use .pr applicationId suffix to avoid overwriting the real app
 
 
 ## [1.1.0] - 2026-04-27
 
 ### Bug Fixes
 
-- *(setup)* Dispose nameController and deduplicate path in dialog
 - Enable swipe between tabs in Notes and Groups screens
+- *(setup)* Dispose nameController and deduplicate path in dialog
 - *(ci)* Use actions/upload-artifact@v7 to match release.yml
 - *(setup)* Use descriptive validator error messages in wizard steps
 
@@ -252,15 +259,15 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - *(setup)* Allow folder and name selection when creating a database
-- *(setup)* Convert SetupScreen into a 4-step database creation wizard
 - *(ci)* On-demand per-platform PR builds with artifact comment
 - *(ci)* Trigger per-platform builds via PR comment with direct artifact link
+- *(setup)* Convert SetupScreen into a 4-step database creation wizard
 
 
 ### Miscellaneous Tasks
 
-- *(ci)* Add PR build workflow for downloadable binaries
 - *(ci)* Update upload artifact to v7
+- *(ci)* Add PR build workflow for downloadable binaries
 
 
 ## [1.0.0] - 2026-04-26
