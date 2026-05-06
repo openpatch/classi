@@ -1,11 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'core/providers/app_providers.dart';
 import 'core/sync/app_lifecycle_observer.dart';
 import 'shared/router/app_router.dart';
 import 'shared/theme/app_ui.dart';
+import 'shared/widgets/app_updater.dart';
 import 'shared/widgets/security_activity_boundary.dart';
 
 class ClassiApp extends ConsumerStatefulWidget {
@@ -15,7 +17,7 @@ class ClassiApp extends ConsumerStatefulWidget {
   ConsumerState<ClassiApp> createState() => _ClassiAppState();
 }
 
-class _ClassiAppState extends ConsumerState<ClassiApp> {
+class _ClassiAppState extends ConsumerState<ClassiApp> with WindowListener {
   late final AppLifecycleObserver _observer;
 
   @override
@@ -27,12 +29,29 @@ class _ClassiAppState extends ConsumerState<ClassiApp> {
           ref.read(appSessionProvider).handleAppBackgrounded(),
     );
     WidgetsBinding.instance.addObserver(_observer);
+    if (isDesktopPlatform) {
+      windowManager.addListener(this);
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(_observer);
+    if (isDesktopPlatform) {
+      windowManager.removeListener(this);
+    }
     super.dispose();
+  }
+
+  /// Ensures the window can always be closed, even when [UpdatWindowManager]
+  /// is not in the widget tree (e.g. while the app is locked).
+  ///
+  /// [UpdatWindowManager] calls `setPreventClose(true)` but never resets it on
+  /// dispose. This fallback listener guarantees that `windowManager.destroy()`
+  /// is always called so the close button works in every app state.
+  @override
+  Future<void> onWindowClose() async {
+    await windowManager.destroy();
   }
 
   @override
