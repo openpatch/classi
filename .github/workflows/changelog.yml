@@ -33,6 +33,7 @@ jobs:
       - name: Strip markdown formatting for fastlane
         run: |
           sed -i \
+            -e '/^## \[Unreleased\]/{N;d}' \
             -e 's/^### //' \
             -e 's/\*([^)]*)\* //g' \
             -e 's/\[\*\*breaking\*\*\] /[breaking] /g' \
