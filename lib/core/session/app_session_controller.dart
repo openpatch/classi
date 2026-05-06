@@ -1013,12 +1013,22 @@ class AppSessionController extends ChangeNotifier {
         return;
       }
 
-      // Prefer comparing against our own last-exported timestamp (clock-safe).
-      // Fall back to local file mTime for devices that have never exported.
+      // Prefer comparing against our own last-exported / last-imported
+      // timestamp (clock-safe). Use whichever is more recent so that a restore
+      // also clears the pending-import flag. Fall back to local file mTime for
+      // devices that have never exported or imported.
       final lastExported = _lastExportedAt;
+      final lastImported = _lastImportedAt;
+      final DateTime? localRef;
+      if (lastExported != null && lastImported != null) {
+        localRef =
+            lastExported.isAfter(lastImported) ? lastExported : lastImported;
+      } else {
+        localRef = lastExported ?? lastImported;
+      }
       final bool isNewer;
-      if (lastExported != null) {
-        isNewer = backupModified.isAfter(lastExported);
+      if (localRef != null) {
+        isNewer = backupModified.isAfter(localRef);
       } else {
         DateTime? latestLocalModified;
         for (final artifactPath in DatabasePathService.artifactPathsFor(

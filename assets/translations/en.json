@@ -206,6 +206,7 @@
   "reset": "Reset",
   "restore_backup": "Restore backup",
   "restore_backup_confirm": "Replace the current local library with the newer backup?",
+  "restoring_backup": "Restoring backup…",
   "restore_from_webdav_backup": "Restore from WebDAV backup",
   "restore_from_webdav_backup_hint": "Download a remote Classi backup and open it on this device.",
   "restore_will_discard_since": "This will discard all local changes made since {datetime}.",
