@@ -33,7 +33,13 @@ class WebDavBackupEntry {
 class LibraryBackupService {
   /// Builds a `.classi-backup` ZIP archive from the current database files
   /// and returns the raw bytes.
-  Future<Uint8List> buildBackupArchive(String sourceDatabasePath) async {
+  ///
+  /// [exportedAt] sets the `exportedAt` timestamp in the manifest. Defaults
+  /// to the current UTC time when not provided.
+  Future<Uint8List> buildBackupArchive(
+    String sourceDatabasePath, {
+    DateTime? exportedAt,
+  }) async {
     final normalizedSourcePath = p.normalize(sourceDatabasePath);
     developer.log(
       'buildBackupArchive: path=$normalizedSourcePath',
@@ -46,7 +52,7 @@ class LibraryBackupService {
         jsonEncode({
           'formatVersion': _backupFormatVersion,
           'libraryName': _libraryNameForPath(normalizedSourcePath),
-          'exportedAt': DateTime.now().toUtc().toIso8601String(),
+          'exportedAt': (exportedAt ?? DateTime.now().toUtc()).toIso8601String(),
         }),
       ),
     );
@@ -137,20 +143,134 @@ class LibraryBackupService {
     }
   }
 
-  /// Builds a backup archive in memory and uploads it to the WebDAV server.
-  Future<void> exportBackupToWebDav({
+  /// Builds a backup archive in memory and uploads it atomically to the
+  /// WebDAV server.
+  ///
+  /// The upload goes to a `.tmp` file first, then the existing backup (if any)
+  /// is archived as a timestamped copy, and the `.tmp` file is renamed to the
+  /// canonical backup name. Older archived versions beyond [maxVersions] are
+  /// pruned.
+  ///
+  /// Returns the UTC [DateTime] embedded as `exportedAt` in the manifest.
+  Future<DateTime> exportBackupToWebDav({
     required webdav.Client client,
     required String sourceDatabasePath,
     required String serverPath,
+    int maxVersions = 3,
   }) async {
-    final bytes = await buildBackupArchive(sourceDatabasePath);
-    final remotePath = remoteBackupPath(serverPath, sourceDatabasePath);
+    final exportedAt = DateTime.now().toUtc();
+    final bytes = await buildBackupArchive(
+      sourceDatabasePath,
+      exportedAt: exportedAt,
+    );
+    final canonicalName = backupFileNameForDatabasePath(sourceDatabasePath);
+    final canonicalPath = _joinServerPath(serverPath, canonicalName);
+    final tmpPath = '$canonicalPath.tmp';
     developer.log(
-      'exportBackupToWebDav: remotePath=$remotePath size=${bytes.length}',
+      'exportBackupToWebDav: uploading to $tmpPath (${bytes.length} bytes)',
       name: 'classi.backup',
     );
     await client.mkdirAll(serverPath);
-    await client.write(remotePath, bytes);
+    await client.write(tmpPath, bytes);
+
+    // Archive the current canonical backup before replacing it.
+    await _archiveExistingBackup(
+      client: client,
+      serverPath: serverPath,
+      canonicalName: canonicalName,
+      canonicalPath: canonicalPath,
+    );
+
+    // Atomically promote the tmp file to the canonical name.
+    developer.log(
+      'exportBackupToWebDav: renaming $tmpPath → $canonicalPath',
+      name: 'classi.backup',
+    );
+    await client.rename(tmpPath, canonicalPath, true);
+
+    // Prune old archived versions.
+    await _pruneArchivedVersions(
+      client: client,
+      serverPath: serverPath,
+      canonicalName: canonicalName,
+      maxVersions: maxVersions,
+    );
+
+    developer.log('exportBackupToWebDav: done', name: 'classi.backup');
+    return exportedAt;
+  }
+
+  Future<void> _archiveExistingBackup({
+    required webdav.Client client,
+    required String serverPath,
+    required String canonicalName,
+    required String canonicalPath,
+  }) async {
+    try {
+      final props = await client.readProps(canonicalPath);
+      final mTime = props.mTime;
+      if (mTime == null) return;
+      final stamp = mTime.toUtc().toIso8601String().replaceAll(':', '').replaceAll('-', '').split('.').first;
+      final stem = p.basenameWithoutExtension(canonicalName);
+      final archivedName = '${stem}_$stamp$classiBackupExtension';
+      final archivedPath = _joinServerPath(serverPath, archivedName);
+      developer.log(
+        'exportBackupToWebDav: archiving existing backup as $archivedName',
+        name: 'classi.backup',
+      );
+      await client.rename(canonicalPath, archivedPath, true);
+    } catch (_) {
+      // No existing file or server does not support rename — proceed.
+    }
+  }
+
+  Future<void> _pruneArchivedVersions({
+    required webdav.Client client,
+    required String serverPath,
+    required String canonicalName,
+    required int maxVersions,
+  }) async {
+    if (maxVersions <= 1) return;
+    try {
+      final stem = p.basenameWithoutExtension(canonicalName);
+      final files = await client.readDir(serverPath);
+      final archived = files
+          .where((f) {
+            final name = f.name ?? p.basename(f.path ?? '');
+            return name.startsWith('${stem}_') &&
+                name.toLowerCase().endsWith(classiBackupExtension);
+          })
+          .toList();
+
+      // Sort oldest first (by mTime ascending).
+      archived.sort((a, b) {
+        final at = a.mTime;
+        final bt = b.mTime;
+        if (at == null && bt == null) return 0;
+        if (at == null) return -1;
+        if (bt == null) return 1;
+        return at.compareTo(bt);
+      });
+
+      // Keep the newest (maxVersions - 1) archived copies (the canonical
+      // counts as one version).
+      final keepCount = maxVersions - 1;
+      if (archived.length > keepCount) {
+        final toDelete = archived.sublist(0, archived.length - keepCount);
+        for (final file in toDelete) {
+          final name = file.name ?? p.basename(file.path ?? '');
+          developer.log(
+            'exportBackupToWebDav: pruning $name',
+            name: 'classi.backup',
+          );
+          try {
+            await client.remove(_joinServerPath(serverPath, name));
+          } catch (_) {}
+        }
+      }
+    } catch (_) {
+      // Pruning is best-effort.
+    }
   }
 
   /// Downloads the backup at [remotePath] and returns its raw bytes.
@@ -179,6 +299,10 @@ class LibraryBackupService {
   }
 
   /// Lists backup archives available on the WebDAV server path.
+  ///
+  /// Both canonical (`name.classi-backup`) and archived
+  /// (`name_TIMESTAMP.classi-backup`) files are returned and sorted newest
+  /// first.
   Future<List<WebDavBackupEntry>> listRemoteBackups({
     required webdav.Client client,
     required String serverPath,
@@ -236,8 +360,12 @@ class LibraryBackupService {
   static String backupFileNameForDatabasePath(String databasePath) =>
       '${_libraryNameForPath(databasePath)}$classiBackupExtension';
 
-  static String libraryNameForBackupFile(String backupFilePath) =>
-      _libraryNameForPath(backupFilePath);
+  static String libraryNameForBackupFile(String backupFilePath) {
+    final stem = _libraryNameForPath(backupFilePath);
+    // Archived files look like "name_20260506T143200Z". Strip the timestamp.
+    final timestampPattern = RegExp(r'_\d{8}T\d{6}Z$');
+    return stem.replaceFirst(timestampPattern, '');
+  }
 
   static bool isBackupFilePath(String path) =>
       p.basename(path).toLowerCase().endsWith(classiBackupExtension);
