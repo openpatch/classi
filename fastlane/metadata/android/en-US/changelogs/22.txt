@@ -1,7 +1,13 @@
+Bug Fixes
+
+- Add INTERNET permission to release manifest
+
+
 Miscellaneous Tasks
 
 - Auto-generate fastlane changelog on push to main
 - Remove ## [Unreleased] header from fastlane changelog
+- Update fastlane changelog [skip ci]
 - Update fastlane changelog [skip ci]
 
 
