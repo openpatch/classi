@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2026-05-06
+
+### Bug Fixes
+
+- *(android)* Add INTERNET permission to release manifest
+- *(linux)* Close window when app is in lock mode
+- *(ci)* Remove [skip ci] from fastlane changelog commit
+
+
+### Miscellaneous Tasks
+
+- Auto-generate fastlane changelog on push to main
+- Remove ## [Unreleased] header from fastlane changelog
+- Update fastlane changelog [skip ci]
+- Update fastlane changelog [skip ci]
+- Update fastlane changelog [skip ci]
+- Update fastlane changelog [skip ci]
+- Update fastlane changelog
+
+
 ## [1.4.1] - 2026-05-06
 
 ### Bug Fixes
