@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-05-06
+
+### Bug Fixes
+
+- *(backup)* Test WebDAV connection using current field values
+- *(backup)* Upload before locking and show progress indicator
+
+
+### Documentation
+
+- Update README and CHANGELOG for WebDAV backup and theme settings
+- Remove section from changelog
+
+
+### Features
+
+- *(settings)* Add configurable theme setting (light/dark/auto)
+- *(backup)* Replace local-folder backup with WebDAV support
+- *(backup)* Restore from WebDAV with credential prompt when unconfigured
+
+
+### Refactoring
+
+- *(setup)* Extract create database dialog into StatefulWidget
+
+
 ## [1.3.0] - 2026-05-05
 
 ### Bug Fixes
