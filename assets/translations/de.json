@@ -279,5 +279,13 @@
   "webuntis_import_failed": "Classi konnte die WebUntis-Datei nicht importieren.",
   "webuntis_invalid_row": "Mindestens einer Zeile in der WebUntis-Datei fehlt Vor- oder Nachname.",
   "webuntis_missing_columns": "Die ausgewählte Datei sieht nicht wie ein WebUntis-Export aus.",
-  "wizard_step_counter": "Schritt {current} von {total}"
+  "wizard_step_counter": "Schritt {current} von {total}",
+  "filter_all": "Alle",
+  "filter_1_month": "1 Monat",
+  "filter_3_months": "3 Monate",
+  "filter_6_months": "6 Monate",
+  "filter_this_year": "Dieses Jahr",
+  "parent_summary": "Elterngespräch",
+  "work_habits": "Arbeitsverhalten",
+  "empty_grades": "Noch keine Noten erfasst"
 }

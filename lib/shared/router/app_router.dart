@@ -16,6 +16,7 @@ import '../../features/setup/recovery_key_screen.dart';
 import '../../features/setup/setup_screen.dart';
 import '../../features/setup/unlock_screen.dart';
 import '../../features/students/student_detail_screen.dart';
+import '../../features/students/student_summary_screen.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/startup_screen.dart';
 
@@ -201,6 +202,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) => StudentDetailScreen(
               studentId: int.parse(state.pathParameters['studentId']!),
             ),
+            routes: [
+              GoRoute(
+                path: 'summary',
+                builder: (_, state) => StudentSummaryScreen(
+                  studentId: int.parse(state.pathParameters['studentId']!),
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/notes',

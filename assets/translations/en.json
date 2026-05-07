@@ -279,5 +279,13 @@
   "webuntis_import_failed": "Classi could not import the WebUntis file.",
   "webuntis_invalid_row": "At least one row in the WebUntis file is missing a first or last name.",
   "webuntis_missing_columns": "The selected file does not look like a WebUntis export.",
-  "wizard_step_counter": "Step {current} of {total}"
+  "wizard_step_counter": "Step {current} of {total}",
+  "filter_all": "All",
+  "filter_1_month": "1 month",
+  "filter_3_months": "3 months",
+  "filter_6_months": "6 months",
+  "filter_this_year": "This year",
+  "parent_summary": "Parent meeting",
+  "work_habits": "Work habits",
+  "empty_grades": "No grades recorded yet"
 }
