@@ -1,0 +1,5 @@
+Features
+
+- Add lesson notes and attendance states
+
+
