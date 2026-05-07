@@ -2,11 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.4.3] - 2026-05-06
 
 ### Bug Fixes
 
 - *(changelog)* Skip fastlane changelog commits and deduplicate entries
+- *(changelog)* Use unique filter for cleaner deduplication
 
 
 ## [1.4.2] - 2026-05-06
