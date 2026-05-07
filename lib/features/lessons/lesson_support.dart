@@ -70,11 +70,11 @@ final lessonEntryDatesProvider = StreamProvider.autoDispose
           ref.watch(lessonRepositoryProvider).watchGroupEntryDates(groupId),
     );
 
-final lessonGradeSelectionsProvider = FutureProvider.autoDispose
+final lessonGradeSelectionsProvider = StreamProvider.autoDispose
     .family<Map<int, String>, (int, DateTime, String, String)>(
       (ref, args) => ref
           .watch(gradeRepositoryProvider)
-          .getSessionSelections(
+          .watchSessionSelections(
             groupId: args.$1,
             date: normalizeLessonDate(args.$2),
             sessionLabel: args.$3,

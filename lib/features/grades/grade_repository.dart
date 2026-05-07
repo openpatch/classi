@@ -170,6 +170,41 @@ class GradeRepository {
     };
   }
 
+  Stream<Map<int, String>> watchSessionSelections({
+    required int groupId,
+    required String sessionLabel,
+    required DateTime date,
+    required String categoryId,
+  }) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return _database
+        .customSelect(
+          '''
+      SELECT g.student_id, g.value
+      FROM grade_entries_table g
+      JOIN students_table s ON s.id = g.student_id
+      WHERE s.group_id = ? AND g.session_label = ? AND g.date = ? AND g.category_id = ?
+      ''',
+          variables: [
+            Variable.withInt(groupId),
+            Variable.withString(sessionLabel),
+            Variable.withDateTime(normalizedDate),
+            Variable.withString(categoryId),
+          ],
+          readsFrom: {
+            _database.gradeEntriesTable,
+            _database.studentsTable,
+          },
+        )
+        .watch()
+        .map(
+          (rows) => {
+            for (final row in rows)
+              row.read<int>('student_id'): row.read<String>('value'),
+          },
+        );
+  }
+
   Future<void> saveEntry({
     required int studentId,
     required DateTime date,
