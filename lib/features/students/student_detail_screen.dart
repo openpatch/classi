@@ -109,6 +109,27 @@ class StudentDetailScreen extends ConsumerWidget {
         final groupForeground = groupColor == null
             ? null
             : onColorForBackground(groupColor);
+        final attendanceLogs = attendanceValue.value ?? const <AttendanceLog>[];
+        final totalLogs = attendanceLogs.length;
+        final presentCount =
+            attendanceLogs.where((l) => !l.isAbsent).length;
+        final attendancePercent =
+            totalLogs > 0 ? (presentCount / totalLogs * 100).round() : null;
+        final attendanceSubtitle = attendancePercent != null
+            ? '$attendancePercent% ${'present'.tr()}'
+            : null;
+        final groupAveragesMap = ref.watch(
+          groupAveragesProvider(student.groupId),
+        ).value;
+        final classAverage =
+            groupAveragesMap != null && groupAveragesMap.isNotEmpty
+                ? groupAveragesMap.values.reduce((a, b) => a + b) /
+                    groupAveragesMap.length
+                : null;
+        final appBarSubtitle = [
+          group?.name,
+          attendanceSubtitle,
+        ].nonNulls.join(' · ');
 
         return DefaultTabController(
           length: 6,
@@ -137,7 +158,7 @@ class StudentDetailScreen extends ConsumerWidget {
                         originNote: student.originNote,
                         sortField: sortField,
                       ),
-                      subtitle: group?.name,
+                      subtitle: appBarSubtitle.isEmpty ? null : appBarSubtitle,
                     ),
                   ),
                 ],
@@ -171,6 +192,7 @@ class StudentDetailScreen extends ConsumerWidget {
                   gradesValue: gradesValue,
                   gradeScaleJson: groupValue.value?.gradeScaleJson,
                   gradeCategoriesJson: groupValue.value?.gradeCategoriesJson,
+                  classAverage: classAverage,
                 ),
                 _MaterialTab(
                   studentId: student.id,
@@ -265,12 +287,14 @@ class _GradesTab extends ConsumerStatefulWidget {
     required this.gradesValue,
     required this.gradeScaleJson,
     required this.gradeCategoriesJson,
+    this.classAverage,
   });
 
   final int studentId;
   final AsyncValue<List<GradeEntry>> gradesValue;
   final String? gradeScaleJson;
   final String? gradeCategoriesJson;
+  final double? classAverage;
 
   @override
   ConsumerState<_GradesTab> createState() => _GradesTabState();
@@ -356,6 +380,7 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
               _GradeChartCard(
                 numericGrades: numericGrades,
                 average: average,
+                classAverage: widget.classAverage,
                 gradeScaleEntries: gradeScaleEntries,
                 categories: gradeCategories,
               ),
@@ -675,10 +700,12 @@ class _GradeChartCard extends StatelessWidget {
     required this.average,
     required this.gradeScaleEntries,
     required this.categories,
+    this.classAverage,
   });
 
   final List<({GradeEntry grade, double value})> numericGrades;
   final double average;
+  final double? classAverage;
   final List<GradeScaleEntry> gradeScaleEntries;
   final List<GradeCategory> categories;
 
@@ -697,8 +724,19 @@ class _GradeChartCard extends StatelessWidget {
     final plottedAverage = shouldInvert
         ? _flipValue(minRaw, maxRaw, average)
         : average;
-    final minPlot = plottedValues.reduce(math.min);
-    final maxPlot = plottedValues.reduce(math.max);
+    final plottedClassAverage = classAverage != null
+        ? (shouldInvert
+            ? _flipValue(minRaw, maxRaw, classAverage!)
+            : classAverage)
+        : null;
+    final minPlot = [
+      ...plottedValues,
+      plottedClassAverage,
+    ].nonNulls.reduce(math.min);
+    final maxPlot = [
+      ...plottedValues,
+      plottedClassAverage,
+    ].nonNulls.reduce(math.max);
     final series = <_GradeSeries>[];
     final seenCategoryIds = <String>{};
     for (var index = 0; index < numericGrades.length; index++) {
@@ -751,6 +789,18 @@ class _GradeChartCard extends StatelessWidget {
                     '${gradeLabelForNumericValue(average, gradeScaleEntries)}',
                   ),
                 ),
+                if (classAverage != null)
+                  Chip(
+                    avatar: const CircleAvatar(
+                      radius: 7,
+                      backgroundColor: Colors.transparent,
+                      child: Icon(Icons.people_outline, size: 12),
+                    ),
+                    label: Text(
+                      '${'class_average'.tr()}: '
+                      '${gradeLabelForNumericValue(classAverage!, gradeScaleEntries)}',
+                    ),
+                  ),
                 Chip(label: Text('${numericGrades.length} ${'sessions'.tr()}')),
                 for (final item in series)
                   Chip(
@@ -841,6 +891,15 @@ class _GradeChartCard extends StatelessWidget {
                         dashArray: const [8, 4],
                         color: Theme.of(context).colorScheme.outline,
                       ),
+                      if (plottedClassAverage != null)
+                        HorizontalLine(
+                          y: plottedClassAverage,
+                          dashArray: const [4, 4],
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.6),
+                          strokeWidth: 1.5,
+                        ),
                     ],
                   ),
                   lineTouchData: LineTouchData(

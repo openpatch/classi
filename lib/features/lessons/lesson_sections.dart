@@ -21,6 +21,7 @@ class LessonSummaryCard extends StatelessWidget {
     required this.homeworkCount,
     required this.materialCount,
     required this.totalStudents,
+    this.onAbsentTap,
     super.key,
   });
 
@@ -29,6 +30,7 @@ class LessonSummaryCard extends StatelessWidget {
   final int homeworkCount;
   final int materialCount;
   final int totalStudents;
+  final VoidCallback? onAbsentTap;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +44,7 @@ class LessonSummaryCard extends StatelessWidget {
             _SummaryChip(
               icon: Icons.person_off_outlined,
               label: '${'absent'.tr()}: $absentCount/$totalStudents',
+              onTap: onAbsentTap,
             ),
             _SummaryChip(
               icon: Icons.edit_note_outlined,
@@ -180,6 +183,7 @@ class LessonStudentsTable extends StatelessWidget {
     required this.onHomeworkChanged,
     required this.onPickGrade,
     required this.onOpenNotes,
+    required this.onAddQuickNote,
     super.key,
   });
 
@@ -198,6 +202,7 @@ class LessonStudentsTable extends StatelessWidget {
   final void Function(Student student, bool? value) onHomeworkChanged;
   final ValueChanged<Student> onPickGrade;
   final ValueChanged<Student> onOpenNotes;
+  final ValueChanged<Student> onAddQuickNote;
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +225,7 @@ class LessonStudentsTable extends StatelessWidget {
                   _LessonTableHeaderCell(label: 'grade', flex: 2),
                   _LessonTableHeaderCell(label: 'material', flex: 2),
                   _LessonTableHeaderCell(label: 'homework', flex: 2),
-                  _LessonTableHeaderCell(label: 'notes', flex: 1),
+                  _LessonTableHeaderCell(label: 'notes', flex: 2),
                 ],
               ),
             ),
@@ -245,6 +250,7 @@ class LessonStudentsTable extends StatelessWidget {
                   onHomeworkChanged(students[index], value),
               onPickGrade: () => onPickGrade(students[index]),
               onOpenNotes: () => onOpenNotes(students[index]),
+              onAddQuickNote: () => onAddQuickNote(students[index]),
             ),
             if (index < students.length - 1) const Divider(height: 1),
           ],
@@ -348,16 +354,17 @@ class LessonStudentNotesSheet extends ConsumerWidget {
 }
 
 class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.icon, required this.label});
+  const _SummaryChip({required this.icon, required this.label, this.onTap});
 
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return DecoratedBox(
+    final chip = DecoratedBox(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(AppRadii.large),
@@ -373,9 +380,25 @@ class _SummaryChip extends StatelessWidget {
             Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
             const SizedBox(width: AppSpacing.small),
             Text(label),
+            if (onTap != null) ...[
+              const SizedBox(width: AppSpacing.xSmall),
+              Icon(
+                Icons.expand_more,
+                size: 16,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ],
           ],
         ),
       ),
+    );
+
+    if (onTap == null) return chip;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.large),
+      child: chip,
     );
   }
 }
@@ -421,6 +444,7 @@ class _LessonStudentRow extends StatelessWidget {
     required this.onHomeworkChanged,
     required this.onPickGrade,
     required this.onOpenNotes,
+    required this.onAddQuickNote,
   });
 
   final Student student;
@@ -438,6 +462,7 @@ class _LessonStudentRow extends StatelessWidget {
   final ValueChanged<bool?> onHomeworkChanged;
   final VoidCallback onPickGrade;
   final VoidCallback onOpenNotes;
+  final VoidCallback onAddQuickNote;
 
   @override
   Widget build(BuildContext context) {
@@ -519,9 +544,11 @@ class _LessonStudentRow extends StatelessWidget {
               ),
             ),
             Expanded(
+              flex: 2,
               child: _LessonNoteCell(
                 noteCount: noteCount,
                 onPressed: onOpenNotes,
+                onAdd: onAddQuickNote,
               ),
             ),
           ],
@@ -649,6 +676,7 @@ class _LessonGradeCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasGrade = gradeValue != null;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xSmall),
       child: OutlinedButton(
@@ -656,6 +684,12 @@ class _LessonGradeCell extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(40),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.small),
+          backgroundColor: hasGrade
+              ? null
+              : Theme.of(context)
+                    .colorScheme
+                    .secondaryContainer
+                    .withValues(alpha: 0.35),
         ),
         child: Text(
           gradeValue ?? 'no_grade'.tr(),
@@ -669,23 +703,38 @@ class _LessonGradeCell extends StatelessWidget {
 }
 
 class _LessonNoteCell extends StatelessWidget {
-  const _LessonNoteCell({required this.noteCount, required this.onPressed});
+  const _LessonNoteCell({
+    required this.noteCount,
+    required this.onPressed,
+    required this.onAdd,
+  });
 
   final int noteCount;
   final VoidCallback onPressed;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Badge(
-        isLabelVisible: noteCount > 0,
-        label: Text('$noteCount'),
-        child: IconButton(
-          onPressed: onPressed,
-          tooltip: 'notes'.tr(),
-          icon: const Icon(Icons.sticky_note_2_outlined),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          onPressed: onAdd,
+          tooltip: 'add_note'.tr(),
+          icon: const Icon(Icons.add_comment_outlined),
+          iconSize: 20,
         ),
-      ),
+        Badge(
+          isLabelVisible: noteCount > 0,
+          label: Text('$noteCount'),
+          child: IconButton(
+            onPressed: onPressed,
+            tooltip: 'notes'.tr(),
+            icon: const Icon(Icons.sticky_note_2_outlined),
+          ),
+        ),
+      ],
     );
   }
 }
