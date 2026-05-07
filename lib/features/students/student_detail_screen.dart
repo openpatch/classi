@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
@@ -77,6 +78,40 @@ final availableStudentsProvider = StreamProvider.autoDispose<List<Student>>(
       .watchAllStudents(sortField: ref.watch(studentSortFieldProvider)),
 );
 
+/// Date range filter applied across all student-detail tabs.
+enum DateFilter {
+  all,
+  oneMonth,
+  threeMonths,
+  sixMonths,
+  thisYear;
+
+  /// Returns the start of the date range, or `null` for "all time".
+  DateTime? get startDate {
+    final now = DateTime.now();
+    return switch (this) {
+      DateFilter.all => null,
+      DateFilter.oneMonth => DateTime(now.year, now.month - 1, now.day),
+      DateFilter.threeMonths => DateTime(now.year, now.month - 3, now.day),
+      DateFilter.sixMonths => DateTime(now.year, now.month - 6, now.day),
+      DateFilter.thisYear => DateTime(now.year),
+    };
+  }
+
+  String label(BuildContext context) => switch (this) {
+    DateFilter.all => 'filter_all'.tr(),
+    DateFilter.oneMonth => 'filter_1_month'.tr(),
+    DateFilter.threeMonths => 'filter_3_months'.tr(),
+    DateFilter.sixMonths => 'filter_6_months'.tr(),
+    DateFilter.thisYear => 'filter_this_year'.tr(),
+  };
+}
+
+final studentDateFilterProvider =
+    StateProvider.autoDispose.family<DateFilter, int>(
+      (ref, _) => DateFilter.all,
+    );
+
 class StudentDetailScreen extends ConsumerWidget {
   const StudentDetailScreen({required this.studentId, super.key});
 
@@ -131,6 +166,30 @@ class StudentDetailScreen extends ConsumerWidget {
           attendanceSubtitle,
         ].nonNulls.join(' · ');
 
+        final dateFilter = ref.watch(
+          studentDateFilterProvider(studentId),
+        );
+        final filterStart = dateFilter.startDate;
+
+        bool afterFilter(DateTime d) =>
+            filterStart == null || !d.isBefore(filterStart);
+
+        final filteredGradesValue = gradesValue.whenData(
+          (list) => list.where((g) => afterFilter(g.date)).toList(),
+        );
+        final filteredMaterialValue = materialValue.whenData(
+          (list) => list.where((m) => afterFilter(m.date)).toList(),
+        );
+        final filteredHomeworkValue = homeworkValue.whenData(
+          (list) => list.where((h) => afterFilter(h.date)).toList(),
+        );
+        final filteredAttendanceValue = attendanceValue.whenData(
+          (list) => list.where((a) => afterFilter(a.date)).toList(),
+        );
+        final filteredNotesValue = notesValue.whenData(
+          (list) => list.where((n) => afterFilter(n.createdAt)).toList(),
+        );
+
         return DefaultTabController(
           length: 6,
           child: Scaffold(
@@ -165,6 +224,13 @@ class StudentDetailScreen extends ConsumerWidget {
               ),
               actions: [
                 IconButton(
+                  onPressed: () => context.push(
+                    '/students/${student.id}/summary',
+                  ),
+                  icon: const Icon(Icons.summarize_outlined),
+                  tooltip: 'parent_summary'.tr(),
+                ),
+                IconButton(
                   onPressed: () => _editStudent(context, ref, student),
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: 'edit'.tr(),
@@ -181,36 +247,44 @@ class StudentDetailScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            body: TabBarView(
+            body: Column(
               children: [
-                _AttendanceTab(
-                  studentId: student.id,
-                  attendanceValue: attendanceValue,
-                ),
-                _GradesTab(
-                  studentId: student.id,
-                  gradesValue: gradesValue,
-                  gradeScaleJson: groupValue.value?.gradeScaleJson,
-                  gradeCategoriesJson: groupValue.value?.gradeCategoriesJson,
-                  classAverage: classAverage,
-                ),
-                _MaterialTab(
-                  studentId: student.id,
-                  materialValue: materialValue,
-                ),
-                _HomeworkTab(
-                  studentId: student.id,
-                  homeworkValue: homeworkValue,
-                ),
-                _StudentNotesTab(
-                  studentId: student.id,
-                  notesValue: notesValue,
-                  groups: groupsValue.value ?? const [],
-                  students: allStudentsValue.value ?? const [],
-                ),
-                _ListsTab(
-                  studentId: student.id,
-                  listItemsValue: listItemsValue,
+                _DateFilterChips(studentId: studentId),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _AttendanceTab(
+                        studentId: student.id,
+                        attendanceValue: filteredAttendanceValue,
+                      ),
+                      _GradesTab(
+                        studentId: student.id,
+                        gradesValue: filteredGradesValue,
+                        gradeScaleJson: groupValue.value?.gradeScaleJson,
+                        gradeCategoriesJson:
+                            groupValue.value?.gradeCategoriesJson,
+                        classAverage: classAverage,
+                      ),
+                      _MaterialTab(
+                        studentId: student.id,
+                        materialValue: filteredMaterialValue,
+                      ),
+                      _HomeworkTab(
+                        studentId: student.id,
+                        homeworkValue: filteredHomeworkValue,
+                      ),
+                      _StudentNotesTab(
+                        studentId: student.id,
+                        notesValue: filteredNotesValue,
+                        groups: groupsValue.value ?? const [],
+                        students: allStudentsValue.value ?? const [],
+                      ),
+                      _ListsTab(
+                        studentId: student.id,
+                        listItemsValue: listItemsValue,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -277,6 +351,37 @@ class _DeleteBackground extends StatelessWidget {
       label: 'delete'.tr(),
       backgroundColor: Theme.of(context).colorScheme.errorContainer,
       foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+    );
+  }
+}
+
+class _DateFilterChips extends ConsumerWidget {
+  const _DateFilterChips({required this.studentId});
+
+  final int studentId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(studentDateFilterProvider(studentId));
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        children: [
+          for (final filter in DateFilter.values)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(filter.label(context)),
+                selected: current == filter,
+                onSelected: (_) => ref
+                    .read(studentDateFilterProvider(studentId).notifier)
+                    .state = filter,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
