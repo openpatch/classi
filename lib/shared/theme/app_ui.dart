@@ -17,6 +17,9 @@ abstract final class AppRadii {
   static const double pill = 999;
 }
 
+/// Maximum content width for centred, readable layouts on wide screens.
+const double kContentMaxWidth = 900;
+
 const EdgeInsets appScreenPadding = EdgeInsets.fromLTRB(
   AppSpacing.large,
   AppSpacing.xLarge,

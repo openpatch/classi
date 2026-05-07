@@ -15,6 +15,7 @@ import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_link_chip.dart';
 import '../../shared/widgets/surface_list_tile.dart';
@@ -154,9 +155,10 @@ class GroupDetailScreen extends ConsumerWidget {
                   icon: const Icon(Icons.menu_book_outlined),
                   label: Text('open_lesson_mode'.tr()),
                 ),
-          body: ListView(
-            padding: appScreenPadding,
-            children: [
+          body: ContentConstraints(
+            child: ListView(
+              padding: appScreenPadding,
+              children: [
               if (archived && archivedDate != null)
                 Card(
                   color: Theme.of(context).colorScheme.secondaryContainer,
@@ -331,6 +333,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     : () => _addGroupNote(context, ref, group, students),
               ),
             ],
+          ),
           ),
         );
       },
