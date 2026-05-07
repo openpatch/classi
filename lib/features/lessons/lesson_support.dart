@@ -47,6 +47,17 @@ final lessonAbsenceSelectionsProvider = StreamProvider.autoDispose
           ),
     );
 
+final lessonExcusedSelectionsProvider = StreamProvider.autoDispose
+    .family<Set<int>, (int, DateTime)>(
+      (ref, args) => ref
+          .watch(attendanceRepositoryProvider)
+          .watchExcusedSelections(
+            groupId: args.$1,
+            date: normalizeLessonDate(args.$2),
+          ),
+    );
+
+
 final lessonNotesProvider = StreamProvider.autoDispose
     .family<List<TeacherNote>, int>(
       (ref, groupId) =>

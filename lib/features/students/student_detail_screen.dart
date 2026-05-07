@@ -60,6 +60,13 @@ final studentListItemsProvider = StreamProvider.autoDispose
           ref.watch(listRepositoryProvider).watchItemsForStudent(studentId),
     );
 
+final studentAttendanceProvider = StreamProvider.autoDispose
+    .family<List<AttendanceLog>, int>(
+      (ref, studentId) => ref
+          .watch(attendanceRepositoryProvider)
+          .watchStudentLogs(studentId),
+    );
+
 final availableGroupsProvider = FutureProvider.autoDispose<List<Group>>(
   (ref) => ref.watch(groupRepositoryProvider).allActiveGroups(),
 );
@@ -92,6 +99,9 @@ class StudentDetailScreen extends ConsumerWidget {
         final homeworkValue = ref.watch(studentHomeworkProvider(studentId));
         final notesValue = ref.watch(studentNotesProvider(studentId));
         final listItemsValue = ref.watch(studentListItemsProvider(studentId));
+        final attendanceValue = ref.watch(
+          studentAttendanceProvider(studentId),
+        );
         final groupsValue = ref.watch(availableGroupsProvider);
         final allStudentsValue = ref.watch(availableStudentsProvider);
         final group = groupValue.value;
@@ -101,7 +111,7 @@ class StudentDetailScreen extends ConsumerWidget {
             : onColorForBackground(groupColor);
 
         return DefaultTabController(
-          length: 5,
+          length: 6,
           child: Scaffold(
             appBar: AppBar(
               backgroundColor: groupColor,
@@ -141,6 +151,7 @@ class StudentDetailScreen extends ConsumerWidget {
               ],
               bottom: TabBar(
                 tabs: [
+                  Tab(text: 'attendance'.tr()),
                   Tab(text: 'grades'.tr()),
                   Tab(text: 'material'.tr()),
                   Tab(text: 'homework'.tr()),
@@ -151,6 +162,10 @@ class StudentDetailScreen extends ConsumerWidget {
             ),
             body: TabBarView(
               children: [
+                _AttendanceTab(
+                  studentId: student.id,
+                  attendanceValue: attendanceValue,
+                ),
                 _GradesTab(
                   studentId: student.id,
                   gradesValue: gradesValue,
@@ -1626,6 +1641,323 @@ class _ListItemTile extends ConsumerWidget {
         trailing: Checkbox(
           value: checked,
           onChanged: (value) => toggle(value ?? false),
+        ),
+      ),
+    );
+  }
+}
+
+class _AttendanceTab extends ConsumerWidget {
+  const _AttendanceTab({
+    required this.studentId,
+    required this.attendanceValue,
+  });
+
+  final int studentId;
+  final AsyncValue<List<AttendanceLog>> attendanceValue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return attendanceValue.when(
+      data: (logs) {
+        final dateFormat = DateFormat.yMMMd(context.locale.toLanguageTag());
+        final absentLogs = logs.where((l) => l.isAbsent).toList();
+        final presentLogs = logs.where((l) => !l.isAbsent).toList();
+        final excusedCount = absentLogs.where((l) => l.isExcused).length;
+        final unexcusedCount = absentLogs.length - excusedCount;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'attendance_summary'.tr(
+                        namedArgs: {
+                          'absent': absentLogs.length.toString(),
+                          'excused': excusedCount.toString(),
+                          'unexcused': unexcusedCount.toString(),
+                          'present': presentLogs.length.toString(),
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () => ref
+                              .read(attendanceRepositoryProvider)
+                              .markAbsent(
+                                studentId: studentId,
+                                date: DateUtils.dateOnly(DateTime.now()),
+                              ),
+                          child: Text('today'.tr()),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () => _addAbsence(context, ref),
+                          icon: const Icon(Icons.add),
+                          label: Text('add'.tr()),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (logs.isEmpty)
+              EmptyState(
+                icon: Icons.event_available_outlined,
+                title: 'empty_attendance'.tr(),
+              )
+            else ...[
+              if (absentLogs.isNotEmpty) _AttendanceBarChart(logs: absentLogs),
+              if (absentLogs.isNotEmpty) const SizedBox(height: 12),
+              for (final log in logs)
+                Dismissible(
+                  key: ValueKey('attendance-${log.id}'),
+                  direction: DismissDirection.endToStart,
+                  background: const _DeleteBackground(),
+                  confirmDismiss: (_) => showConfirmDialog(
+                    context: context,
+                    title: 'confirm_delete'.tr(
+                      namedArgs: {
+                        'name': dateFormat.format(log.date),
+                      },
+                    ),
+                    body: log.isAbsent
+                        ? (log.isExcused ? 'excused' : 'unexcused').tr()
+                        : 'present'.tr(),
+                  ),
+                  onDismissed: (_) => ref
+                      .read(attendanceRepositoryProvider)
+                      .clearAbsence(
+                        studentId: studentId,
+                        date: log.date,
+                      ),
+                  child: _AttendanceLogTile(
+                    log: log,
+                    dateFormat: dateFormat,
+                    onDelete: () => ref
+                        .read(attendanceRepositoryProvider)
+                        .clearAbsence(
+                          studentId: studentId,
+                          date: log.date,
+                        ),
+                    onToggleExcused: (excused) => ref
+                        .read(attendanceRepositoryProvider)
+                        .setExcused(
+                          studentId: studentId,
+                          date: log.date,
+                          excused: excused,
+                        ),
+                  ),
+                ),
+            ],
+          ],
+        );
+      },
+      error: (error, _) => const AppErrorState(),
+      loading: () => const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Future<void> _addAbsence(BuildContext context, WidgetRef ref) async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (selected == null) return;
+
+    await ref.read(attendanceRepositoryProvider).markAbsent(
+          studentId: studentId,
+          date: DateUtils.dateOnly(selected),
+        );
+  }
+}
+
+class _AttendanceLogTile extends StatelessWidget {
+  const _AttendanceLogTile({
+    required this.log,
+    required this.dateFormat,
+    required this.onDelete,
+    required this.onToggleExcused,
+  });
+
+  final AttendanceLog log;
+  final DateFormat dateFormat;
+  final VoidCallback onDelete;
+  final ValueChanged<bool> onToggleExcused;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isAbsent = log.isAbsent;
+    final isExcused = log.isExcused;
+
+    final Color statusColor;
+    final IconData statusIcon;
+    final String statusLabel;
+
+    if (!isAbsent) {
+      statusColor = colorScheme.primary;
+      statusIcon = Icons.event_available_outlined;
+      statusLabel = 'present'.tr();
+    } else if (isExcused) {
+      statusColor = colorScheme.tertiary;
+      statusIcon = Icons.event_busy_outlined;
+      statusLabel = 'excused'.tr();
+    } else {
+      statusColor = colorScheme.error;
+      statusIcon = Icons.event_busy_outlined;
+      statusLabel = 'unexcused'.tr();
+    }
+
+    return Card(
+      child: ListTile(
+        leading: Icon(statusIcon, color: statusColor),
+        title: Text(dateFormat.format(log.date)),
+        subtitle: Text(statusLabel, style: TextStyle(color: statusColor)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isAbsent)
+              IconButton(
+                onPressed: () => onToggleExcused(!isExcused),
+                icon: Icon(
+                  isExcused
+                      ? Icons.check_circle_outline
+                      : Icons.unpublished_outlined,
+                ),
+                tooltip: isExcused ? 'unexcused'.tr() : 'excused'.tr(),
+                color: isExcused ? colorScheme.tertiary : null,
+              ),
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'delete'.tr(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttendanceBarChart extends StatelessWidget {
+  const _AttendanceBarChart({required this.logs});
+
+  final List<AttendanceLog> logs;
+
+  @override
+  Widget build(BuildContext context) {
+    final monthlyCounts = <(int year, int month), int>{};
+    for (final log in logs) {
+      final key = (log.date.year, log.date.month);
+      monthlyCounts[key] = (monthlyCounts[key] ?? 0) + 1;
+    }
+
+    final sortedMonths = monthlyCounts.keys.toList()
+      ..sort((a, b) {
+        final yearCmp = a.$1.compareTo(b.$1);
+        return yearCmp != 0 ? yearCmp : a.$2.compareTo(b.$2);
+      });
+
+    final maxCount = monthlyCounts.values.reduce(math.max).toDouble();
+
+    final barGroups = [
+      for (var i = 0; i < sortedMonths.length; i++)
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: monthlyCounts[sortedMonths[i]]!.toDouble(),
+              color: Theme.of(context).colorScheme.primary,
+              width: 16,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(4),
+              ),
+            ),
+          ],
+        ),
+    ];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'absences_per_month'.tr(),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: BarChart(
+                BarChartData(
+                  maxY: maxCount + 1,
+                  borderData: FlBorderData(show: false),
+                  gridData: const FlGridData(show: false),
+                  titlesData: FlTitlesData(
+                    rightTitles: const AxisTitles(),
+                    topTitles: const AxisTitles(),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 28,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          if (value != value.roundToDouble()) {
+                            return const SizedBox.shrink();
+                          }
+                          return Text(
+                            value.toInt().toString(),
+                            style: Theme.of(context).textTheme.labelSmall,
+                          );
+                        },
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 32,
+                        getTitlesWidget: (value, meta) {
+                          final index = value.round();
+                          if (index < 0 || index >= sortedMonths.length) {
+                            return const SizedBox.shrink();
+                          }
+                          final month = sortedMonths[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              DateFormat.MMM(
+                                Localizations.localeOf(
+                                  context,
+                                ).toLanguageTag(),
+                              ).format(DateTime(month.$1, month.$2)),
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  barGroups: barGroups,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

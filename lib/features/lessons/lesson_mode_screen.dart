@@ -73,6 +73,9 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     final absenceSelectionsValue = ref.watch(
       lessonAbsenceSelectionsProvider((widget.groupId, _selectedDate)),
     );
+    final excusedSelectionsValue = ref.watch(
+      lessonExcusedSelectionsProvider((widget.groupId, _selectedDate)),
+    );
     final notesValue = ref.watch(lessonNotesProvider(widget.groupId));
 
     return groupValue.when(
@@ -108,6 +111,27 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
             backgroundColor: groupColor,
             foregroundColor: appBarForeground,
             title: AppBarTitle(title: 'lesson_mode'.tr(), subtitle: group.name),
+            actions: [
+              IconButton(
+                onPressed: () async {
+                  await ref
+                      .read(attendanceRepositoryProvider)
+                      .savePresenceForDate(
+                        groupId: widget.groupId,
+                        date: _selectedDate,
+                      );
+                  if (context.mounted) {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/groups/${widget.groupId}');
+                    }
+                  }
+                },
+                icon: const Icon(Icons.check),
+                tooltip: 'save'.tr(),
+              ),
+            ],
           ),
           body: studentsValue.when(
             data: (students) {
@@ -124,6 +148,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                   homeworkSelectionsValue.value ?? const <int, bool>{};
               final absentStudents =
                   absenceSelectionsValue.value ?? const <int>{};
+              final excusedStudents =
+                  excusedSelectionsValue.value ?? const <int>{};
               final gradeSelections =
                   gradeSelectionsValue.value ?? const <int, String>{};
               final lessonNotes = notesForLessonDate(
@@ -153,6 +179,17 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                     onCategoryChanged: (value) =>
                         setState(() => _selectedCategoryId = value),
                     onPickDate: _pickDate,
+                    action: absentStudents.isNotEmpty
+                        ? OutlinedButton.icon(
+                            onPressed: () => _clearAbsencesForDate(context),
+                            icon: const Icon(Icons.person_off_outlined),
+                            label: Text('clear_absences_for_date'.tr()),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.error,
+                            ),
+                          )
+                        : null,
                   ),
                   const SizedBox(height: AppSpacing.large),
                   LessonSummaryCard(
@@ -184,6 +221,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                   LessonStudentsTable(
                     students: students,
                     absentStudents: absentStudents,
+                    excusedStudents: excusedStudents,
                     materialSelections: materialSelections,
                     homeworkSelections: homeworkSelections,
                     gradeSelections: gradeSelections,
@@ -194,6 +232,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         _setAbsent(studentId: student.id, absent: true),
                     onSetPresent: (student) =>
                         _setAbsent(studentId: student.id, absent: false),
+                    onToggleExcused: (student, excused) =>
+                        _toggleExcused(studentId: student.id, excused: excused),
                     onMaterialChanged: (student, value) =>
                         _setMaterialValue(studentId: student.id, value: value),
                     onHomeworkChanged: (student, value) =>
@@ -428,6 +468,31 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     return ref
         .read(attendanceRepositoryProvider)
         .clearAbsence(studentId: studentId, date: _selectedDate);
+  }
+
+  Future<void> _toggleExcused({
+    required int studentId,
+    required bool excused,
+  }) {
+    return ref
+        .read(attendanceRepositoryProvider)
+        .setExcused(studentId: studentId, date: _selectedDate, excused: excused);
+  }
+
+  Future<void> _clearAbsencesForDate(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: 'clear_absences_for_date'.tr(),
+      body: 'clear_absences_for_date_body'.tr(),
+    );
+    if (!confirmed) return;
+
+    await ref
+        .read(attendanceRepositoryProvider)
+        .clearGroupAbsencesForDate(
+          groupId: widget.groupId,
+          date: _selectedDate,
+        );
   }
 
   Future<void> _saveGrade({
