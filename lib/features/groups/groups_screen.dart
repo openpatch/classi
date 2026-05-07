@@ -9,6 +9,7 @@ import '../../shared/utils/grade_categories.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
 import 'group_form.dart';
 
@@ -133,7 +134,8 @@ class _GroupsList extends ConsumerWidget {
     final groupsValue = ref.watch(provider);
     final studentCountsValue = ref.watch(groupStudentCountsProvider);
 
-    return groupsValue.when(
+    return ContentConstraints(
+      child: groupsValue.when(
       data: (groups) {
         if (groups.isEmpty) {
           return EmptyState(
@@ -142,10 +144,15 @@ class _GroupsList extends ConsumerWidget {
           );
         }
         final studentCounts = studentCountsValue.value ?? const <int, int>{};
-        return ListView.separated(
+        return GridView.builder(
           padding: const EdgeInsets.all(16),
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 400,
+            mainAxisExtent: 76,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
           itemCount: groups.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final group = groups[index];
             final groupColor = colorFromHex(group.colorHex);
@@ -200,6 +207,7 @@ class _GroupsList extends ConsumerWidget {
       },
       error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
+    ),
     );
   }
 

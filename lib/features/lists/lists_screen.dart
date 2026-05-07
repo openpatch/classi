@@ -8,6 +8,7 @@ import '../../core/providers/app_providers.dart';
 import '../../shared/utils/grade_categories.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/swipe_action_background.dart';
 import 'list_editor.dart';
@@ -263,7 +264,8 @@ class _ListsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return listsValue.when(
+    return ContentConstraints(
+      child: listsValue.when(
       data: (lists) {
         if (lists.isEmpty) {
           return EmptyState(
@@ -401,6 +403,7 @@ class _ListsList extends StatelessWidget {
       },
       error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
+    ),
     );
   }
 }

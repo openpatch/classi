@@ -9,6 +9,7 @@ import '../../shared/theme/app_ui.dart';
 import '../../shared/utils/grade_categories.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_link_chip.dart';
 import '../../shared/widgets/swipe_action_background.dart';
@@ -136,7 +137,8 @@ class _NotesList extends ConsumerWidget {
     final studentsValue = ref.watch(allStudentsProvider);
     final groupsValue = ref.watch(activeGroupsProvider);
 
-    return notesValue.when(
+    return ContentConstraints(
+      child: notesValue.when(
       data: (notes) {
         if (notes.isEmpty) {
           return EmptyState(
@@ -358,6 +360,7 @@ class _NotesList extends ConsumerWidget {
       },
       error: (error, _) => const AppErrorState(),
       loading: () => const Center(child: CircularProgressIndicator()),
+    ),
     );
   }
 

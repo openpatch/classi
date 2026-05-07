@@ -19,6 +19,7 @@ class AppScaffold extends ConsumerWidget {
       appSessionProvider.select((s) => s.isExporting),
     );
     final isWide = MediaQuery.sizeOf(context).width > 700 || Platform.isWindows;
+    final isExtended = MediaQuery.sizeOf(context).width > 1200;
     final selectedIndex = _selectedIndex(context);
     final destinations = [
       _NavigationItem(
@@ -54,7 +55,10 @@ class AppScaffold extends ConsumerWidget {
           children: [
             NavigationRail(
               selectedIndex: selectedIndex,
-              labelType: NavigationRailLabelType.all,
+              extended: isExtended,
+              labelType: isExtended
+                  ? NavigationRailLabelType.none
+                  : NavigationRailLabelType.all,
               onDestinationSelected: (index) =>
                   context.go(destinations[index].path),
               destinations: [

@@ -10,6 +10,7 @@ import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/theme/app_ui.dart';
@@ -168,9 +169,10 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                 }
               }
 
-              return ListView(
-                padding: appScreenPadding,
-                children: [
+              return ContentConstraints(
+                child: ListView(
+                  padding: appScreenPadding,
+                  children: [
                   LessonContextCard(
                     sessionController: _sessionController,
                     selectedDate: _selectedDate,
@@ -267,6 +269,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                     ),
                   ),
                 ],
+              ),
               );
             },
             error: (error, _) => const AppErrorState(),

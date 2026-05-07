@@ -7,6 +7,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/security/security_preferences_service.dart';
 import '../../core/session/app_session_controller.dart';
 import '../../shared/utils/formatting.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../setup/database_selection_sheet.dart';
 import 'grade_system_controller.dart';
 import 'grade_system_editor.dart';
@@ -22,9 +23,10 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text('settings'.tr())),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+      body: ContentConstraints(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
           _SectionCard(
             title: 'sort_students'.tr(),
             child: SegmentedButton<StudentSortField>(
@@ -144,6 +146,7 @@ class SettingsScreen extends ConsumerWidget {
             child: const _AppInfoSection(),
           ),
         ],
+      ),
       ),
     );
   }

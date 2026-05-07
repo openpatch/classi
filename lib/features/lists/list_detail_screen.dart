@@ -8,6 +8,7 @@ import '../../shared/utils/grade_categories.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/student_link_chip.dart';
@@ -125,9 +126,10 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
                   ? items.where((item) => item.checkedAt == null).toList()
                   : items;
 
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
+              return ContentConstraints(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -216,6 +218,7 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
                             .deleteItem(item.id),
                       ),
                 ],
+              ),
               );
             },
             error: (error, _) => const AppErrorState(),
