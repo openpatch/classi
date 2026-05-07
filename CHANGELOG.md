@@ -2,10 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.4] - 2026-05-07
+
+### Bug Fixes
+
+- *(webdav)* Avoid false newer-backup prompt
+
+
 ## [1.4.3] - 2026-05-06
 
 ### Bug Fixes
 
+- *(linux)* Align AppImage app identity
 - *(changelog)* Skip fastlane changelog commits and deduplicate entries
 - *(changelog)* Use unique filter for cleaner deduplication
 
