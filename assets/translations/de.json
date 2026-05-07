@@ -29,6 +29,7 @@
   "auto_import": "Wiederherstellung aus neuerem Backup anbieten",
   "auto_import_hint": "Beim Start wird der WebDAV-Server auf ein neueres Backup geprüft und eine Wiederherstellung angeboten, wenn eines gefunden wird.",
   "average": "Durchschnitt",
+  "class_average": "Klassendurchschnitt",
   "back": "Zurück",
   "back_to_unlock": "Zurück zum Entsperren",
   "backup_export_failed": "Classi konnte das Backup nicht exportieren.",

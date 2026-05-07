@@ -11,6 +11,7 @@ import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/student_avatar.dart';
 import '../../shared/theme/app_ui.dart';
 import '../grades/grade_picker_dialog.dart';
 import '../notes/note_editor.dart';
@@ -198,6 +199,14 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                     homeworkCount: homeworkSelections.length,
                     materialCount: materialSelections.length,
                     totalStudents: students.length,
+                    onAbsentTap: absentStudents.isNotEmpty
+                        ? () => _showAbsentStudents(
+                            context: context,
+                            students: students,
+                            absentStudents: absentStudents,
+                            excusedStudents: excusedStudents,
+                          )
+                        : null,
                   ),
                   const SizedBox(height: AppSpacing.large),
                   LessonNotesCard(
@@ -251,6 +260,11 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                       students: students,
                       student: student,
                     ),
+                    onAddQuickNote: (student) => _addQuickNote(
+                      context: context,
+                      group: group,
+                      student: student,
+                    ),
                   ),
                 ],
               );
@@ -263,6 +277,66 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       error: (error, _) => const AppErrorScaffold(),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
+    );
+  }
+
+  Future<void> _showAbsentStudents({
+    required BuildContext context,
+    required List<Student> students,
+    required Set<int> absentStudents,
+    required Set<int> excusedStudents,
+  }) {
+    final sortField = ref.read(studentSortFieldProvider);
+    final absentList = [
+      for (final student in students)
+        if (absentStudents.contains(student.id)) student,
+    ];
+
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xLarge,
+            AppSpacing.small,
+            AppSpacing.xLarge,
+            AppSpacing.xxLarge,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'absent'.tr(),
+                style: Theme.of(ctx).textTheme.titleLarge,
+              ),
+              const SizedBox(height: AppSpacing.large),
+              for (final student in absentList)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: StudentAvatar(student: student, size: 36),
+                  title: Text(
+                    studentDisplayName(
+                      firstName: student.firstName,
+                      lastName: student.lastName,
+                      sortField: sortField,
+                    ),
+                  ),
+                  trailing: excusedStudents.contains(student.id)
+                      ? Chip(
+                          label: Text('excused'.tr()),
+                          visualDensity: VisualDensity.compact,
+                        )
+                      : Chip(
+                          label: Text('unexcused'.tr()),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -420,6 +494,43 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     );
   }
 
+  Future<void> _addQuickNote({
+    required BuildContext context,
+    required Group group,
+    required Student student,
+  }) async {
+    final sortField = ref.read(studentSortFieldProvider);
+    final name = studentDisplayName(
+      firstName: student.firstName,
+      lastName: student.lastName,
+      sortField: sortField,
+    );
+    final body = await _showQuickNoteDialog(context: context, studentName: name);
+    if (body == null || body.trim().isEmpty) return;
+
+    await ref.read(noteRepositoryProvider).saveNote(
+      body: body.trim(),
+      groupId: group.id,
+      studentIds: [student.id],
+      isTodo: false,
+      createdAt: _selectedDate,
+    );
+  }
+
+  Future<String?> _showQuickNoteDialog({
+    required BuildContext context,
+    required String studentName,
+  }) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => _QuickNoteDialog(
+        studentName: studentName,
+        controller: controller,
+      ),
+    );
+  }
+
   Future<void> _setMaterialValue({
     required int studentId,
     required bool? value,
@@ -572,4 +683,46 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       value: result.value!,
     );
   }
+}
+
+class _QuickNoteDialog extends StatelessWidget {
+  const _QuickNoteDialog({
+    required this.studentName,
+    required this.controller,
+  });
+
+  final String studentName;
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(studentName),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        minLines: 2,
+        maxLines: 5,
+        decoration: InputDecoration(
+          hintText: 'add_note'.tr(),
+          border: const OutlineInputBorder(),
+        ),
+        textCapitalization: TextCapitalization.sentences,
+        onSubmitted: (_) => _submit(context),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('cancel'.tr()),
+        ),
+        FilledButton(
+          onPressed: () => _submit(context),
+          child: Text('save'.tr()),
+        ),
+      ],
+    );
+  }
+
+  void _submit(BuildContext context) =>
+      Navigator.of(context).pop(controller.text);
 }

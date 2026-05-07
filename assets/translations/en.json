@@ -29,6 +29,7 @@
   "auto_import": "Offer restore from newer backup",
   "auto_import_hint": "On startup, check the WebDAV server for a newer backup and offer a restore when one is found.",
   "average": "Average",
+  "class_average": "Class average",
   "back": "Back",
   "back_to_unlock": "Back to unlock",
   "backup_export_failed": "Classi could not export the backup.",
