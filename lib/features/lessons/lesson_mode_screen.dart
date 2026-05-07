@@ -625,14 +625,6 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
           categoryId: category.id,
           categoryName: category.name,
         );
-    ref.invalidate(
-      lessonGradeSelectionsProvider((
-        widget.groupId,
-        _selectedDate,
-        sessionLabel,
-        category.id,
-      )),
-    );
   }
 
   Future<void> _clearGrade({
@@ -648,14 +640,6 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
           sessionLabel: sessionLabel,
           categoryId: category.id,
         );
-    ref.invalidate(
-      lessonGradeSelectionsProvider((
-        widget.groupId,
-        _selectedDate,
-        sessionLabel,
-        category.id,
-      )),
-    );
   }
 
   Future<void> _pickGrade({
