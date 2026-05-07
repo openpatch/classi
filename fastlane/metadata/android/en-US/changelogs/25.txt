@@ -1,5 +1,14 @@
+Bug Fixes
+
+- Align grade table header with rows using Expanded columns
+
+
 Features
 
 - Add lesson notes and attendance states
+- Improve teacher UX with quick note, class average line, and attendance badge
+- Add date-range filter and parent summary screen
+- Custom date range filter, overflow fix, and summary screen filtering
+- Add quick note FAB to parent summary screen
 
 
