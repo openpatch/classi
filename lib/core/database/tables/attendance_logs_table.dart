@@ -10,5 +10,9 @@ class AttendanceLogsTable extends Table {
 
   DateTimeColumn get date => dateTime()();
 
+  BoolColumn get isAbsent => boolean().withDefault(const Constant(true))();
+
+  BoolColumn get isExcused => boolean().withDefault(const Constant(false))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

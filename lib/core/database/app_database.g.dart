@@ -1032,6 +1032,36 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isAbsentMeta = const VerificationMeta(
+    'isAbsent',
+  );
+  @override
+  late final GeneratedColumn<bool> isAbsent = GeneratedColumn<bool>(
+    'is_absent',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_absent" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _isExcusedMeta = const VerificationMeta(
+    'isExcused',
+  );
+  @override
+  late final GeneratedColumn<bool> isExcused = GeneratedColumn<bool>(
+    'is_excused',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_excused" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1045,7 +1075,14 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, studentId, date, createdAt];
+  List<GeneratedColumn> get $columns => [
+    id,
+    studentId,
+    date,
+    isAbsent,
+    isExcused,
+    createdAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1077,6 +1114,18 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
     } else if (isInserting) {
       context.missing(_dateMeta);
     }
+    if (data.containsKey('is_absent')) {
+      context.handle(
+        _isAbsentMeta,
+        isAbsent.isAcceptableOrUnknown(data['is_absent']!, _isAbsentMeta),
+      );
+    }
+    if (data.containsKey('is_excused')) {
+      context.handle(
+        _isExcusedMeta,
+        isExcused.isAcceptableOrUnknown(data['is_excused']!, _isExcusedMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1107,6 +1156,14 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}date'],
       )!,
+      isAbsent: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_absent'],
+      )!,
+      isExcused: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_excused'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1125,11 +1182,15 @@ class AttendanceLogsTableData extends DataClass
   final int id;
   final int studentId;
   final DateTime date;
+  final bool isAbsent;
+  final bool isExcused;
   final DateTime createdAt;
   const AttendanceLogsTableData({
     required this.id,
     required this.studentId,
     required this.date,
+    required this.isAbsent,
+    required this.isExcused,
     required this.createdAt,
   });
   @override
@@ -1138,6 +1199,8 @@ class AttendanceLogsTableData extends DataClass
     map['id'] = Variable<int>(id);
     map['student_id'] = Variable<int>(studentId);
     map['date'] = Variable<DateTime>(date);
+    map['is_absent'] = Variable<bool>(isAbsent);
+    map['is_excused'] = Variable<bool>(isExcused);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -1147,6 +1210,8 @@ class AttendanceLogsTableData extends DataClass
       id: Value(id),
       studentId: Value(studentId),
       date: Value(date),
+      isAbsent: Value(isAbsent),
+      isExcused: Value(isExcused),
       createdAt: Value(createdAt),
     );
   }
@@ -1160,6 +1225,8 @@ class AttendanceLogsTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       studentId: serializer.fromJson<int>(json['studentId']),
       date: serializer.fromJson<DateTime>(json['date']),
+      isAbsent: serializer.fromJson<bool>(json['isAbsent']),
+      isExcused: serializer.fromJson<bool>(json['isExcused']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -1170,6 +1237,8 @@ class AttendanceLogsTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'studentId': serializer.toJson<int>(studentId),
       'date': serializer.toJson<DateTime>(date),
+      'isAbsent': serializer.toJson<bool>(isAbsent),
+      'isExcused': serializer.toJson<bool>(isExcused),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -1178,11 +1247,15 @@ class AttendanceLogsTableData extends DataClass
     int? id,
     int? studentId,
     DateTime? date,
+    bool? isAbsent,
+    bool? isExcused,
     DateTime? createdAt,
   }) => AttendanceLogsTableData(
     id: id ?? this.id,
     studentId: studentId ?? this.studentId,
     date: date ?? this.date,
+    isAbsent: isAbsent ?? this.isAbsent,
+    isExcused: isExcused ?? this.isExcused,
     createdAt: createdAt ?? this.createdAt,
   );
   AttendanceLogsTableData copyWithCompanion(AttendanceLogsTableCompanion data) {
@@ -1190,6 +1263,8 @@ class AttendanceLogsTableData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       studentId: data.studentId.present ? data.studentId.value : this.studentId,
       date: data.date.present ? data.date.value : this.date,
+      isAbsent: data.isAbsent.present ? data.isAbsent.value : this.isAbsent,
+      isExcused: data.isExcused.present ? data.isExcused.value : this.isExcused,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -1200,13 +1275,16 @@ class AttendanceLogsTableData extends DataClass
           ..write('id: $id, ')
           ..write('studentId: $studentId, ')
           ..write('date: $date, ')
+          ..write('isAbsent: $isAbsent, ')
+          ..write('isExcused: $isExcused, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, studentId, date, createdAt);
+  int get hashCode =>
+      Object.hash(id, studentId, date, isAbsent, isExcused, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1214,6 +1292,8 @@ class AttendanceLogsTableData extends DataClass
           other.id == this.id &&
           other.studentId == this.studentId &&
           other.date == this.date &&
+          other.isAbsent == this.isAbsent &&
+          other.isExcused == this.isExcused &&
           other.createdAt == this.createdAt);
 }
 
@@ -1222,17 +1302,23 @@ class AttendanceLogsTableCompanion
   final Value<int> id;
   final Value<int> studentId;
   final Value<DateTime> date;
+  final Value<bool> isAbsent;
+  final Value<bool> isExcused;
   final Value<DateTime> createdAt;
   const AttendanceLogsTableCompanion({
     this.id = const Value.absent(),
     this.studentId = const Value.absent(),
     this.date = const Value.absent(),
+    this.isAbsent = const Value.absent(),
+    this.isExcused = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   AttendanceLogsTableCompanion.insert({
     this.id = const Value.absent(),
     required int studentId,
     required DateTime date,
+    this.isAbsent = const Value.absent(),
+    this.isExcused = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : studentId = Value(studentId),
        date = Value(date);
@@ -1240,12 +1326,16 @@ class AttendanceLogsTableCompanion
     Expression<int>? id,
     Expression<int>? studentId,
     Expression<DateTime>? date,
+    Expression<bool>? isAbsent,
+    Expression<bool>? isExcused,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (studentId != null) 'student_id': studentId,
       if (date != null) 'date': date,
+      if (isAbsent != null) 'is_absent': isAbsent,
+      if (isExcused != null) 'is_excused': isExcused,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -1254,12 +1344,16 @@ class AttendanceLogsTableCompanion
     Value<int>? id,
     Value<int>? studentId,
     Value<DateTime>? date,
+    Value<bool>? isAbsent,
+    Value<bool>? isExcused,
     Value<DateTime>? createdAt,
   }) {
     return AttendanceLogsTableCompanion(
       id: id ?? this.id,
       studentId: studentId ?? this.studentId,
       date: date ?? this.date,
+      isAbsent: isAbsent ?? this.isAbsent,
+      isExcused: isExcused ?? this.isExcused,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -1276,6 +1370,12 @@ class AttendanceLogsTableCompanion
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
     }
+    if (isAbsent.present) {
+      map['is_absent'] = Variable<bool>(isAbsent.value);
+    }
+    if (isExcused.present) {
+      map['is_excused'] = Variable<bool>(isExcused.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1288,6 +1388,8 @@ class AttendanceLogsTableCompanion
           ..write('id: $id, ')
           ..write('studentId: $studentId, ')
           ..write('date: $date, ')
+          ..write('isAbsent: $isAbsent, ')
+          ..write('isExcused: $isExcused, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -5623,6 +5725,8 @@ typedef $$AttendanceLogsTableTableCreateCompanionBuilder =
       Value<int> id,
       required int studentId,
       required DateTime date,
+      Value<bool> isAbsent,
+      Value<bool> isExcused,
       Value<DateTime> createdAt,
     });
 typedef $$AttendanceLogsTableTableUpdateCompanionBuilder =
@@ -5630,6 +5734,8 @@ typedef $$AttendanceLogsTableTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> studentId,
       Value<DateTime> date,
+      Value<bool> isAbsent,
+      Value<bool> isExcused,
       Value<DateTime> createdAt,
     });
 
@@ -5688,6 +5794,16 @@ class $$AttendanceLogsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isAbsent => $composableBuilder(
+    column: $table.isAbsent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isExcused => $composableBuilder(
+    column: $table.isExcused,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -5736,6 +5852,16 @@ class $$AttendanceLogsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isAbsent => $composableBuilder(
+    column: $table.isAbsent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isExcused => $composableBuilder(
+    column: $table.isExcused,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -5779,6 +5905,12 @@ class $$AttendanceLogsTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<bool> get isAbsent =>
+      $composableBuilder(column: $table.isAbsent, builder: (column) => column);
+
+  GeneratedColumn<bool> get isExcused =>
+      $composableBuilder(column: $table.isExcused, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5846,11 +5978,15 @@ class $$AttendanceLogsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> studentId = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
+                Value<bool> isAbsent = const Value.absent(),
+                Value<bool> isExcused = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => AttendanceLogsTableCompanion(
                 id: id,
                 studentId: studentId,
                 date: date,
+                isAbsent: isAbsent,
+                isExcused: isExcused,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -5858,11 +5994,15 @@ class $$AttendanceLogsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 required int studentId,
                 required DateTime date,
+                Value<bool> isAbsent = const Value.absent(),
+                Value<bool> isExcused = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => AttendanceLogsTableCompanion.insert(
                 id: id,
                 studentId: studentId,
                 date: date,
+                isAbsent: isAbsent,
+                isExcused: isExcused,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

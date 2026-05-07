@@ -54,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
   final String databasePath;
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -104,6 +104,18 @@ class AppDatabase extends _$AppDatabase {
           SET student_ids_json = json_array(student_id)
           WHERE student_id IS NOT NULL AND student_ids_json IS NULL
         ''');
+      }
+      if (from < 12) {
+        await migrator.addColumn(
+          attendanceLogsTable,
+          attendanceLogsTable.isAbsent,
+        );
+      }
+      if (from < 13) {
+        await migrator.addColumn(
+          attendanceLogsTable,
+          attendanceLogsTable.isExcused,
+        );
       }
     },
   );

@@ -167,6 +167,7 @@ class LessonStudentsTable extends StatelessWidget {
   const LessonStudentsTable({
     required this.students,
     required this.absentStudents,
+    required this.excusedStudents,
     required this.materialSelections,
     required this.homeworkSelections,
     required this.gradeSelections,
@@ -174,6 +175,7 @@ class LessonStudentsTable extends StatelessWidget {
     required this.onOpenStudent,
     required this.onSetAbsent,
     required this.onSetPresent,
+    required this.onToggleExcused,
     required this.onMaterialChanged,
     required this.onHomeworkChanged,
     required this.onPickGrade,
@@ -183,6 +185,7 @@ class LessonStudentsTable extends StatelessWidget {
 
   final List<Student> students;
   final Set<int> absentStudents;
+  final Set<int> excusedStudents;
   final Map<int, bool> materialSelections;
   final Map<int, bool> homeworkSelections;
   final Map<int, String> gradeSelections;
@@ -190,6 +193,7 @@ class LessonStudentsTable extends StatelessWidget {
   final ValueChanged<Student> onOpenStudent;
   final ValueChanged<Student> onSetAbsent;
   final ValueChanged<Student> onSetPresent;
+  final void Function(Student student, bool excused) onToggleExcused;
   final void Function(Student student, bool? value) onMaterialChanged;
   final void Function(Student student, bool? value) onHomeworkChanged;
   final ValueChanged<Student> onPickGrade;
@@ -225,6 +229,7 @@ class LessonStudentsTable extends StatelessWidget {
             _LessonStudentRow(
               student: students[index],
               absent: absentStudents.contains(students[index].id),
+              excused: excusedStudents.contains(students[index].id),
               materialValue: materialSelections[students[index].id],
               homeworkValue: homeworkSelections[students[index].id],
               gradeValue: gradeSelections[students[index].id],
@@ -232,6 +237,8 @@ class LessonStudentsTable extends StatelessWidget {
               onOpenStudent: () => onOpenStudent(students[index]),
               onSetAbsent: () => onSetAbsent(students[index]),
               onSetPresent: () => onSetPresent(students[index]),
+              onToggleExcused: (excused) =>
+                  onToggleExcused(students[index], excused),
               onMaterialChanged: (value) =>
                   onMaterialChanged(students[index], value),
               onHomeworkChanged: (value) =>
@@ -401,6 +408,7 @@ class _LessonStudentRow extends StatelessWidget {
   const _LessonStudentRow({
     required this.student,
     required this.absent,
+    required this.excused,
     required this.materialValue,
     required this.homeworkValue,
     required this.gradeValue,
@@ -408,6 +416,7 @@ class _LessonStudentRow extends StatelessWidget {
     required this.onOpenStudent,
     required this.onSetAbsent,
     required this.onSetPresent,
+    required this.onToggleExcused,
     required this.onMaterialChanged,
     required this.onHomeworkChanged,
     required this.onPickGrade,
@@ -416,6 +425,7 @@ class _LessonStudentRow extends StatelessWidget {
 
   final Student student;
   final bool absent;
+  final bool excused;
   final bool? materialValue;
   final bool? homeworkValue;
   final String? gradeValue;
@@ -423,6 +433,7 @@ class _LessonStudentRow extends StatelessWidget {
   final VoidCallback onOpenStudent;
   final VoidCallback onSetAbsent;
   final VoidCallback onSetPresent;
+  final ValueChanged<bool> onToggleExcused;
   final ValueChanged<bool?> onMaterialChanged;
   final ValueChanged<bool?> onHomeworkChanged;
   final VoidCallback onPickGrade;
@@ -478,8 +489,10 @@ class _LessonStudentRow extends StatelessWidget {
               child: _LessonNameCell(
                 student: student,
                 absent: absent,
+                excused: excused,
                 noteCount: noteCount,
                 onOpenStudent: onOpenStudent,
+                onToggleExcused: absent ? onToggleExcused : null,
               ),
             ),
             Expanded(
@@ -522,14 +535,18 @@ class _LessonNameCell extends ConsumerWidget {
   const _LessonNameCell({
     required this.student,
     required this.absent,
+    required this.excused,
     required this.noteCount,
     required this.onOpenStudent,
+    this.onToggleExcused,
   });
 
   final Student student;
   final bool absent;
+  final bool excused;
   final int noteCount;
   final VoidCallback onOpenStudent;
+  final ValueChanged<bool>? onToggleExcused;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -570,6 +587,13 @@ class _LessonNameCell extends ConsumerWidget {
                         : Icons.check_circle_outline,
                     label: absent ? 'absent'.tr() : 'present'.tr(),
                   ),
+                  if (absent && onToggleExcused != null)
+                    FilterChip(
+                      label: Text('excused'.tr()),
+                      selected: excused,
+                      onSelected: onToggleExcused,
+                      visualDensity: VisualDensity.compact,
+                    ),
                   if (noteCount > 0)
                     _LessonMetaBadge(
                       icon: Icons.sticky_note_2_outlined,
