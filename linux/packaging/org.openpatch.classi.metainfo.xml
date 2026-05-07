@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.openpatch.classi</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Classi</name>
+  <summary>
+    Local-first teacher desk for groups, grades, notes, and checklists
+  </summary>
+  <description>
+    <p>
+      Classi is a local-first Flutter app for teachers. It stores groups,
+      students, grades, notes, checklists, and material tracking data in
+      encrypted .classi libraries.
+    </p>
+    <p>
+      Automatic backup and restore to a WebDAV server keeps data safe and
+      portable across devices.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.openpatch.classi.desktop</launchable>
+  <developer id="org.openpatch">
+    <name>OpenPatch</name>
+  </developer>
+  <url type="homepage">https://github.com/openpatch/classi</url>
+  <url type="bugtracker">https://github.com/openpatch/classi/issues</url>
+  <categories>
+    <category>Education</category>
+  </categories>
+  <provides>
+    <binary>classi</binary>
+  </provides>
+</component>

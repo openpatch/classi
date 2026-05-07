@@ -3,4 +3,5 @@ icon: .github/logo.png
 generic_name: Teacher Desk
 categories:
   - Education
+metainfo: linux/packaging/org.openpatch.classi.metainfo.xml
 include: []
