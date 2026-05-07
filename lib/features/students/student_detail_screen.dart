@@ -774,7 +774,7 @@ class _GradeTableHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Flexible(
+          Expanded(
             flex: 2,
             child: Text(
               'grade_category'.tr(),
@@ -783,7 +783,7 @@ class _GradeTableHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Flexible(
+          Expanded(
             flex: 3,
             child: Text(
               'label'.tr(),
@@ -838,7 +838,7 @@ class _GradeTableRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Flexible(
+            Expanded(
               flex: 2,
               child: _GradeCategoryBadge(
                 label: categoryLabel,
@@ -846,7 +846,7 @@ class _GradeTableRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Flexible(
+            Expanded(
               flex: 3,
               child: Text(
                 _gradeLabelText(grade.sessionLabel),
