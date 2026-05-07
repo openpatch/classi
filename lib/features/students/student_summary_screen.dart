@@ -34,12 +34,9 @@ class StudentSummaryScreen extends ConsumerWidget {
         final homeworkValue = ref.watch(studentHomeworkProvider(studentId));
         final materialValue = ref.watch(studentMaterialProvider(studentId));
         final notesValue = ref.watch(studentNotesProvider(studentId));
-        final averagesMap = ref
-            .watch(groupAveragesProvider(student.groupId))
-            .value;
-        final categoryAveragesMap = ref
-            .watch(groupCategoryAveragesProvider(student.groupId))
-            .value;
+
+        // Apply the same date filter as the detail screen.
+        final dateFilter = ref.watch(studentDateFilterProvider(studentId));
 
         final group = groupValue.value;
         final groupColor =
@@ -51,14 +48,50 @@ class StudentSummaryScreen extends ConsumerWidget {
         );
         final categories = parseGradeCategories(group?.gradeCategoriesJson);
 
-        final studentAverage = averagesMap?[studentId];
-        final categoryAverages = categoryAveragesMap?[studentId];
+        final allGrades = gradesValue.value ?? const [];
+        final allAttendance = attendanceValue.value ?? const [];
+        final allHomework = homeworkValue.value ?? const [];
+        final allMaterial = materialValue.value ?? const [];
+        final allNotes = notesValue.value ?? const [];
 
-        final attendance = attendanceValue.value ?? const [];
-        final homework = homeworkValue.value ?? const [];
-        final material = materialValue.value ?? const [];
-        final notes = notesValue.value ?? const [];
-        final grades = gradesValue.value ?? const [];
+        final grades = dateFilter.isAll
+            ? allGrades
+            : allGrades.where((g) => dateFilter.includes(g.date)).toList();
+        final attendance = dateFilter.isAll
+            ? allAttendance
+            : allAttendance
+                .where((a) => dateFilter.includes(a.date))
+                .toList();
+        final homework = dateFilter.isAll
+            ? allHomework
+            : allHomework.where((h) => dateFilter.includes(h.date)).toList();
+        final material = dateFilter.isAll
+            ? allMaterial
+            : allMaterial.where((m) => dateFilter.includes(m.date)).toList();
+        final notes = dateFilter.isAll
+            ? allNotes
+            : allNotes
+                .where((n) => dateFilter.includes(n.createdAt))
+                .toList();
+
+        // Compute weighted average from filtered grades.
+        final gradeInputs = grades
+            .map((g) {
+              final v = gradeValueToNumber(g.value, gradeScaleEntries);
+              return v == null
+                  ? null
+                  : (value: v, categoryId: g.categoryId);
+            })
+            .nonNulls
+            .toList();
+        final studentAverage = calculateWeightedAverage(
+          gradeInputs,
+          categories,
+        );
+        final categoryAverages = _computeCategoryAverages(
+          grades,
+          gradeScaleEntries,
+        );
 
         return Scaffold(
           appBar: AppBar(
@@ -77,7 +110,11 @@ class StudentSummaryScreen extends ConsumerWidget {
           body: ListView(
             padding: appScreenPadding,
             children: [
-              _SummaryHeader(student: student, group: group),
+              _SummaryHeader(
+                student: student,
+                group: group,
+                dateFilter: dateFilter,
+              ),
               const SizedBox(height: AppSpacing.large),
               _SummaryAttendanceCard(attendance: attendance),
               const SizedBox(height: AppSpacing.large),
@@ -107,6 +144,25 @@ class StudentSummaryScreen extends ConsumerWidget {
           const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
   }
+
+  /// Computes a simple mean per category from the given grade list.
+  Map<String, double> _computeCategoryAverages(
+    List<GradeEntry> grades,
+    List<GradeScaleEntry> gradeScale,
+  ) {
+    final sums = <String, double>{};
+    final counts = <String, int>{};
+    for (final g in grades) {
+      final v = gradeValueToNumber(g.value, gradeScale);
+      if (v == null) continue;
+      sums[g.categoryId] = (sums[g.categoryId] ?? 0) + v;
+      counts[g.categoryId] = (counts[g.categoryId] ?? 0) + 1;
+    }
+    return {
+      for (final e in sums.entries)
+        e.key: e.value / counts[e.key]!,
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -114,10 +170,15 @@ class StudentSummaryScreen extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _SummaryHeader extends StatelessWidget {
-  const _SummaryHeader({required this.student, required this.group});
+  const _SummaryHeader({
+    required this.student,
+    required this.group,
+    required this.dateFilter,
+  });
 
   final Student student;
   final Group? group;
+  final DateRangeFilter dateFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +212,26 @@ class _SummaryHeader extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (!dateFilter.isAll) ...[
+                const SizedBox(height: AppSpacing.xSmall),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_month_outlined,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      dateFilter.label(context),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

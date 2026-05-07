@@ -285,6 +285,7 @@
   "filter_3_months": "3 months",
   "filter_6_months": "6 months",
   "filter_this_year": "This year",
+  "filter_custom": "Custom range",
   "parent_summary": "Parent meeting",
   "work_habits": "Work habits",
   "empty_grades": "No grades recorded yet"

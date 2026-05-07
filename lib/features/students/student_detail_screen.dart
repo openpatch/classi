@@ -79,37 +79,77 @@ final availableStudentsProvider = StreamProvider.autoDispose<List<Student>>(
 );
 
 /// Date range filter applied across all student-detail tabs.
-enum DateFilter {
-  all,
-  oneMonth,
-  threeMonths,
-  sixMonths,
-  thisYear;
+@immutable
+class DateRangeFilter {
+  const DateRangeFilter._({
+    this.start,
+    this.end,
+    QuickFilter? preset,
+  }) : _preset = preset;
 
-  /// Returns the start of the date range, or `null` for "all time".
-  DateTime? get startDate {
+  /// No filter — show all data.
+  const DateRangeFilter.all() : start = null, end = null, _preset = null;
+
+  /// One of the built-in quick filters.
+  factory DateRangeFilter.fromPreset(QuickFilter preset) {
     final now = DateTime.now();
-    return switch (this) {
-      DateFilter.all => null,
-      DateFilter.oneMonth => DateTime(now.year, now.month - 1, now.day),
-      DateFilter.threeMonths => DateTime(now.year, now.month - 3, now.day),
-      DateFilter.sixMonths => DateTime(now.year, now.month - 6, now.day),
-      DateFilter.thisYear => DateTime(now.year),
+    final start = switch (preset) {
+      QuickFilter.oneMonth => DateTime(now.year, now.month - 1, now.day),
+      QuickFilter.threeMonths => DateTime(now.year, now.month - 3, now.day),
+      QuickFilter.sixMonths => DateTime(now.year, now.month - 6, now.day),
+      QuickFilter.thisYear => DateTime(now.year),
     };
+    return DateRangeFilter._(start: start, preset: preset);
   }
 
-  String label(BuildContext context) => switch (this) {
-    DateFilter.all => 'filter_all'.tr(),
-    DateFilter.oneMonth => 'filter_1_month'.tr(),
-    DateFilter.threeMonths => 'filter_3_months'.tr(),
-    DateFilter.sixMonths => 'filter_6_months'.tr(),
-    DateFilter.thisYear => 'filter_this_year'.tr(),
-  };
+  /// Explicit custom range chosen by the user via a date-range picker.
+  factory DateRangeFilter.custom({
+    required DateTime start,
+    required DateTime end,
+  }) => DateRangeFilter._(start: start, end: end);
+
+  final DateTime? start;
+
+  /// Exclusive upper bound — `null` means "up to now".
+  final DateTime? end;
+
+  final QuickFilter? _preset;
+
+  bool get isAll => start == null && end == null;
+  bool get isCustom => _preset == null && !isAll;
+  QuickFilter? get activePreset => _preset;
+
+  bool includes(DateTime date) {
+    final d = DateUtils.dateOnly(date);
+    if (start != null && d.isBefore(DateUtils.dateOnly(start!))) return false;
+    if (end != null && d.isAfter(DateUtils.dateOnly(end!))) return false;
+    return true;
+  }
+
+  /// Human-readable label for the active filter.
+  String label(BuildContext context) {
+    if (isAll) return 'filter_all'.tr();
+    if (_preset != null) {
+      return switch (_preset) {
+        QuickFilter.oneMonth => 'filter_1_month'.tr(),
+        QuickFilter.threeMonths => 'filter_3_months'.tr(),
+        QuickFilter.sixMonths => 'filter_6_months'.tr(),
+        QuickFilter.thisYear => 'filter_this_year'.tr(),
+      };
+    }
+    // Custom range
+    final fmt = DateFormat.yMd(context.locale.toLanguageTag());
+    final from = start != null ? fmt.format(start!) : '…';
+    final to = end != null ? fmt.format(end!) : 'now'.tr();
+    return '$from – $to';
+  }
 }
 
+enum QuickFilter { oneMonth, threeMonths, sixMonths, thisYear }
+
 final studentDateFilterProvider =
-    StateProvider.autoDispose.family<DateFilter, int>(
-      (ref, _) => DateFilter.all,
+    StateProvider.autoDispose.family<DateRangeFilter, int>(
+      (ref, _) => const DateRangeFilter.all(),
     );
 
 class StudentDetailScreen extends ConsumerWidget {
@@ -169,25 +209,21 @@ class StudentDetailScreen extends ConsumerWidget {
         final dateFilter = ref.watch(
           studentDateFilterProvider(studentId),
         );
-        final filterStart = dateFilter.startDate;
-
-        bool afterFilter(DateTime d) =>
-            filterStart == null || !d.isBefore(filterStart);
 
         final filteredGradesValue = gradesValue.whenData(
-          (list) => list.where((g) => afterFilter(g.date)).toList(),
+          (list) => list.where((g) => dateFilter.includes(g.date)).toList(),
         );
         final filteredMaterialValue = materialValue.whenData(
-          (list) => list.where((m) => afterFilter(m.date)).toList(),
+          (list) => list.where((m) => dateFilter.includes(m.date)).toList(),
         );
         final filteredHomeworkValue = homeworkValue.whenData(
-          (list) => list.where((h) => afterFilter(h.date)).toList(),
+          (list) => list.where((h) => dateFilter.includes(h.date)).toList(),
         );
         final filteredAttendanceValue = attendanceValue.whenData(
-          (list) => list.where((a) => afterFilter(a.date)).toList(),
+          (list) => list.where((a) => dateFilter.includes(a.date)).toList(),
         );
         final filteredNotesValue = notesValue.whenData(
-          (list) => list.where((n) => afterFilter(n.createdAt)).toList(),
+          (list) => list.where((n) => dateFilter.includes(n.createdAt)).toList(),
         );
 
         return DefaultTabController(
@@ -363,26 +399,79 @@ class _DateFilterChips extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(studentDateFilterProvider(studentId));
+    final notifier = ref.read(studentDateFilterProvider(studentId).notifier);
+
     return SizedBox(
       height: 48,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         children: [
-          for (final filter in DateFilter.values)
+          // All
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text('filter_all'.tr()),
+              selected: current.isAll,
+              onSelected: (_) => notifier.state = const DateRangeFilter.all(),
+            ),
+          ),
+          // Quick presets
+          for (final preset in QuickFilter.values)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterChip(
-                label: Text(filter.label(context)),
-                selected: current == filter,
-                onSelected: (_) => ref
-                    .read(studentDateFilterProvider(studentId).notifier)
-                    .state = filter,
+                label: Text(
+                  DateRangeFilter.fromPreset(preset).label(context),
+                ),
+                selected: current.activePreset == preset,
+                onSelected: (_) =>
+                    notifier.state = DateRangeFilter.fromPreset(preset),
               ),
             ),
+          // Custom range
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: current.isCustom
+                ? FilterChip(
+                    label: Text(current.label(context)),
+                    selected: true,
+                    onSelected: (_) => _pickCustomRange(context, ref, current),
+                    deleteIcon: const Icon(Icons.close, size: 18),
+                    onDeleted: () =>
+                        notifier.state = const DateRangeFilter.all(),
+                  )
+                : ActionChip(
+                    avatar: const Icon(Icons.calendar_month_outlined, size: 18),
+                    label: Text('filter_custom'.tr()),
+                    onPressed: () => _pickCustomRange(context, ref, current),
+                  ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _pickCustomRange(
+    BuildContext context,
+    WidgetRef ref,
+    DateRangeFilter current,
+  ) async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 1),
+      initialDateRange: current.start != null
+          ? DateTimeRange(
+              start: current.start!,
+              end: current.end ?? now,
+            )
+          : null,
+    );
+    if (picked == null) return;
+    ref.read(studentDateFilterProvider(studentId).notifier).state =
+        DateRangeFilter.custom(start: picked.start, end: picked.end);
   }
 }
 
@@ -678,22 +767,24 @@ class _GradeTableHeader extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 72,
+            width: 52,
             child: Text(
               'grades'.tr(),
               style: Theme.of(context).textTheme.labelLarge,
             ),
           ),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 160,
+          Flexible(
+            flex: 2,
             child: Text(
               'grade_category'.tr(),
               style: Theme.of(context).textTheme.labelLarge,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
+          Flexible(
+            flex: 3,
             child: Text(
               'label'.tr(),
               style: Theme.of(context).textTheme.labelLarge,
@@ -701,7 +792,7 @@ class _GradeTableHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 152,
+            width: 128,
             child: Text(
               'date'.tr(),
               textAlign: TextAlign.end,
@@ -740,22 +831,23 @@ class _GradeTableRow extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 72,
+              width: 52,
               child: Text(
                 grade.value,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
             ),
             const SizedBox(width: 12),
-            SizedBox(
-              width: 160,
+            Flexible(
+              flex: 2,
               child: _GradeCategoryBadge(
                 label: categoryLabel,
                 color: categoryColor,
               ),
             ),
             const SizedBox(width: 12),
-            Expanded(
+            Flexible(
+              flex: 3,
               child: Text(
                 _gradeLabelText(grade.sessionLabel),
                 maxLines: 2,
@@ -764,7 +856,7 @@ class _GradeTableRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             SizedBox(
-              width: 152,
+              width: 128,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
