@@ -137,6 +137,30 @@ class StudentSummaryScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.xxLarge),
             ],
           ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () async {
+              final controller = TextEditingController();
+              final body = await showDialog<String>(
+                context: context,
+                builder: (_) => _QuickNoteDialog(
+                  studentName: studentDisplayName(
+                    firstName: student.firstName,
+                    lastName: student.lastName,
+                  ),
+                  controller: controller,
+                ),
+              );
+              if (body == null || body.trim().isEmpty) return;
+              await ref.read(noteRepositoryProvider).saveNote(
+                body: body.trim(),
+                groupId: student.groupId,
+                studentIds: [studentId],
+                isTodo: false,
+              );
+            },
+            icon: const Icon(Icons.note_add_outlined),
+            label: Text('add_note'.tr()),
+          ),
         );
       },
       error: (e, s) => const AppErrorScaffold(),
@@ -719,4 +743,50 @@ class _StatChip extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Quick note dialog
+// ---------------------------------------------------------------------------
+
+class _QuickNoteDialog extends StatelessWidget {
+  const _QuickNoteDialog({
+    required this.studentName,
+    required this.controller,
+  });
+
+  final String studentName;
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(studentName),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        minLines: 2,
+        maxLines: 5,
+        decoration: InputDecoration(
+          hintText: 'add_note'.tr(),
+          border: const OutlineInputBorder(),
+        ),
+        textCapitalization: TextCapitalization.sentences,
+        onSubmitted: (_) => _submit(context),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('cancel'.tr()),
+        ),
+        FilledButton(
+          onPressed: () => _submit(context),
+          child: Text('save'.tr()),
+        ),
+      ],
+    );
+  }
+
+  void _submit(BuildContext context) =>
+      Navigator.of(context).pop(controller.text);
 }
