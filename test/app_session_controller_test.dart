@@ -340,6 +340,53 @@ void main() {
       );
     },
   );
+
+  test(
+    'manual export does not flag the same remote backup as newer on restart',
+    () async {
+      final exportService = _ExportingLibraryBackupService(
+        exportedAt: DateTime.utc(2026, 5, 7, 8, 0),
+        remoteModifiedAt: DateTime.utc(2026, 5, 7, 8, 1),
+      );
+      controller.dispose();
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: _TestDatabasePathService(
+          '${tempDirectory.path}/test.classi',
+        ),
+        securityPreferencesService: SecurityPreferencesService(),
+        libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+      await controller.setWebDavAutoImportEnabled(true);
+
+      expect(await controller.exportNow(), isNull);
+      expect(controller.hasPendingAutoImport, isFalse);
+
+      controller.dispose();
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: _TestDatabasePathService(
+          '${tempDirectory.path}/test.classi',
+        ),
+        securityPreferencesService: SecurityPreferencesService(),
+        libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+
+      expect(controller.hasPendingAutoImport, isFalse);
+      expect(controller.pendingImportRemoteModifiedAt, isNull);
+    },
+  );
 }
 
 class _TestDatabasePathService extends DatabasePathService {
@@ -436,4 +483,48 @@ class _RestoringAppSessionController extends AppSessionController {
   @override
   Future<webdav.Client?> createWebDavClient() async =>
       webdav.newClient('https://example.invalid');
+}
+
+class _WebDavAppSessionController extends AppSessionController {
+  _WebDavAppSessionController({
+    required super.keyService,
+    required super.databasePathService,
+    required super.securityPreferencesService,
+    required super.libraryBackupPreferencesService,
+    required super.libraryBackupService,
+    required super.biometricService,
+  });
+
+  @override
+  Future<webdav.Client?> createWebDavClient() async =>
+      webdav.newClient('https://example.invalid');
+}
+
+class _ExportingLibraryBackupService extends LibraryBackupService {
+  _ExportingLibraryBackupService({
+    required this.exportedAt,
+    required this.remoteModifiedAt,
+  });
+
+  final DateTime exportedAt;
+  final DateTime remoteModifiedAt;
+
+  @override
+  Future<DateTime> exportBackupToWebDav({
+    required webdav.Client client,
+    required String sourceDatabasePath,
+    required String serverPath,
+    int maxVersions = 3,
+  }) async {
+    return exportedAt;
+  }
+
+  @override
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async {
+    return remoteModifiedAt;
+  }
 }

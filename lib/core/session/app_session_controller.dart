@@ -950,14 +950,31 @@ class AppSessionController extends ChangeNotifier {
       name: 'classi.backup',
     );
     try {
+      final currentDatabasePath = await _databasePathService
+          .getCurrentDatabasePath();
       final exportedAt = await _libraryBackupService.exportBackupToWebDav(
         client: client,
-        sourceDatabasePath: await _databasePathService.getCurrentDatabasePath(),
+        sourceDatabasePath: currentDatabasePath,
         serverPath: _webDavServerPath ?? '/',
         maxVersions: _webDavMaxVersions,
       );
       _lastExportedAt = exportedAt;
       await _libraryBackupPreferencesService.setLastExportedAt(exportedAt);
+      final backupFileName = LibraryBackupService.backupFileNameForDatabasePath(
+        currentDatabasePath,
+      );
+      final remoteModifiedAt = await _libraryBackupService
+          .getRemoteBackupModifiedAt(
+            client: client,
+            serverPath: _webDavServerPath ?? '/',
+            backupFileName: backupFileName,
+          );
+      // Treat the freshly uploaded canonical backup as already acknowledged on
+      // this device. Otherwise the server mTime can make our own export look
+      // like a newer backup on the next launch.
+      await _libraryBackupPreferencesService.setPendingImportDismissedAt(
+        remoteModifiedAt ?? exportedAt,
+      );
       developer.log('WebDAV export succeeded', name: 'classi.backup');
       _setBackupMessage('backup_exported');
     } catch (error, stackTrace) {
@@ -1006,8 +1023,7 @@ class AppSessionController extends ChangeNotifier {
       // Check if the user already dismissed this exact remote version.
       final dismissedAt = await _libraryBackupPreferencesService
           .pendingImportDismissedAt();
-      if (dismissedAt != null &&
-          !backupModified.isAfter(dismissedAt)) {
+      if (dismissedAt != null && !backupModified.isAfter(dismissedAt)) {
         _pendingWebDavImport = false;
         _pendingImportRemoteModifiedAt = null;
         return;
@@ -1021,8 +1037,9 @@ class AppSessionController extends ChangeNotifier {
       final lastImported = _lastImportedAt;
       final DateTime? localRef;
       if (lastExported != null && lastImported != null) {
-        localRef =
-            lastExported.isAfter(lastImported) ? lastExported : lastImported;
+        localRef = lastExported.isAfter(lastImported)
+            ? lastExported
+            : lastImported;
       } else {
         localRef = lastExported ?? lastImported;
       }
