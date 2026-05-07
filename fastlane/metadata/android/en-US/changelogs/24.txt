@@ -1,5 +1,6 @@
 Bug Fixes
 
 - Align AppImage app identity
+- Avoid false newer-backup prompt
 
 
