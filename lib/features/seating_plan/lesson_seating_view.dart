@@ -76,7 +76,9 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
       plan = plans.where((p) => p.id == id).firstOrNull;
     }
     if (plan == null || !mounted) return;
-    setState(() => _activePlan = plan);
+    if (_activePlan?.id != plan.id) {
+      setState(() => _activePlan = plan);
+    }
     await repo.initializePositionsForPlan(
       planId: plan.id,
       students: widget.students,
@@ -100,6 +102,9 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
             students: widget.students,
             columns: selected.columns,
           );
+    } else {
+      // The active plan may have been deleted — reload the next available plan.
+      await _ensureActivePlan();
     }
   }
 

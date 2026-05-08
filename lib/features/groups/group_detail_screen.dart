@@ -1523,8 +1523,9 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
     }
     if (plan == null || !mounted) return;
     setState(() {
+      final planChanged = _activePlan?.id != plan!.id;
       _activePlan = plan;
-      _editMode = false;
+      if (planChanged) _editMode = false;
     });
     await repo.initializePositionsForPlan(
       planId: plan.id,
@@ -1552,6 +1553,9 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
             students: widget.students,
             columns: selected.columns,
           );
+    } else {
+      // The active plan may have been deleted — reload the next available plan.
+      await _ensureActivePlan();
     }
   }
 

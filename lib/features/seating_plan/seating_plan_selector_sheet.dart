@@ -185,11 +185,15 @@ class _SeatingPlanSelectorSheet extends ConsumerWidget {
     );
     if (!confirmed) return;
 
-    await ref.read(seatingPlanRepositoryProvider).deletePlan(plan.id);
+    final repo = ref.read(seatingPlanRepositoryProvider);
+    await repo.deletePlan(plan.id);
 
-    // If the deleted plan was active, close the sheet with no selection.
+    // If the deleted plan was active, close the sheet and select the next plan.
     if (activePlan?.id == plan.id && context.mounted) {
-      Navigator.of(context).pop(null);
+      final remaining = await repo.watchPlansForGroup(groupId).first;
+      if (context.mounted) {
+        Navigator.of(context).pop(remaining.firstOrNull);
+      }
     }
   }
 }
