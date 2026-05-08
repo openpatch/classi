@@ -57,17 +57,17 @@ final lessonExcusedSelectionsProvider = StreamProvider.autoDispose
           ),
     );
 
-
 final lessonNotesProvider = StreamProvider.autoDispose
     .family<List<TeacherNote>, int>(
       (ref, groupId) =>
           ref.watch(noteRepositoryProvider).watchNotesForGroup(groupId),
     );
 
-final lessonEntryDatesProvider = StreamProvider.autoDispose
-    .family<Set<DateTime>, int>(
-      (ref, groupId) =>
-          ref.watch(lessonRepositoryProvider).watchGroupEntryDates(groupId),
+final lessonEntryCategoriesProvider = StreamProvider.autoDispose
+    .family<Map<DateTime, Set<String>>, int>(
+      (ref, groupId) => ref
+          .watch(lessonRepositoryProvider)
+          .watchGroupEntryCategories(groupId),
     );
 
 final lessonGradeSelectionsProvider = StreamProvider.autoDispose

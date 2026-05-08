@@ -191,10 +191,7 @@ class GradeRepository {
             Variable.withDateTime(normalizedDate),
             Variable.withString(categoryId),
           ],
-          readsFrom: {
-            _database.gradeEntriesTable,
-            _database.studentsTable,
-          },
+          readsFrom: {_database.gradeEntriesTable, _database.studentsTable},
         )
         .watch()
         .map(
@@ -203,6 +200,44 @@ class GradeRepository {
               row.read<int>('student_id'): row.read<String>('value'),
           },
         );
+  }
+
+  Future<String?> getPreferredSessionLabel({
+    required int groupId,
+    required DateTime date,
+    required String categoryId,
+  }) async {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedCategoryId = categoryId.trim();
+    if (normalizedCategoryId.isEmpty) {
+      return null;
+    }
+
+    final rows = await _database
+        .customSelect(
+          '''
+          SELECT g.session_label, COUNT(*) AS entry_count
+          FROM grade_entries_table g
+          JOIN students_table s ON s.id = g.student_id
+          WHERE s.group_id = ? AND g.date = ? AND g.category_id = ?
+          GROUP BY g.session_label
+          ORDER BY entry_count DESC, g.session_label ASC
+          LIMIT 1
+          ''',
+          variables: [
+            Variable.withInt(groupId),
+            Variable.withDateTime(normalizedDate),
+            Variable.withString(normalizedCategoryId),
+          ],
+        )
+        .getSingleOrNull();
+
+    if (rows == null) {
+      return null;
+    }
+
+    final sessionLabel = rows.read<String>('session_label').trim();
+    return sessionLabel.isEmpty ? null : sessionLabel;
   }
 
   Future<void> saveEntry({

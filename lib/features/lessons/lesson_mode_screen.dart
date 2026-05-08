@@ -54,6 +54,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     _sessionController = TextEditingController(
       text: widget.initialSessionLabel,
     );
+    Future<void>.microtask(_restoreSessionLabelForCurrentSelection);
   }
 
   @override
@@ -90,10 +91,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
         final appBarForeground = onColorForBackground(groupColor);
         final gradeCategories = parseGradeCategories(group.gradeCategoriesJson);
         _selectedCategoryId ??= gradeCategories.first.id;
-        final selectedCategory = gradeCategories.firstWhere(
-          (category) => category.id == _selectedCategoryId,
-          orElse: () => gradeCategories.first,
-        );
+        final selectedCategory = _resolveSelectedCategory(gradeCategories);
         final gradeScale = [
           for (final entry in parseGradeScaleEntries(group.gradeScaleJson))
             entry.label,
@@ -135,6 +133,20 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
               ),
             ],
           ),
+          floatingActionButton: gradeCategories.length <= 1
+              ? null
+              : LessonCategoryFabMenu(
+                  categories: gradeCategories,
+                  selectedCategoryId: selectedCategory.id,
+                  heroTagPrefix: 'lesson-category-${widget.groupId}',
+                  mainLabel: selectedCategory.name,
+                  mainIcon: Icons.category_outlined,
+                  backgroundColor: colorForCategory(selectedCategory),
+                  foregroundColor: onColorForBackground(
+                    colorForCategory(selectedCategory),
+                  ),
+                  onSelected: _selectCategory,
+                ),
           body: studentsValue.when(
             data: (students) {
               if (students.isEmpty) {
@@ -173,103 +185,107 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                 child: ListView(
                   padding: appScreenPadding,
                   children: [
-                  LessonContextCard(
-                    sessionController: _sessionController,
-                    selectedDate: _selectedDate,
-                    gradeCategories: gradeCategories,
-                    selectedCategoryId: _selectedCategoryId,
-                    onSessionChanged: (_) => setState(() {}),
-                    onCategoryChanged: (value) =>
-                        setState(() => _selectedCategoryId = value),
-                    onPickDate: _pickDate,
-                    action: absentStudents.isNotEmpty
-                        ? OutlinedButton.icon(
-                            onPressed: () => _clearAbsencesForDate(context),
-                            icon: const Icon(Icons.person_off_outlined),
-                            label: Text('clear_absences_for_date'.tr()),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor:
-                                  Theme.of(context).colorScheme.error,
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: AppSpacing.large),
-                  LessonSummaryCard(
-                    absentCount: absentStudents.length,
-                    gradeCount: gradeSelections.length,
-                    homeworkCount: homeworkSelections.length,
-                    materialCount: materialSelections.length,
-                    totalStudents: students.length,
-                    onAbsentTap: absentStudents.isNotEmpty
-                        ? () => _showAbsentStudents(
-                            context: context,
-                            students: students,
-                            absentStudents: absentStudents,
-                            excusedStudents: excusedStudents,
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: AppSpacing.large),
-                  LessonNotesCard(
-                    notes: lessonNotes,
-                    students: students,
-                    onAddGroupNote: () => _addGroupNote(
-                      context: context,
-                      group: group,
+                    LessonContextCard(
+                      sessionController: _sessionController,
+                      selectedDate: _selectedDate,
+                      onSessionChanged: (_) => setState(() {}),
+                      onPickDate: _pickDate,
+                      action: absentStudents.isNotEmpty
+                          ? OutlinedButton.icon(
+                              onPressed: () => _clearAbsencesForDate(context),
+                              icon: const Icon(Icons.person_off_outlined),
+                              label: Text('clear_absences_for_date'.tr()),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.error,
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: AppSpacing.large),
+                    LessonSummaryCard(
+                      absentCount: absentStudents.length,
+                      gradeCount: gradeSelections.length,
+                      homeworkCount: homeworkSelections.length,
+                      materialCount: materialSelections.length,
+                      totalStudents: students.length,
+                      onAbsentTap: absentStudents.isNotEmpty
+                          ? () => _showAbsentStudents(
+                              context: context,
+                              students: students,
+                              absentStudents: absentStudents,
+                              excusedStudents: excusedStudents,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: AppSpacing.large),
+                    LessonNotesCard(
+                      notes: lessonNotes,
                       students: students,
+                      onAddGroupNote: () => _addGroupNote(
+                        context: context,
+                        group: group,
+                        students: students,
+                      ),
+                      onEditNote: (note) => _editNote(
+                        context: context,
+                        group: group,
+                        students: students,
+                        note: note,
+                      ),
+                      onDeleteNote: (note) =>
+                          _deleteNote(context: context, note: note),
                     ),
-                    onEditNote: (note) => _editNote(
-                      context: context,
-                      group: group,
+                    const SizedBox(height: AppSpacing.large),
+                    LessonStudentsTable(
                       students: students,
-                      note: note,
+                      absentStudents: absentStudents,
+                      excusedStudents: excusedStudents,
+                      materialSelections: materialSelections,
+                      homeworkSelections: homeworkSelections,
+                      gradeSelections: gradeSelections,
+                      noteCountsByStudent: noteCountsByStudent,
+                      onOpenStudent: (student) =>
+                          context.push('/students/${student.id}'),
+                      onSetAbsent: (student) =>
+                          _setAbsent(studentId: student.id, absent: true),
+                      onSetPresent: (student) =>
+                          _setAbsent(studentId: student.id, absent: false),
+                      onToggleExcused: (student, excused) => _toggleExcused(
+                        studentId: student.id,
+                        excused: excused,
+                      ),
+                      onMaterialChanged: (student, value) => _setMaterialValue(
+                        studentId: student.id,
+                        value: value,
+                      ),
+                      onHomeworkChanged: (student, value) => _setHomeworkValue(
+                        studentId: student.id,
+                        value: value,
+                      ),
+                      onPickGrade: (student) => _pickGrade(
+                        studentId: student.id,
+                        category: selectedCategory,
+                        currentValue:
+                            gradeSelections[student.id] ??
+                            _noGradeSelectionValue,
+                        gradeScale: gradeScale,
+                      ),
+                      onOpenNotes: (student) => _showStudentNotes(
+                        context: context,
+                        group: group,
+                        students: students,
+                        student: student,
+                      ),
+                      onAddQuickNote: (student) => _addQuickNote(
+                        context: context,
+                        group: group,
+                        student: student,
+                      ),
                     ),
-                    onDeleteNote: (note) =>
-                        _deleteNote(context: context, note: note),
-                  ),
-                  const SizedBox(height: AppSpacing.large),
-                  LessonStudentsTable(
-                    students: students,
-                    absentStudents: absentStudents,
-                    excusedStudents: excusedStudents,
-                    materialSelections: materialSelections,
-                    homeworkSelections: homeworkSelections,
-                    gradeSelections: gradeSelections,
-                    noteCountsByStudent: noteCountsByStudent,
-                    onOpenStudent: (student) =>
-                        context.push('/students/${student.id}'),
-                    onSetAbsent: (student) =>
-                        _setAbsent(studentId: student.id, absent: true),
-                    onSetPresent: (student) =>
-                        _setAbsent(studentId: student.id, absent: false),
-                    onToggleExcused: (student, excused) =>
-                        _toggleExcused(studentId: student.id, excused: excused),
-                    onMaterialChanged: (student, value) =>
-                        _setMaterialValue(studentId: student.id, value: value),
-                    onHomeworkChanged: (student, value) =>
-                        _setHomeworkValue(studentId: student.id, value: value),
-                    onPickGrade: (student) => _pickGrade(
-                      studentId: student.id,
-                      category: selectedCategory,
-                      currentValue:
-                          gradeSelections[student.id] ?? _noGradeSelectionValue,
-                      gradeScale: gradeScale,
-                    ),
-                    onOpenNotes: (student) => _showStudentNotes(
-                      context: context,
-                      group: group,
-                      students: students,
-                      student: student,
-                    ),
-                    onAddQuickNote: (student) => _addQuickNote(
-                      context: context,
-                      group: group,
-                      student: student,
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
               );
             },
             error: (error, _) => const AppErrorState(),
@@ -281,6 +297,77 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
+  }
+
+  GradeCategory _resolveSelectedCategory(List<GradeCategory> categories) {
+    final selectedCategoryId = _selectedCategoryId;
+    if (selectedCategoryId == null) {
+      return categories.first;
+    }
+
+    for (final category in categories) {
+      if (category.id == selectedCategoryId) {
+        return category;
+      }
+    }
+
+    return GradeCategory(
+      id: selectedCategoryId,
+      name: categoryNameFor(
+        categoryId: selectedCategoryId,
+        categories: categories,
+      ),
+      weight: 1,
+      colorHex: colorToHex(
+        colorForCategoryId(
+          categoryId: selectedCategoryId,
+          categories: categories,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectCategory(GradeCategory category) async {
+    if (category.id == _selectedCategoryId) {
+      return;
+    }
+    setState(() => _selectedCategoryId = category.id);
+    await _restoreSessionLabelForCurrentSelection(
+      categoryId: category.id,
+      date: _selectedDate,
+    );
+  }
+
+  Future<void> _restoreSessionLabelForCurrentSelection({
+    String? categoryId,
+    DateTime? date,
+  }) async {
+    if (_sessionController.text.trim().isNotEmpty) {
+      return;
+    }
+
+    final targetCategoryId = (categoryId ?? _selectedCategoryId)?.trim();
+    if (targetCategoryId == null || targetCategoryId.isEmpty) {
+      return;
+    }
+    final targetDate = normalizeLessonDate(date ?? _selectedDate);
+    final sessionLabel = await ref
+        .read(gradeRepositoryProvider)
+        .getPreferredSessionLabel(
+          groupId: widget.groupId,
+          date: targetDate,
+          categoryId: targetCategoryId,
+        );
+    if (!mounted ||
+        sessionLabel == null ||
+        _sessionController.text.trim().isNotEmpty ||
+        _selectedCategoryId != targetCategoryId ||
+        _selectedDate != targetDate) {
+      return;
+    }
+
+    _sessionController.text = sessionLabel;
+    setState(() {});
   }
 
   Future<void> _showAbsentStudents({
@@ -310,10 +397,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'absent'.tr(),
-                style: Theme.of(ctx).textTheme.titleLarge,
-              ),
+              Text('absent'.tr(), style: Theme.of(ctx).textTheme.titleLarge),
               const SizedBox(height: AppSpacing.large),
               for (final student in absentList)
                 ListTile(
@@ -355,6 +439,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     }
 
     setState(() => _selectedDate = normalizeLessonDate(selected));
+    await _restoreSessionLabelForCurrentSelection(date: _selectedDate);
   }
 
   Future<void> _addGroupNote({
@@ -508,16 +593,21 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       lastName: student.lastName,
       sortField: sortField,
     );
-    final body = await _showQuickNoteDialog(context: context, studentName: name);
+    final body = await _showQuickNoteDialog(
+      context: context,
+      studentName: name,
+    );
     if (body == null || body.trim().isEmpty) return;
 
-    await ref.read(noteRepositoryProvider).saveNote(
-      body: body.trim(),
-      groupId: group.id,
-      studentIds: [student.id],
-      isTodo: false,
-      createdAt: _selectedDate,
-    );
+    await ref
+        .read(noteRepositoryProvider)
+        .saveNote(
+          body: body.trim(),
+          groupId: group.id,
+          studentIds: [student.id],
+          isTodo: false,
+          createdAt: _selectedDate,
+        );
   }
 
   Future<String?> _showQuickNoteDialog({
@@ -527,10 +617,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     final controller = TextEditingController();
     return showDialog<String>(
       context: context,
-      builder: (ctx) => _QuickNoteDialog(
-        studentName: studentName,
-        controller: controller,
-      ),
+      builder: (ctx) =>
+          _QuickNoteDialog(studentName: studentName, controller: controller),
     );
   }
 
@@ -584,13 +672,14 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
         .clearAbsence(studentId: studentId, date: _selectedDate);
   }
 
-  Future<void> _toggleExcused({
-    required int studentId,
-    required bool excused,
-  }) {
+  Future<void> _toggleExcused({required int studentId, required bool excused}) {
     return ref
         .read(attendanceRepositoryProvider)
-        .setExcused(studentId: studentId, date: _selectedDate, excused: excused);
+        .setExcused(
+          studentId: studentId,
+          date: _selectedDate,
+          excused: excused,
+        );
   }
 
   Future<void> _clearAbsencesForDate(BuildContext context) async {
@@ -673,10 +762,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
 }
 
 class _QuickNoteDialog extends StatelessWidget {
-  const _QuickNoteDialog({
-    required this.studentName,
-    required this.controller,
-  });
+  const _QuickNoteDialog({required this.studentName, required this.controller});
 
   final String studentName;
   final TextEditingController controller;

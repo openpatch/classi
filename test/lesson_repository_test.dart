@@ -38,55 +38,126 @@ void main() {
     await database.close();
   });
 
-  test('group lesson entry dates merge lesson data sources', () async {
-    final groupId = await groupRepository.createGroup(
-      name: '10A',
-      gradeScale: defaultGradeScaleEntries,
-    );
-    final studentId = await studentRepository.addStudent(
-      groupId: groupId,
-      firstName: 'Ada',
-      lastName: 'Lovelace',
-    );
+  test(
+    'group lesson entry categories map dates to saved grade categories',
+    () async {
+      final groupId = await groupRepository.createGroup(
+        name: '10A',
+        gradeScale: defaultGradeScaleEntries,
+      );
+      final studentId = await studentRepository.addStudent(
+        groupId: groupId,
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+      );
 
-    await attendanceRepository.markAbsent(
-      studentId: studentId,
-      date: DateTime(2026, 5, 5),
-    );
-    await homeworkRepository.saveLog(
-      studentId: studentId,
-      date: DateTime(2026, 5, 6),
-      hadHomework: true,
-    );
-    await materialRepository.saveLog(
-      studentId: studentId,
-      date: DateTime(2026, 5, 7),
-      hadMaterial: true,
-    );
-    await gradeRepository.saveEntry(
-      studentId: studentId,
-      date: DateTime(2026, 5, 8),
-      sessionLabel: 'Mitarbeit',
-      value: '2',
-    );
-    await noteRepository.saveNote(
-      body: 'Lesson note',
-      groupId: groupId,
-      studentIds: [studentId],
-      isTodo: false,
-      createdAt: DateTime(2026, 5, 9, 13, 45),
-    );
+      await attendanceRepository.markAbsent(
+        studentId: studentId,
+        date: DateTime(2026, 5, 5),
+      );
+      await homeworkRepository.saveLog(
+        studentId: studentId,
+        date: DateTime(2026, 5, 6),
+        hadHomework: true,
+      );
+      await materialRepository.saveLog(
+        studentId: studentId,
+        date: DateTime(2026, 5, 7),
+        hadMaterial: true,
+      );
+      await gradeRepository.saveEntry(
+        studentId: studentId,
+        date: DateTime(2026, 5, 8),
+        sessionLabel: 'Mitarbeit',
+        value: '2',
+        categoryId: 'oral',
+        categoryName: 'Oral',
+      );
+      await gradeRepository.saveEntry(
+        studentId: studentId,
+        date: DateTime(2026, 5, 8),
+        sessionLabel: 'Quiz',
+        value: '1',
+        categoryId: 'quiz',
+        categoryName: 'Quiz',
+      );
+      await gradeRepository.saveEntry(
+        studentId: studentId,
+        date: DateTime(2026, 5, 9),
+        sessionLabel: 'Mitarbeit',
+        value: '2',
+        categoryId: 'oral',
+        categoryName: 'Oral',
+      );
+      await noteRepository.saveNote(
+        body: 'Lesson note',
+        groupId: groupId,
+        studentIds: [studentId],
+        isTodo: false,
+        createdAt: DateTime(2026, 5, 9, 13, 45),
+      );
 
-    final entryDates = await lessonRepository
-        .watchGroupEntryDates(groupId)
-        .first;
+      final entryCategories = await lessonRepository
+          .watchGroupEntryCategories(groupId)
+          .first;
 
-    expect(entryDates, {
-      DateTime(2026, 5, 5),
-      DateTime(2026, 5, 6),
-      DateTime(2026, 5, 7),
-      DateTime(2026, 5, 8),
-      DateTime(2026, 5, 9),
-    });
-  });
+      expect(entryCategories, {
+        DateTime(2026, 5, 8): {'oral', 'quiz'},
+        DateTime(2026, 5, 9): {'oral'},
+      });
+    },
+  );
+
+  test(
+    'preferred session label picks the populated session for a category',
+    () async {
+      final groupId = await groupRepository.createGroup(
+        name: '10A',
+        gradeScale: defaultGradeScaleEntries,
+      );
+      final adaId = await studentRepository.addStudent(
+        groupId: groupId,
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+      );
+      final graceId = await studentRepository.addStudent(
+        groupId: groupId,
+        firstName: 'Grace',
+        lastName: 'Hopper',
+      );
+
+      await gradeRepository.saveEntry(
+        studentId: adaId,
+        date: DateTime(2026, 5, 8),
+        sessionLabel: 'Quiz',
+        value: '2',
+        categoryId: 'oral',
+        categoryName: 'Oral',
+      );
+      await gradeRepository.saveEntry(
+        studentId: adaId,
+        date: DateTime(2026, 5, 8),
+        sessionLabel: 'Project',
+        value: '1',
+        categoryId: 'oral',
+        categoryName: 'Oral',
+      );
+      await gradeRepository.saveEntry(
+        studentId: graceId,
+        date: DateTime(2026, 5, 8),
+        sessionLabel: 'Project',
+        value: '2',
+        categoryId: 'oral',
+        categoryName: 'Oral',
+      );
+
+      final sessionLabel = await gradeRepository.getPreferredSessionLabel(
+        groupId: groupId,
+        date: DateTime(2026, 5, 8),
+        categoryId: 'oral',
+      );
+
+      expect(sessionLabel, 'Project');
+    },
+  );
 }

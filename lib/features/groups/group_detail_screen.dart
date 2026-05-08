@@ -25,6 +25,7 @@ import '../../shared/theme/app_ui.dart';
 import '../lists/list_repository.dart';
 import '../lists/list_editor.dart';
 import '../lessons/lesson_support.dart';
+import '../lessons/lesson_widgets.dart';
 import '../notes/note_editor.dart';
 import '../notes/note_links.dart';
 import '../students/student_batch_create_sheet.dart';
@@ -89,6 +90,22 @@ final groupListProgressProvider = StreamProvider.autoDispose
           ref.watch(listRepositoryProvider).watchListProgress(groupId: groupId),
     );
 
+String _lessonModeLocation({
+  required int groupId,
+  required DateTime date,
+  String? categoryId,
+}) {
+  final normalizedCategoryId = categoryId?.trim();
+  return Uri(
+    path: '/groups/$groupId/lesson',
+    queryParameters: {
+      'date': encodeLessonDate(date),
+      if (normalizedCategoryId != null && normalizedCategoryId.isNotEmpty)
+        'category': normalizedCategoryId,
+    },
+  ).toString();
+}
+
 class GroupDetailScreen extends ConsumerWidget {
   const GroupDetailScreen({required this.groupId, super.key});
 
@@ -148,192 +165,210 @@ class GroupDetailScreen extends ConsumerWidget {
           ),
           floatingActionButton: archived
               ? null
-              : FloatingActionButton.extended(
-                  onPressed: () => context.push(
-                    '/groups/$groupId/lesson?date=${encodeLessonDate(DateTime.now())}',
+              : LessonCategoryFabMenu(
+                  categories: categories,
+                  heroTagPrefix: 'group-lesson-$groupId',
+                  mainLabel: 'open_lesson_mode'.tr(),
+                  mainIcon: Icons.menu_book_outlined,
+                  onSelected: (category) => context.push(
+                    _lessonModeLocation(
+                      groupId: groupId,
+                      date: DateTime.now(),
+                      categoryId: category.id,
+                    ),
                   ),
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: Text('open_lesson_mode'.tr()),
                 ),
           body: ContentConstraints(
             child: ListView(
               padding: appScreenPadding,
               children: [
-              if (archived && archivedDate != null)
-                Card(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
-                  child: ListTile(
-                    leading: const Icon(Icons.archive_outlined),
-                    title: Text(
-                      'archived_banner'.tr(namedArgs: {'date': archivedDate}),
+                if (archived && archivedDate != null)
+                  Card(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    child: ListTile(
+                      leading: const Icon(Icons.archive_outlined),
+                      title: Text(
+                        'archived_banner'.tr(namedArgs: {'date': archivedDate}),
+                      ),
+                      onTap: () => ref
+                          .read(groupRepositoryProvider)
+                          .unarchiveGroup(group.id),
                     ),
-                    onTap: () => ref
-                        .read(groupRepositoryProvider)
-                        .unarchiveGroup(group.id),
                   ),
-                ),
-              Card(
-                child: Padding(
-                  padding: appCardPadding,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 10,
-                            backgroundColor: groupColor.withValues(alpha: 0.18),
-                            child: CircleAvatar(
-                              radius: 5,
-                              backgroundColor: groupColor,
+                Card(
+                  child: Padding(
+                    padding: appCardPadding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 10,
+                              backgroundColor: groupColor.withValues(
+                                alpha: 0.18,
+                              ),
+                              child: CircleAvatar(
+                                radius: 5,
+                                backgroundColor: groupColor,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              group.name,
-                              style: Theme.of(context).textTheme.headlineSmall,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                group.name,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineSmall,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.medium),
-                      Wrap(
-                        spacing: AppSpacing.small,
-                        runSpacing: AppSpacing.small,
-                        children: [
-                          Chip(
-                            avatar: const Icon(Icons.people_outline, size: 18),
-                            label: Text(
-                              '${students.length} ${'students'.tr()}',
-                            ),
-                          ),
-                          Chip(
-                            avatar: const Icon(
-                              Icons.category_outlined,
-                              size: 18,
-                            ),
-                            label: Text(
-                              '${categories.length} ${'grade_categories'.tr()}',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.small),
-                      ExpansionTile(
-                        tilePadding: EdgeInsets.zero,
-                        title: Text('grades'.tr()),
-                        childrenPadding: const EdgeInsets.only(
-                          bottom: AppSpacing.small,
+                          ],
                         ),
-                        children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Wrap(
-                              spacing: AppSpacing.small,
-                              runSpacing: AppSpacing.small,
-                              children: [
-                                for (final grade in parseGradeScale(
-                                  group.gradeScaleJson,
-                                ))
-                                  Chip(label: Text(grade)),
-                              ],
+                        const SizedBox(height: AppSpacing.medium),
+                        Wrap(
+                          spacing: AppSpacing.small,
+                          runSpacing: AppSpacing.small,
+                          children: [
+                            Chip(
+                              avatar: const Icon(
+                                Icons.people_outline,
+                                size: 18,
+                              ),
+                              label: Text(
+                                '${students.length} ${'students'.tr()}',
+                              ),
                             ),
+                            Chip(
+                              avatar: const Icon(
+                                Icons.category_outlined,
+                                size: 18,
+                              ),
+                              label: Text(
+                                '${categories.length} ${'grade_categories'.tr()}',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.small),
+                        ExpansionTile(
+                          tilePadding: EdgeInsets.zero,
+                          title: Text('grades'.tr()),
+                          childrenPadding: const EdgeInsets.only(
+                            bottom: AppSpacing.small,
                           ),
-                          const SizedBox(height: AppSpacing.medium),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Wrap(
-                              spacing: AppSpacing.small,
-                              runSpacing: AppSpacing.small,
-                              children: [
-                                for (final category in categories)
-                                  Chip(
-                                    avatar: CircleAvatar(
-                                      radius: 8,
-                                      backgroundColor: colorForCategory(
-                                        category,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Wrap(
+                                spacing: AppSpacing.small,
+                                runSpacing: AppSpacing.small,
+                                children: [
+                                  for (final grade in parseGradeScale(
+                                    group.gradeScaleJson,
+                                  ))
+                                    Chip(label: Text(grade)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.medium),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Wrap(
+                                spacing: AppSpacing.small,
+                                runSpacing: AppSpacing.small,
+                                children: [
+                                  for (final category in categories)
+                                    Chip(
+                                      avatar: CircleAvatar(
+                                        radius: 8,
+                                        backgroundColor: colorForCategory(
+                                          category,
+                                        ),
+                                      ),
+                                      label: Text(
+                                        '${category.name} (${formatNumber(category.weight)})',
                                       ),
                                     ),
-                                    label: Text(
-                                      '${category.name} (${formatNumber(category.weight)})',
-                                    ),
-                                  ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.large),
-              _LessonCalendarCard(groupId: group.id, groupColor: groupColor),
-              const SizedBox(height: AppSpacing.large),
-              studentsValue.when(
-                data: (loadedStudents) => _StudentsSection(
-                  students: loadedStudents,
-                  sortField: sortField,
-                  gradeScaleEntries: gradeScaleEntries,
+                const SizedBox(height: AppSpacing.large),
+                _LessonCalendarCard(
+                  groupId: group.id,
+                  groupColor: groupColor,
                   categories: categories,
-                  averagesValue: averagesValue,
-                  categoryAveragesValue: categoryAveragesValue,
-                  onAddStudent: archived
-                      ? null
-                      : () => _addStudent(context, ref, group.id),
-                  onBatchCreateStudents: archived
-                      ? null
-                      : () => _batchCreateStudents(context, ref, group.id),
-                  onImportStudents: archived
-                      ? null
-                      : () => _importWebUntisStudents(context, ref, group.id),
                 ),
-                error: (error, _) => const AppErrorText(),
-                loading: () => const Center(child: CircularProgressIndicator()),
-              ),
-              const SizedBox(height: AppSpacing.large),
-              _GroupListsCard(
-                groupId: group.id,
-                activeListsValue: listsValue,
-                archivedListsValue: archivedListsValue,
-                progress:
-                    listProgressValue.value ?? const <int, ListProgress>{},
-                onAddList: archived
-                    ? null
-                    : () => _createList(context, ref, group),
-                onEditList: (list) => _editList(context, ref, list),
-                onArchiveList: (list) =>
-                    ref.read(listRepositoryProvider).archiveList(list.id),
-                onUnarchiveList: (list) =>
-                    ref.read(listRepositoryProvider).unarchiveList(list.id),
-                onDeleteList: (list) => _deleteList(context, ref, list),
-                onDeleteListDirect: (list) =>
-                    ref.read(listRepositoryProvider).deleteList(list.id),
-              ),
-              const SizedBox(height: AppSpacing.large),
-              _GroupNotesCard(
-                activeNotesValue: notesValue,
-                archivedNotesValue: archivedNotesValue,
-                students: students,
-                onEditNote: (note) =>
-                    _editNote(context, ref, group, students, note),
-                onToggleNote: (note) => ref
-                    .read(noteRepositoryProvider)
-                    .toggleTodo(note, !note.todoDone),
-                onArchiveNote: (note) =>
-                    ref.read(noteRepositoryProvider).archiveNote(note.id),
-                onUnarchiveNote: (note) =>
-                    ref.read(noteRepositoryProvider).unarchiveNote(note.id),
-                onDeleteNote: (note) => _deleteNote(context, ref, note),
-                onDeleteNoteDirect: (note) =>
-                    ref.read(noteRepositoryProvider).deleteNote(note.id),
-                onAddNote: archived
-                    ? null
-                    : () => _addGroupNote(context, ref, group, students),
-              ),
-            ],
-          ),
+                const SizedBox(height: AppSpacing.large),
+                studentsValue.when(
+                  data: (loadedStudents) => _StudentsSection(
+                    students: loadedStudents,
+                    sortField: sortField,
+                    gradeScaleEntries: gradeScaleEntries,
+                    categories: categories,
+                    averagesValue: averagesValue,
+                    categoryAveragesValue: categoryAveragesValue,
+                    onAddStudent: archived
+                        ? null
+                        : () => _addStudent(context, ref, group.id),
+                    onBatchCreateStudents: archived
+                        ? null
+                        : () => _batchCreateStudents(context, ref, group.id),
+                    onImportStudents: archived
+                        ? null
+                        : () => _importWebUntisStudents(context, ref, group.id),
+                  ),
+                  error: (error, _) => const AppErrorText(),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                ),
+                const SizedBox(height: AppSpacing.large),
+                _GroupListsCard(
+                  groupId: group.id,
+                  activeListsValue: listsValue,
+                  archivedListsValue: archivedListsValue,
+                  progress:
+                      listProgressValue.value ?? const <int, ListProgress>{},
+                  onAddList: archived
+                      ? null
+                      : () => _createList(context, ref, group),
+                  onEditList: (list) => _editList(context, ref, list),
+                  onArchiveList: (list) =>
+                      ref.read(listRepositoryProvider).archiveList(list.id),
+                  onUnarchiveList: (list) =>
+                      ref.read(listRepositoryProvider).unarchiveList(list.id),
+                  onDeleteList: (list) => _deleteList(context, ref, list),
+                  onDeleteListDirect: (list) =>
+                      ref.read(listRepositoryProvider).deleteList(list.id),
+                ),
+                const SizedBox(height: AppSpacing.large),
+                _GroupNotesCard(
+                  activeNotesValue: notesValue,
+                  archivedNotesValue: archivedNotesValue,
+                  students: students,
+                  onEditNote: (note) =>
+                      _editNote(context, ref, group, students, note),
+                  onToggleNote: (note) => ref
+                      .read(noteRepositoryProvider)
+                      .toggleTodo(note, !note.todoDone),
+                  onArchiveNote: (note) =>
+                      ref.read(noteRepositoryProvider).archiveNote(note.id),
+                  onUnarchiveNote: (note) =>
+                      ref.read(noteRepositoryProvider).unarchiveNote(note.id),
+                  onDeleteNote: (note) => _deleteNote(context, ref, note),
+                  onDeleteNoteDirect: (note) =>
+                      ref.read(noteRepositoryProvider).deleteNote(note.id),
+                  onAddNote: archived
+                      ? null
+                      : () => _addGroupNote(context, ref, group, students),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -666,10 +701,15 @@ class GroupDetailScreen extends ConsumerWidget {
 }
 
 class _LessonCalendarCard extends ConsumerStatefulWidget {
-  const _LessonCalendarCard({required this.groupId, required this.groupColor});
+  const _LessonCalendarCard({
+    required this.groupId,
+    required this.groupColor,
+    required this.categories,
+  });
 
   final int groupId;
   final Color groupColor;
+  final List<GradeCategory> categories;
 
   @override
   ConsumerState<_LessonCalendarCard> createState() =>
@@ -688,10 +728,11 @@ class _LessonCalendarCardState extends ConsumerState<_LessonCalendarCard> {
 
   @override
   Widget build(BuildContext context) {
-    final lessonEntryDatesValue = ref.watch(
-      lessonEntryDatesProvider(widget.groupId),
+    final lessonEntryCategoriesValue = ref.watch(
+      lessonEntryCategoriesProvider(widget.groupId),
     );
-    final lessonEntryDates = lessonEntryDatesValue.value ?? const <DateTime>{};
+    final lessonEntryCategories =
+        lessonEntryCategoriesValue.value ?? const <DateTime, Set<String>>{};
 
     return Card(
       child: Padding(
@@ -709,12 +750,15 @@ class _LessonCalendarCardState extends ConsumerState<_LessonCalendarCard> {
                 ),
                 FilledButton.tonal(
                   onPressed: () => context.push(
-                    '/groups/${widget.groupId}/lesson?date=${encodeLessonDate(DateTime.now())}',
+                    _lessonModeLocation(
+                      groupId: widget.groupId,
+                      date: DateTime.now(),
+                    ),
                   ),
                   child: Text('today'.tr()),
                 ),
                 const SizedBox(width: AppSpacing.medium),
-                if (lessonEntryDatesValue.isLoading)
+                if (lessonEntryCategoriesValue.isLoading)
                   const SizedBox(
                     width: 18,
                     height: 18,
@@ -723,32 +767,59 @@ class _LessonCalendarCardState extends ConsumerState<_LessonCalendarCard> {
               ],
             ),
             const SizedBox(height: AppSpacing.medium),
-            TableCalendar<void>(
+            TableCalendar<String>(
               locale: context.locale.toLanguageTag(),
               firstDay: DateTime.utc(2020),
               lastDay: DateTime.utc(2100, 12, 31),
               focusedDay: _focusedDay,
               availableCalendarFormats: const {CalendarFormat.month: 'Month'},
               selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              eventLoader: (day) =>
-                  lessonEntryDates.contains(normalizeLessonDate(day))
-                  ? const [null]
-                  : const [],
+              eventLoader: (day) => [
+                for (final category in _categoriesForDay(
+                  lessonEntryCategories: lessonEntryCategories,
+                  day: day,
+                ))
+                  category.id,
+              ],
               calendarFormat: CalendarFormat.month,
               headerStyle: const HeaderStyle(
                 formatButtonVisible: false,
                 titleCentered: true,
               ),
+              calendarBuilders: CalendarBuilders<String>(
+                markerBuilder: (context, day, events) {
+                  if (events.isEmpty) {
+                    return null;
+                  }
+
+                  final categoriesForDay = _categoriesForDay(
+                    lessonEntryCategories: lessonEntryCategories,
+                    day: day,
+                  );
+                  return Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 4,
+                        children: [
+                          for (final category in categoriesForDay)
+                            _LessonCalendarMarker(
+                              color: colorForCategoryId(
+                                categoryId: category.id,
+                                categories: widget.categories,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
               calendarStyle: CalendarStyle(
                 outsideDaysVisible: false,
                 canMarkersOverflow: false,
-                markerSize: 6,
-                markerMargin: const EdgeInsets.only(top: 2),
-                markersAnchor: 0.82,
-                markerDecoration: BoxDecoration(
-                  color: widget.groupColor,
-                  shape: BoxShape.circle,
-                ),
                 selectedDecoration: BoxDecoration(
                   color: widget.groupColor,
                   shape: BoxShape.circle,
@@ -761,20 +832,136 @@ class _LessonCalendarCardState extends ConsumerState<_LessonCalendarCard> {
               onPageChanged: (focusedDay) {
                 setState(() => _focusedDay = normalizeLessonDate(focusedDay));
               },
-              onDaySelected: (selectedDay, focusedDay) {
+              onDaySelected: (selectedDay, focusedDay) async {
                 final normalizedSelectedDay = normalizeLessonDate(selectedDay);
                 setState(() {
                   _selectedDay = normalizedSelectedDay;
                   _focusedDay = normalizeLessonDate(focusedDay);
                 });
-                context.push(
-                  '/groups/${widget.groupId}/lesson?date=${encodeLessonDate(normalizedSelectedDay)}',
+                await _openLessonForDay(
+                  context: context,
+                  selectedDay: normalizedSelectedDay,
+                  lessonEntryCategories: lessonEntryCategories,
                 );
               },
             ),
           ],
         ),
       ),
+    );
+  }
+
+  List<GradeCategory> _categoriesForDay({
+    required Map<DateTime, Set<String>> lessonEntryCategories,
+    required DateTime day,
+  }) {
+    final categoryIds =
+        lessonEntryCategories[normalizeLessonDate(day)] ?? const <String>{};
+    final categoriesById = {
+      for (final category in widget.categories) category.id: category,
+    };
+    final categories = <GradeCategory>[
+      for (final category in widget.categories)
+        if (categoryIds.contains(category.id)) category,
+    ];
+
+    for (final categoryId in categoryIds) {
+      if (categoriesById.containsKey(categoryId)) {
+        continue;
+      }
+      categories.add(
+        GradeCategory(
+          id: categoryId,
+          name: categoryNameFor(
+            categoryId: categoryId,
+            categories: widget.categories,
+          ),
+          weight: 1,
+          colorHex: colorToHex(
+            colorForCategoryId(
+              categoryId: categoryId,
+              categories: widget.categories,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return categories;
+  }
+
+  Future<void> _openLessonForDay({
+    required BuildContext context,
+    required DateTime selectedDay,
+    required Map<DateTime, Set<String>> lessonEntryCategories,
+  }) async {
+    final categoriesForDay = _categoriesForDay(
+      lessonEntryCategories: lessonEntryCategories,
+      day: selectedDay,
+    );
+    String? categoryId;
+
+    if (categoriesForDay.length == 1) {
+      categoryId = categoriesForDay.single.id;
+    } else if (categoriesForDay.length > 1) {
+      final selectedCategory = await showDialog<GradeCategory>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('grade_category'.tr()),
+          contentPadding: const EdgeInsets.fromLTRB(0, AppSpacing.medium, 0, 0),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final category in categoriesForDay)
+                ListTile(
+                  leading: _LessonCalendarMarker(
+                    color: colorForCategoryId(
+                      categoryId: category.id,
+                      categories: widget.categories,
+                    ),
+                    size: 12,
+                  ),
+                  title: Text(category.name),
+                  onTap: () => Navigator.of(dialogContext).pop(category),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('cancel'.tr()),
+            ),
+          ],
+        ),
+      );
+      if (selectedCategory == null || !context.mounted) {
+        return;
+      }
+      categoryId = selectedCategory.id;
+    }
+
+    context.push(
+      _lessonModeLocation(
+        groupId: widget.groupId,
+        date: selectedDay,
+        categoryId: categoryId,
+      ),
+    );
+  }
+}
+
+class _LessonCalendarMarker extends StatelessWidget {
+  const _LessonCalendarMarker({required this.color, this.size = 6});
+
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }

@@ -2,17 +2,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../shared/theme/app_ui.dart';
-import '../../shared/utils/formatting.dart';
 import '../../shared/utils/grade_categories.dart';
 
 class LessonContextCard extends StatelessWidget {
   const LessonContextCard({
     required this.sessionController,
     required this.selectedDate,
-    required this.gradeCategories,
-    required this.selectedCategoryId,
     required this.onSessionChanged,
-    required this.onCategoryChanged,
     required this.onPickDate,
     this.action,
     super.key,
@@ -20,10 +16,7 @@ class LessonContextCard extends StatelessWidget {
 
   final TextEditingController sessionController;
   final DateTime selectedDate;
-  final List<GradeCategory> gradeCategories;
-  final String? selectedCategoryId;
   final ValueChanged<String> onSessionChanged;
-  final ValueChanged<String?> onCategoryChanged;
   final VoidCallback onPickDate;
   final Widget? action;
 
@@ -39,21 +32,6 @@ class LessonContextCard extends StatelessWidget {
               controller: sessionController,
               decoration: InputDecoration(labelText: 'session_label'.tr()),
               onChanged: onSessionChanged,
-            ),
-            const SizedBox(height: AppSpacing.large),
-            DropdownButtonFormField<String>(
-              initialValue: selectedCategoryId,
-              items: [
-                for (final category in gradeCategories)
-                  DropdownMenuItem<String>(
-                    value: category.id,
-                    child: Text(
-                      '${category.name} (${formatNumber(category.weight)})',
-                    ),
-                  ),
-              ],
-              onChanged: onCategoryChanged,
-              decoration: InputDecoration(labelText: 'grade_category'.tr()),
             ),
             const SizedBox(height: AppSpacing.large),
             ListTile(
@@ -76,6 +54,143 @@ class LessonContextCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class LessonCategoryFabMenu extends StatefulWidget {
+  const LessonCategoryFabMenu({
+    required this.categories,
+    required this.onSelected,
+    required this.heroTagPrefix,
+    required this.mainLabel,
+    this.selectedCategoryId,
+    this.mainIcon = Icons.category_outlined,
+    this.backgroundColor,
+    this.foregroundColor,
+    super.key,
+  });
+
+  final List<GradeCategory> categories;
+  final ValueChanged<GradeCategory> onSelected;
+  final String heroTagPrefix;
+  final String mainLabel;
+  final String? selectedCategoryId;
+  final IconData mainIcon;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+
+  @override
+  State<LessonCategoryFabMenu> createState() => _LessonCategoryFabMenuState();
+}
+
+class _LessonCategoryFabMenuState extends State<LessonCategoryFabMenu> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final backgroundColor =
+        widget.backgroundColor ?? theme.colorScheme.primaryContainer;
+    final foregroundColor =
+        widget.foregroundColor ?? onColorForBackground(backgroundColor);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        IgnorePointer(
+          ignoring: !_expanded,
+          child: AnimatedOpacity(
+            opacity: _expanded ? 1 : 0,
+            duration: const Duration(milliseconds: 180),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final category in widget.categories.reversed)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.medium),
+                    child: _LessonCategoryFabEntry(
+                      category: category,
+                      selected: category.id == widget.selectedCategoryId,
+                      heroTag: '${widget.heroTagPrefix}-${category.id}',
+                      onPressed: () {
+                        setState(() => _expanded = false);
+                        widget.onSelected(category);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        FloatingActionButton.extended(
+          heroTag: '${widget.heroTagPrefix}-main',
+          onPressed: widget.categories.length == 1
+              ? () => widget.onSelected(widget.categories.single)
+              : () => setState(() => _expanded = !_expanded),
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+          icon: Icon(_expanded ? Icons.close : widget.mainIcon),
+          label: Text(widget.mainLabel),
+        ),
+      ],
+    );
+  }
+}
+
+class _LessonCategoryFabEntry extends StatelessWidget {
+  const _LessonCategoryFabEntry({
+    required this.category,
+    required this.selected,
+    required this.heroTag,
+    required this.onPressed,
+  });
+
+  final GradeCategory category;
+  final bool selected;
+  final String heroTag;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final categoryColor = colorForCategory(category);
+    final theme = Theme.of(context);
+    final borderRadius = BorderRadius.circular(AppRadii.large);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: theme.colorScheme.surfaceContainerHigh,
+          borderRadius: borderRadius,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: borderRadius,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.medium,
+                vertical: AppSpacing.small,
+              ),
+              child: Text(
+                category.name,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.medium),
+        FloatingActionButton.small(
+          heroTag: heroTag,
+          onPressed: onPressed,
+          backgroundColor: categoryColor,
+          foregroundColor: onColorForBackground(categoryColor),
+          child: Icon(selected ? Icons.check : Icons.circle, size: 18),
+        ),
+      ],
     );
   }
 }
