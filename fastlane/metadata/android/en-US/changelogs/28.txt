@@ -1,0 +1,5 @@
+Bug Fixes
+
+- Refine sync, update, and seating feedback
+
+
