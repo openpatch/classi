@@ -1,6 +1,7 @@
 Bug Fixes
 
 - Align grade table header with rows using Expanded columns
+- Load grades reactively when category changes
 
 
 Features
@@ -10,5 +11,7 @@ Features
 - Add date-range filter and parent summary screen
 - Custom date range filter, overflow fix, and summary screen filtering
 - Add quick note FAB to parent summary screen
+- Improve layout for desktop and wide screens
+- Add category-driven lesson planner
 
 
