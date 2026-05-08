@@ -12,6 +12,7 @@ import '../../features/lists/list_repository.dart';
 import '../../features/lessons/lesson_repository.dart';
 import '../../features/material_tracking/material_repository.dart';
 import '../../features/notes/note_repository.dart';
+import '../../features/seating_plan/seating_plan_repository.dart';
 import '../../features/settings/grade_system_controller.dart';
 import '../../features/settings/student_sort_controller.dart';
 import '../../features/settings/theme_controller.dart';
@@ -136,3 +137,21 @@ final noteRepositoryProvider = Provider<NoteRepository>(
 final lessonRepositoryProvider = Provider<LessonRepository>(
   (ref) => LessonRepository(ref.watch(databaseProvider)),
 );
+
+final seatingPlanRepositoryProvider = Provider<SeatingPlanRepository>(
+  (ref) => SeatingPlanRepository(ref.watch(databaseProvider)),
+);
+
+final groupSeatingPlansProvider = StreamProvider.autoDispose
+    .family<List<SeatingPlan>, int>(
+      (ref, groupId) => ref
+          .watch(seatingPlanRepositoryProvider)
+          .watchPlansForGroup(groupId),
+    );
+
+final seatingPlanPositionsProvider = StreamProvider.autoDispose
+    .family<Map<int, Offset>, int>(
+      (ref, planId) => ref
+          .watch(seatingPlanRepositoryProvider)
+          .watchPositionsForPlan(planId),
+    );

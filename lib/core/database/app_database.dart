@@ -11,6 +11,8 @@ import 'tables/list_items_table.dart';
 import 'tables/lists_table.dart';
 import 'tables/material_logs_table.dart';
 import 'tables/notes_table.dart';
+import 'tables/seating_plan_positions_table.dart';
+import 'tables/seating_plans_table.dart';
 import 'tables/students_table.dart';
 
 part 'app_database.g.dart';
@@ -33,6 +35,8 @@ typedef AttendanceLog = AttendanceLogsTableData;
     ListsTable,
     ListItemsTable,
     NotesTable,
+    SeatingPlansTable,
+    SeatingPlanPositionsTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -54,7 +58,7 @@ class AppDatabase extends _$AppDatabase {
   final String databasePath;
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -128,6 +132,10 @@ class AppDatabase extends _$AppDatabase {
             attendanceLogsTable.isExcused,
           );
         }
+      }
+      if (from < 14) {
+        await migrator.createTable(seatingPlansTable);
+        await migrator.createTable(seatingPlanPositionsTable);
       }
     },
   );

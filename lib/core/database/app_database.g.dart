@@ -4081,6 +4081,660 @@ class NotesTableCompanion extends UpdateCompanion<TeacherNote> {
   }
 }
 
+class $SeatingPlansTableTable extends SeatingPlansTable
+    with TableInfo<$SeatingPlansTableTable, SeatingPlan> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SeatingPlansTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES groups_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 120,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, groupId, name, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'seating_plans_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SeatingPlan> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SeatingPlan map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SeatingPlan(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}group_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SeatingPlansTableTable createAlias(String alias) {
+    return $SeatingPlansTableTable(attachedDatabase, alias);
+  }
+}
+
+class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
+  final int id;
+  final int groupId;
+  final String name;
+  final DateTime createdAt;
+  const SeatingPlan({
+    required this.id,
+    required this.groupId,
+    required this.name,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['group_id'] = Variable<int>(groupId);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SeatingPlansTableCompanion toCompanion(bool nullToAbsent) {
+    return SeatingPlansTableCompanion(
+      id: Value(id),
+      groupId: Value(groupId),
+      name: Value(name),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SeatingPlan.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SeatingPlan(
+      id: serializer.fromJson<int>(json['id']),
+      groupId: serializer.fromJson<int>(json['groupId']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'groupId': serializer.toJson<int>(groupId),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  SeatingPlan copyWith({
+    int? id,
+    int? groupId,
+    String? name,
+    DateTime? createdAt,
+  }) => SeatingPlan(
+    id: id ?? this.id,
+    groupId: groupId ?? this.groupId,
+    name: name ?? this.name,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  SeatingPlan copyWithCompanion(SeatingPlansTableCompanion data) {
+    return SeatingPlan(
+      id: data.id.present ? data.id.value : this.id,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeatingPlan(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, groupId, name, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SeatingPlan &&
+          other.id == this.id &&
+          other.groupId == this.groupId &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt);
+}
+
+class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
+  final Value<int> id;
+  final Value<int> groupId;
+  final Value<String> name;
+  final Value<DateTime> createdAt;
+  const SeatingPlansTableCompanion({
+    this.id = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  SeatingPlansTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int groupId,
+    required String name,
+    this.createdAt = const Value.absent(),
+  }) : groupId = Value(groupId),
+       name = Value(name);
+  static Insertable<SeatingPlan> custom({
+    Expression<int>? id,
+    Expression<int>? groupId,
+    Expression<String>? name,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (groupId != null) 'group_id': groupId,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  SeatingPlansTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? groupId,
+    Value<String>? name,
+    Value<DateTime>? createdAt,
+  }) {
+    return SeatingPlansTableCompanion(
+      id: id ?? this.id,
+      groupId: groupId ?? this.groupId,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<int>(groupId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeatingPlansTableCompanion(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SeatingPlanPositionsTableTable extends SeatingPlanPositionsTable
+    with TableInfo<$SeatingPlanPositionsTableTable, SeatingPlanPosition> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SeatingPlanPositionsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _seatingPlanIdMeta = const VerificationMeta(
+    'seatingPlanId',
+  );
+  @override
+  late final GeneratedColumn<int> seatingPlanId = GeneratedColumn<int>(
+    'seating_plan_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES seating_plans_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _studentIdMeta = const VerificationMeta(
+    'studentId',
+  );
+  @override
+  late final GeneratedColumn<int> studentId = GeneratedColumn<int>(
+    'student_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES students_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _xMeta = const VerificationMeta('x');
+  @override
+  late final GeneratedColumn<double> x = GeneratedColumn<double>(
+    'x',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _yMeta = const VerificationMeta('y');
+  @override
+  late final GeneratedColumn<double> y = GeneratedColumn<double>(
+    'y',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, seatingPlanId, studentId, x, y];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'seating_plan_positions_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SeatingPlanPosition> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('seating_plan_id')) {
+      context.handle(
+        _seatingPlanIdMeta,
+        seatingPlanId.isAcceptableOrUnknown(
+          data['seating_plan_id']!,
+          _seatingPlanIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_seatingPlanIdMeta);
+    }
+    if (data.containsKey('student_id')) {
+      context.handle(
+        _studentIdMeta,
+        studentId.isAcceptableOrUnknown(data['student_id']!, _studentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_studentIdMeta);
+    }
+    if (data.containsKey('x')) {
+      context.handle(_xMeta, x.isAcceptableOrUnknown(data['x']!, _xMeta));
+    }
+    if (data.containsKey('y')) {
+      context.handle(_yMeta, y.isAcceptableOrUnknown(data['y']!, _yMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {seatingPlanId, studentId},
+  ];
+  @override
+  SeatingPlanPosition map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SeatingPlanPosition(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      seatingPlanId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seating_plan_id'],
+      )!,
+      studentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}student_id'],
+      )!,
+      x: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}x'],
+      )!,
+      y: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}y'],
+      )!,
+    );
+  }
+
+  @override
+  $SeatingPlanPositionsTableTable createAlias(String alias) {
+    return $SeatingPlanPositionsTableTable(attachedDatabase, alias);
+  }
+}
+
+class SeatingPlanPosition extends DataClass
+    implements Insertable<SeatingPlanPosition> {
+  final int id;
+  final int seatingPlanId;
+  final int studentId;
+  final double x;
+  final double y;
+  const SeatingPlanPosition({
+    required this.id,
+    required this.seatingPlanId,
+    required this.studentId,
+    required this.x,
+    required this.y,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['seating_plan_id'] = Variable<int>(seatingPlanId);
+    map['student_id'] = Variable<int>(studentId);
+    map['x'] = Variable<double>(x);
+    map['y'] = Variable<double>(y);
+    return map;
+  }
+
+  SeatingPlanPositionsTableCompanion toCompanion(bool nullToAbsent) {
+    return SeatingPlanPositionsTableCompanion(
+      id: Value(id),
+      seatingPlanId: Value(seatingPlanId),
+      studentId: Value(studentId),
+      x: Value(x),
+      y: Value(y),
+    );
+  }
+
+  factory SeatingPlanPosition.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SeatingPlanPosition(
+      id: serializer.fromJson<int>(json['id']),
+      seatingPlanId: serializer.fromJson<int>(json['seatingPlanId']),
+      studentId: serializer.fromJson<int>(json['studentId']),
+      x: serializer.fromJson<double>(json['x']),
+      y: serializer.fromJson<double>(json['y']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'seatingPlanId': serializer.toJson<int>(seatingPlanId),
+      'studentId': serializer.toJson<int>(studentId),
+      'x': serializer.toJson<double>(x),
+      'y': serializer.toJson<double>(y),
+    };
+  }
+
+  SeatingPlanPosition copyWith({
+    int? id,
+    int? seatingPlanId,
+    int? studentId,
+    double? x,
+    double? y,
+  }) => SeatingPlanPosition(
+    id: id ?? this.id,
+    seatingPlanId: seatingPlanId ?? this.seatingPlanId,
+    studentId: studentId ?? this.studentId,
+    x: x ?? this.x,
+    y: y ?? this.y,
+  );
+  SeatingPlanPosition copyWithCompanion(
+    SeatingPlanPositionsTableCompanion data,
+  ) {
+    return SeatingPlanPosition(
+      id: data.id.present ? data.id.value : this.id,
+      seatingPlanId: data.seatingPlanId.present
+          ? data.seatingPlanId.value
+          : this.seatingPlanId,
+      studentId: data.studentId.present ? data.studentId.value : this.studentId,
+      x: data.x.present ? data.x.value : this.x,
+      y: data.y.present ? data.y.value : this.y,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeatingPlanPosition(')
+          ..write('id: $id, ')
+          ..write('seatingPlanId: $seatingPlanId, ')
+          ..write('studentId: $studentId, ')
+          ..write('x: $x, ')
+          ..write('y: $y')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, seatingPlanId, studentId, x, y);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SeatingPlanPosition &&
+          other.id == this.id &&
+          other.seatingPlanId == this.seatingPlanId &&
+          other.studentId == this.studentId &&
+          other.x == this.x &&
+          other.y == this.y);
+}
+
+class SeatingPlanPositionsTableCompanion
+    extends UpdateCompanion<SeatingPlanPosition> {
+  final Value<int> id;
+  final Value<int> seatingPlanId;
+  final Value<int> studentId;
+  final Value<double> x;
+  final Value<double> y;
+  const SeatingPlanPositionsTableCompanion({
+    this.id = const Value.absent(),
+    this.seatingPlanId = const Value.absent(),
+    this.studentId = const Value.absent(),
+    this.x = const Value.absent(),
+    this.y = const Value.absent(),
+  });
+  SeatingPlanPositionsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int seatingPlanId,
+    required int studentId,
+    this.x = const Value.absent(),
+    this.y = const Value.absent(),
+  }) : seatingPlanId = Value(seatingPlanId),
+       studentId = Value(studentId);
+  static Insertable<SeatingPlanPosition> custom({
+    Expression<int>? id,
+    Expression<int>? seatingPlanId,
+    Expression<int>? studentId,
+    Expression<double>? x,
+    Expression<double>? y,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (seatingPlanId != null) 'seating_plan_id': seatingPlanId,
+      if (studentId != null) 'student_id': studentId,
+      if (x != null) 'x': x,
+      if (y != null) 'y': y,
+    });
+  }
+
+  SeatingPlanPositionsTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? seatingPlanId,
+    Value<int>? studentId,
+    Value<double>? x,
+    Value<double>? y,
+  }) {
+    return SeatingPlanPositionsTableCompanion(
+      id: id ?? this.id,
+      seatingPlanId: seatingPlanId ?? this.seatingPlanId,
+      studentId: studentId ?? this.studentId,
+      x: x ?? this.x,
+      y: y ?? this.y,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (seatingPlanId.present) {
+      map['seating_plan_id'] = Variable<int>(seatingPlanId.value);
+    }
+    if (studentId.present) {
+      map['student_id'] = Variable<int>(studentId.value);
+    }
+    if (x.present) {
+      map['x'] = Variable<double>(x.value);
+    }
+    if (y.present) {
+      map['y'] = Variable<double>(y.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeatingPlanPositionsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('seatingPlanId: $seatingPlanId, ')
+          ..write('studentId: $studentId, ')
+          ..write('x: $x, ')
+          ..write('y: $y')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4097,6 +4751,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ListsTableTable listsTable = $ListsTableTable(this);
   late final $ListItemsTableTable listItemsTable = $ListItemsTableTable(this);
   late final $NotesTableTable notesTable = $NotesTableTable(this);
+  late final $SeatingPlansTableTable seatingPlansTable =
+      $SeatingPlansTableTable(this);
+  late final $SeatingPlanPositionsTableTable seatingPlanPositionsTable =
+      $SeatingPlanPositionsTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4111,6 +4769,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     listsTable,
     listItemsTable,
     notesTable,
+    seatingPlansTable,
+    seatingPlanPositionsTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4183,6 +4843,31 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('notes_table', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'groups_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('seating_plans_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'seating_plans_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('seating_plan_positions_table', kind: UpdateKind.delete),
+      ],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'students_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('seating_plan_positions_table', kind: UpdateKind.delete),
+      ],
     ),
   ]);
 }
@@ -4264,6 +4949,30 @@ final class $$GroupsTableTableReferences
     ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_notesTableRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$SeatingPlansTableTable, List<SeatingPlan>>
+  _seatingPlansTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.seatingPlansTable,
+        aliasName: $_aliasNameGenerator(
+          db.groupsTable.id,
+          db.seatingPlansTable.groupId,
+        ),
+      );
+
+  $$SeatingPlansTableTableProcessedTableManager get seatingPlansTableRefs {
+    final manager = $$SeatingPlansTableTableTableManager(
+      $_db,
+      $_db.seatingPlansTable,
+    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _seatingPlansTableRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -4380,6 +5089,31 @@ class $$GroupsTableTableFilterComposer
           }) => $$NotesTableTableFilterComposer(
             $db: $db,
             $table: $db.notesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> seatingPlansTableRefs(
+    Expression<bool> Function($$SeatingPlansTableTableFilterComposer f) f,
+  ) {
+    final $$SeatingPlansTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.seatingPlansTable,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeatingPlansTableTableFilterComposer(
+            $db: $db,
+            $table: $db.seatingPlansTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4545,6 +5279,32 @@ class $$GroupsTableTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> seatingPlansTableRefs<T extends Object>(
+    Expression<T> Function($$SeatingPlansTableTableAnnotationComposer a) f,
+  ) {
+    final $$SeatingPlansTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.seatingPlansTable,
+          getReferencedColumn: (t) => t.groupId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SeatingPlansTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.seatingPlansTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$GroupsTableTableTableManager
@@ -4564,6 +5324,7 @@ class $$GroupsTableTableTableManager
             bool studentsTableRefs,
             bool listsTableRefs,
             bool notesTableRefs,
+            bool seatingPlansTableRefs,
           })
         > {
   $$GroupsTableTableTableManager(_$AppDatabase db, $GroupsTableTable table)
@@ -4626,6 +5387,7 @@ class $$GroupsTableTableTableManager
                 studentsTableRefs = false,
                 listsTableRefs = false,
                 notesTableRefs = false,
+                seatingPlansTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -4633,6 +5395,7 @@ class $$GroupsTableTableTableManager
                     if (studentsTableRefs) db.studentsTable,
                     if (listsTableRefs) db.listsTable,
                     if (notesTableRefs) db.notesTable,
+                    if (seatingPlansTableRefs) db.seatingPlansTable,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -4700,6 +5463,27 @@ class $$GroupsTableTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (seatingPlansTableRefs)
+                        await $_getPrefetchedData<
+                          GroupsTableData,
+                          $GroupsTableTable,
+                          SeatingPlan
+                        >(
+                          currentTable: table,
+                          referencedTable: $$GroupsTableTableReferences
+                              ._seatingPlansTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$GroupsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).seatingPlansTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.groupId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4724,6 +5508,7 @@ typedef $$GroupsTableTableProcessedTableManager =
         bool studentsTableRefs,
         bool listsTableRefs,
         bool notesTableRefs,
+        bool seatingPlansTableRefs,
       })
     >;
 typedef $$StudentsTableTableCreateCompanionBuilder =
@@ -4922,6 +5707,34 @@ final class $$StudentsTableTableReferences
     ).filter((f) => f.studentId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_notesTableRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $SeatingPlanPositionsTableTable,
+    List<SeatingPlanPosition>
+  >
+  _seatingPlanPositionsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.seatingPlanPositionsTable,
+        aliasName: $_aliasNameGenerator(
+          db.studentsTable.id,
+          db.seatingPlanPositionsTable.studentId,
+        ),
+      );
+
+  $$SeatingPlanPositionsTableTableProcessedTableManager
+  get seatingPlanPositionsTableRefs {
+    final manager = $$SeatingPlanPositionsTableTableTableManager(
+      $_db,
+      $_db.seatingPlanPositionsTable,
+    ).filter((f) => f.studentId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _seatingPlanPositionsTableRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -5142,6 +5955,33 @@ class $$StudentsTableTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> seatingPlanPositionsTableRefs(
+    Expression<bool> Function($$SeatingPlanPositionsTableTableFilterComposer f)
+    f,
+  ) {
+    final $$SeatingPlanPositionsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.seatingPlanPositionsTable,
+          getReferencedColumn: (t) => t.studentId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SeatingPlanPositionsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.seatingPlanPositionsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -5424,6 +6264,33 @@ class $$StudentsTableTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> seatingPlanPositionsTableRefs<T extends Object>(
+    Expression<T> Function($$SeatingPlanPositionsTableTableAnnotationComposer a)
+    f,
+  ) {
+    final $$SeatingPlanPositionsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.seatingPlanPositionsTable,
+          getReferencedColumn: (t) => t.studentId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SeatingPlanPositionsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.seatingPlanPositionsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$StudentsTableTableTableManager
@@ -5447,6 +6314,7 @@ class $$StudentsTableTableTableManager
             bool homeworkLogsTableRefs,
             bool listItemsTableRefs,
             bool notesTableRefs,
+            bool seatingPlanPositionsTableRefs,
           })
         > {
   $$StudentsTableTableTableManager(_$AppDatabase db, $StudentsTableTable table)
@@ -5517,6 +6385,7 @@ class $$StudentsTableTableTableManager
                 homeworkLogsTableRefs = false,
                 listItemsTableRefs = false,
                 notesTableRefs = false,
+                seatingPlanPositionsTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -5527,6 +6396,8 @@ class $$StudentsTableTableTableManager
                     if (homeworkLogsTableRefs) db.homeworkLogsTable,
                     if (listItemsTableRefs) db.listItemsTable,
                     if (notesTableRefs) db.notesTable,
+                    if (seatingPlanPositionsTableRefs)
+                      db.seatingPlanPositionsTable,
                   ],
                   addJoins:
                       <
@@ -5690,6 +6561,27 @@ class $$StudentsTableTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (seatingPlanPositionsTableRefs)
+                        await $_getPrefetchedData<
+                          StudentsTableData,
+                          $StudentsTableTable,
+                          SeatingPlanPosition
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StudentsTableTableReferences
+                              ._seatingPlanPositionsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StudentsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).seatingPlanPositionsTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.studentId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -5718,6 +6610,7 @@ typedef $$StudentsTableTableProcessedTableManager =
         bool homeworkLogsTableRefs,
         bool listItemsTableRefs,
         bool notesTableRefs,
+        bool seatingPlanPositionsTableRefs,
       })
     >;
 typedef $$AttendanceLogsTableTableCreateCompanionBuilder =
@@ -8497,6 +9390,855 @@ typedef $$NotesTableTableProcessedTableManager =
       TeacherNote,
       PrefetchHooks Function({bool groupId, bool studentId})
     >;
+typedef $$SeatingPlansTableTableCreateCompanionBuilder =
+    SeatingPlansTableCompanion Function({
+      Value<int> id,
+      required int groupId,
+      required String name,
+      Value<DateTime> createdAt,
+    });
+typedef $$SeatingPlansTableTableUpdateCompanionBuilder =
+    SeatingPlansTableCompanion Function({
+      Value<int> id,
+      Value<int> groupId,
+      Value<String> name,
+      Value<DateTime> createdAt,
+    });
+
+final class $$SeatingPlansTableTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $SeatingPlansTableTable, SeatingPlan> {
+  $$SeatingPlansTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $GroupsTableTable _groupIdTable(_$AppDatabase db) =>
+      db.groupsTable.createAlias(
+        $_aliasNameGenerator(db.seatingPlansTable.groupId, db.groupsTable.id),
+      );
+
+  $$GroupsTableTableProcessedTableManager get groupId {
+    final $_column = $_itemColumn<int>('group_id')!;
+
+    final manager = $$GroupsTableTableTableManager(
+      $_db,
+      $_db.groupsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $SeatingPlanPositionsTableTable,
+    List<SeatingPlanPosition>
+  >
+  _seatingPlanPositionsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.seatingPlanPositionsTable,
+        aliasName: $_aliasNameGenerator(
+          db.seatingPlansTable.id,
+          db.seatingPlanPositionsTable.seatingPlanId,
+        ),
+      );
+
+  $$SeatingPlanPositionsTableTableProcessedTableManager
+  get seatingPlanPositionsTableRefs {
+    final manager = $$SeatingPlanPositionsTableTableTableManager(
+      $_db,
+      $_db.seatingPlanPositionsTable,
+    ).filter((f) => f.seatingPlanId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _seatingPlanPositionsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$SeatingPlansTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SeatingPlansTableTable> {
+  $$SeatingPlansTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$GroupsTableTableFilterComposer get groupId {
+    final $$GroupsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> seatingPlanPositionsTableRefs(
+    Expression<bool> Function($$SeatingPlanPositionsTableTableFilterComposer f)
+    f,
+  ) {
+    final $$SeatingPlanPositionsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.seatingPlanPositionsTable,
+          getReferencedColumn: (t) => t.seatingPlanId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SeatingPlanPositionsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.seatingPlanPositionsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$SeatingPlansTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SeatingPlansTableTable> {
+  $$SeatingPlansTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$GroupsTableTableOrderingComposer get groupId {
+    final $$GroupsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeatingPlansTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SeatingPlansTableTable> {
+  $$SeatingPlansTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$GroupsTableTableAnnotationComposer get groupId {
+    final $$GroupsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> seatingPlanPositionsTableRefs<T extends Object>(
+    Expression<T> Function($$SeatingPlanPositionsTableTableAnnotationComposer a)
+    f,
+  ) {
+    final $$SeatingPlanPositionsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.seatingPlanPositionsTable,
+          getReferencedColumn: (t) => t.seatingPlanId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SeatingPlanPositionsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.seatingPlanPositionsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$SeatingPlansTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SeatingPlansTableTable,
+          SeatingPlan,
+          $$SeatingPlansTableTableFilterComposer,
+          $$SeatingPlansTableTableOrderingComposer,
+          $$SeatingPlansTableTableAnnotationComposer,
+          $$SeatingPlansTableTableCreateCompanionBuilder,
+          $$SeatingPlansTableTableUpdateCompanionBuilder,
+          (SeatingPlan, $$SeatingPlansTableTableReferences),
+          SeatingPlan,
+          PrefetchHooks Function({
+            bool groupId,
+            bool seatingPlanPositionsTableRefs,
+          })
+        > {
+  $$SeatingPlansTableTableTableManager(
+    _$AppDatabase db,
+    $SeatingPlansTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SeatingPlansTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SeatingPlansTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SeatingPlansTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> groupId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => SeatingPlansTableCompanion(
+                id: id,
+                groupId: groupId,
+                name: name,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int groupId,
+                required String name,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => SeatingPlansTableCompanion.insert(
+                id: id,
+                groupId: groupId,
+                name: name,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SeatingPlansTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({groupId = false, seatingPlanPositionsTableRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (seatingPlanPositionsTableRefs)
+                      db.seatingPlanPositionsTable,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (groupId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.groupId,
+                                    referencedTable:
+                                        $$SeatingPlansTableTableReferences
+                                            ._groupIdTable(db),
+                                    referencedColumn:
+                                        $$SeatingPlansTableTableReferences
+                                            ._groupIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (seatingPlanPositionsTableRefs)
+                        await $_getPrefetchedData<
+                          SeatingPlan,
+                          $SeatingPlansTableTable,
+                          SeatingPlanPosition
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SeatingPlansTableTableReferences
+                              ._seatingPlanPositionsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SeatingPlansTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).seatingPlanPositionsTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.seatingPlanId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$SeatingPlansTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SeatingPlansTableTable,
+      SeatingPlan,
+      $$SeatingPlansTableTableFilterComposer,
+      $$SeatingPlansTableTableOrderingComposer,
+      $$SeatingPlansTableTableAnnotationComposer,
+      $$SeatingPlansTableTableCreateCompanionBuilder,
+      $$SeatingPlansTableTableUpdateCompanionBuilder,
+      (SeatingPlan, $$SeatingPlansTableTableReferences),
+      SeatingPlan,
+      PrefetchHooks Function({bool groupId, bool seatingPlanPositionsTableRefs})
+    >;
+typedef $$SeatingPlanPositionsTableTableCreateCompanionBuilder =
+    SeatingPlanPositionsTableCompanion Function({
+      Value<int> id,
+      required int seatingPlanId,
+      required int studentId,
+      Value<double> x,
+      Value<double> y,
+    });
+typedef $$SeatingPlanPositionsTableTableUpdateCompanionBuilder =
+    SeatingPlanPositionsTableCompanion Function({
+      Value<int> id,
+      Value<int> seatingPlanId,
+      Value<int> studentId,
+      Value<double> x,
+      Value<double> y,
+    });
+
+final class $$SeatingPlanPositionsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SeatingPlanPositionsTableTable,
+          SeatingPlanPosition
+        > {
+  $$SeatingPlanPositionsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SeatingPlansTableTable _seatingPlanIdTable(_$AppDatabase db) =>
+      db.seatingPlansTable.createAlias(
+        $_aliasNameGenerator(
+          db.seatingPlanPositionsTable.seatingPlanId,
+          db.seatingPlansTable.id,
+        ),
+      );
+
+  $$SeatingPlansTableTableProcessedTableManager get seatingPlanId {
+    final $_column = $_itemColumn<int>('seating_plan_id')!;
+
+    final manager = $$SeatingPlansTableTableTableManager(
+      $_db,
+      $_db.seatingPlansTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_seatingPlanIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $StudentsTableTable _studentIdTable(_$AppDatabase db) =>
+      db.studentsTable.createAlias(
+        $_aliasNameGenerator(
+          db.seatingPlanPositionsTable.studentId,
+          db.studentsTable.id,
+        ),
+      );
+
+  $$StudentsTableTableProcessedTableManager get studentId {
+    final $_column = $_itemColumn<int>('student_id')!;
+
+    final manager = $$StudentsTableTableTableManager(
+      $_db,
+      $_db.studentsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_studentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SeatingPlanPositionsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SeatingPlanPositionsTableTable> {
+  $$SeatingPlanPositionsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get x => $composableBuilder(
+    column: $table.x,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get y => $composableBuilder(
+    column: $table.y,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SeatingPlansTableTableFilterComposer get seatingPlanId {
+    final $$SeatingPlansTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.seatingPlanId,
+      referencedTable: $db.seatingPlansTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeatingPlansTableTableFilterComposer(
+            $db: $db,
+            $table: $db.seatingPlansTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableTableFilterComposer get studentId {
+    final $$StudentsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeatingPlanPositionsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SeatingPlanPositionsTableTable> {
+  $$SeatingPlanPositionsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get x => $composableBuilder(
+    column: $table.x,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get y => $composableBuilder(
+    column: $table.y,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SeatingPlansTableTableOrderingComposer get seatingPlanId {
+    final $$SeatingPlansTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.seatingPlanId,
+      referencedTable: $db.seatingPlansTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeatingPlansTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.seatingPlansTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableTableOrderingComposer get studentId {
+    final $$StudentsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeatingPlanPositionsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SeatingPlanPositionsTableTable> {
+  $$SeatingPlanPositionsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get x =>
+      $composableBuilder(column: $table.x, builder: (column) => column);
+
+  GeneratedColumn<double> get y =>
+      $composableBuilder(column: $table.y, builder: (column) => column);
+
+  $$SeatingPlansTableTableAnnotationComposer get seatingPlanId {
+    final $$SeatingPlansTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.seatingPlanId,
+          referencedTable: $db.seatingPlansTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SeatingPlansTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.seatingPlansTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$StudentsTableTableAnnotationComposer get studentId {
+    final $$StudentsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeatingPlanPositionsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SeatingPlanPositionsTableTable,
+          SeatingPlanPosition,
+          $$SeatingPlanPositionsTableTableFilterComposer,
+          $$SeatingPlanPositionsTableTableOrderingComposer,
+          $$SeatingPlanPositionsTableTableAnnotationComposer,
+          $$SeatingPlanPositionsTableTableCreateCompanionBuilder,
+          $$SeatingPlanPositionsTableTableUpdateCompanionBuilder,
+          (SeatingPlanPosition, $$SeatingPlanPositionsTableTableReferences),
+          SeatingPlanPosition,
+          PrefetchHooks Function({bool seatingPlanId, bool studentId})
+        > {
+  $$SeatingPlanPositionsTableTableTableManager(
+    _$AppDatabase db,
+    $SeatingPlanPositionsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SeatingPlanPositionsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SeatingPlanPositionsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SeatingPlanPositionsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> seatingPlanId = const Value.absent(),
+                Value<int> studentId = const Value.absent(),
+                Value<double> x = const Value.absent(),
+                Value<double> y = const Value.absent(),
+              }) => SeatingPlanPositionsTableCompanion(
+                id: id,
+                seatingPlanId: seatingPlanId,
+                studentId: studentId,
+                x: x,
+                y: y,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int seatingPlanId,
+                required int studentId,
+                Value<double> x = const Value.absent(),
+                Value<double> y = const Value.absent(),
+              }) => SeatingPlanPositionsTableCompanion.insert(
+                id: id,
+                seatingPlanId: seatingPlanId,
+                studentId: studentId,
+                x: x,
+                y: y,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SeatingPlanPositionsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({seatingPlanId = false, studentId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (seatingPlanId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.seatingPlanId,
+                                referencedTable:
+                                    $$SeatingPlanPositionsTableTableReferences
+                                        ._seatingPlanIdTable(db),
+                                referencedColumn:
+                                    $$SeatingPlanPositionsTableTableReferences
+                                        ._seatingPlanIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (studentId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.studentId,
+                                referencedTable:
+                                    $$SeatingPlanPositionsTableTableReferences
+                                        ._studentIdTable(db),
+                                referencedColumn:
+                                    $$SeatingPlanPositionsTableTableReferences
+                                        ._studentIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SeatingPlanPositionsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SeatingPlanPositionsTableTable,
+      SeatingPlanPosition,
+      $$SeatingPlanPositionsTableTableFilterComposer,
+      $$SeatingPlanPositionsTableTableOrderingComposer,
+      $$SeatingPlanPositionsTableTableAnnotationComposer,
+      $$SeatingPlanPositionsTableTableCreateCompanionBuilder,
+      $$SeatingPlanPositionsTableTableUpdateCompanionBuilder,
+      (SeatingPlanPosition, $$SeatingPlanPositionsTableTableReferences),
+      SeatingPlanPosition,
+      PrefetchHooks Function({bool seatingPlanId, bool studentId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8519,4 +10261,11 @@ class $AppDatabaseManager {
       $$ListItemsTableTableTableManager(_db, _db.listItemsTable);
   $$NotesTableTableTableManager get notesTable =>
       $$NotesTableTableTableManager(_db, _db.notesTable);
+  $$SeatingPlansTableTableTableManager get seatingPlansTable =>
+      $$SeatingPlansTableTableTableManager(_db, _db.seatingPlansTable);
+  $$SeatingPlanPositionsTableTableTableManager get seatingPlanPositionsTable =>
+      $$SeatingPlanPositionsTableTableTableManager(
+        _db,
+        _db.seatingPlanPositionsTable,
+      );
 }
