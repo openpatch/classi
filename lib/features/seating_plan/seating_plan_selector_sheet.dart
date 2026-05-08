@@ -117,11 +117,15 @@ class _SeatingPlanSelectorSheet extends ConsumerWidget {
   }
 
   Future<void> _createPlan(BuildContext context, WidgetRef ref) async {
-    final name = await showSeatingPlanForm(context: context);
-    if (name == null || !context.mounted) return;
+    final result = await showSeatingPlanForm(context: context);
+    if (result == null || !context.mounted) return;
 
     final repo = ref.read(seatingPlanRepositoryProvider);
-    final id = await repo.createPlan(groupId: groupId, name: name);
+    final id = await repo.createPlan(
+      groupId: groupId,
+      name: result.name,
+      columns: result.columns,
+    );
 
     // Automatically select the newly created plan and close the sheet.
     final plans = await repo.watchPlansForGroup(groupId).first;
@@ -136,12 +140,15 @@ class _SeatingPlanSelectorSheet extends ConsumerWidget {
     WidgetRef ref,
     SeatingPlan plan,
   ) async {
-    final name = await showSeatingPlanForm(
+    final result = await showSeatingPlanForm(
       context: context,
       initialName: plan.name,
+      initialColumns: plan.columns,
     );
-    if (name == null) return;
-    await ref.read(seatingPlanRepositoryProvider).renamePlan(plan.id, name);
+    if (result == null) return;
+    await ref
+        .read(seatingPlanRepositoryProvider)
+        .updatePlan(plan.id, name: result.name, columns: result.columns);
   }
 
   Future<void> _deletePlan(
