@@ -15,6 +15,7 @@ class SeatingPlanChip extends ConsumerWidget {
   const SeatingPlanChip({
     required this.student,
     required this.onTap,
+    this.opacity = 1,
     this.lessonOverlay,
     super.key,
   });
@@ -23,6 +24,9 @@ class SeatingPlanChip extends ConsumerWidget {
 
   /// Called when the chip is tapped.
   final VoidCallback onTap;
+
+  /// Visual opacity for the chip content.
+  final double opacity;
 
   /// Optional widget layered over the avatar (e.g. absence indicator).
   final Widget? lessonOverlay;
@@ -40,26 +44,33 @@ class SeatingPlanChip extends ConsumerWidget {
       onTap: onTap,
       child: SizedBox(
         width: _chipWidth,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
-              children: [
-                StudentAvatar(student: student, size: _avatarSize),
-                ?lessonOverlay,
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              name,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ],
+        child: AnimatedOpacity(
+          opacity: opacity,
+          duration: const Duration(milliseconds: 150),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  StudentAvatar(student: student, size: _avatarSize),
+                  if (lessonOverlay != null)
+                    Positioned.fill(
+                      child: IgnorePointer(child: lessonOverlay!),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                name,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
         ),
       ),
     );

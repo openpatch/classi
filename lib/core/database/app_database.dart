@@ -137,23 +137,6 @@ class AppDatabase extends _$AppDatabase {
         await migrator.createTable(seatingPlansTable);
         await migrator.createTable(seatingPlanPositionsTable);
       }
-      if (from < 15) {
-        await migrator.addColumn(seatingPlansTable, seatingPlansTable.columns);
-        await migrator.addColumn(
-          seatingPlanPositionsTable,
-          seatingPlanPositionsTable.colIndex,
-        );
-        await migrator.addColumn(
-          seatingPlanPositionsTable,
-          seatingPlanPositionsTable.rowIndex,
-        );
-      }
-      if (from < 16) {
-        await migrator.addColumn(
-          seatingPlansTable,
-          seatingPlansTable.isDefault,
-        );
-      }
     },
   );
 

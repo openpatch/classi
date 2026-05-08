@@ -2,9 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:updat/theme/chips/floating_with_silent_download.dart';
+import 'package:updat/updat.dart';
 import 'package:updat/updat_window_manager.dart';
+
+import '../../core/providers/app_providers.dart';
+import '../../core/update/app_update_controller.dart';
 
 const _owner = 'openpatch';
 const _repo = 'classi';
@@ -18,16 +24,16 @@ bool get isDesktopPlatform =>
 /// (Linux, macOS, Windows) to provide automatic update notifications.
 ///
 /// On non-desktop platforms the child is returned as-is.
-class AppUpdater extends StatefulWidget {
+class AppUpdater extends ConsumerStatefulWidget {
   const AppUpdater({required this.child, super.key});
 
   final Widget child;
 
   @override
-  State<AppUpdater> createState() => _AppUpdaterState();
+  ConsumerState<AppUpdater> createState() => _AppUpdaterState();
 }
 
-class _AppUpdaterState extends State<AppUpdater> {
+class _AppUpdaterState extends ConsumerState<AppUpdater> {
   String? _currentVersion;
 
   /// Cached latest-release payload. Shared between [_getLatestVersion] and
@@ -38,6 +44,12 @@ class _AppUpdaterState extends State<AppUpdater> {
   void initState() {
     super.initState();
     PackageInfo.fromPlatform().then((info) {
+      _scheduleControllerWrite(
+        (controller) => controller.updateStatus(
+          UpdatStatus.idle,
+          currentVersion: info.version,
+        ),
+      );
       if (mounted) {
         setState(() => _currentVersion = info.version);
       }
@@ -57,8 +69,57 @@ class _AppUpdaterState extends State<AppUpdater> {
       getBinaryUrl: _getBinaryUrl,
       appName: 'Classi',
       getChangelog: (version, changelog) => _getChangelog(),
+      closeOnInstall: true,
+      callback: (status) => _scheduleControllerWrite(
+        (controller) =>
+            controller.updateStatus(status, currentVersion: version),
+      ),
+      updateChipBuilder:
+          ({
+            required BuildContext context,
+            required String? latestVersion,
+            required String appVersion,
+            required UpdatStatus status,
+            required void Function() checkForUpdate,
+            required void Function() openDialog,
+            required void Function() startUpdate,
+            required Future<void> Function() launchInstaller,
+            required void Function() dismissUpdate,
+          }) {
+            _scheduleControllerWrite((controller) {
+              controller.bindUpdatActions(
+                appVersion: appVersion,
+                latestVersion: latestVersion,
+                checkForUpdate: checkForUpdate,
+                openDialog: openDialog,
+              );
+              controller.updateStatus(
+                status,
+                latestVersion: latestVersion,
+                currentVersion: appVersion,
+              );
+            });
+            return floatingExtendedChipWithSilentDownload(
+              context: context,
+              latestVersion: latestVersion,
+              appVersion: appVersion,
+              status: status,
+              checkForUpdate: checkForUpdate,
+              openDialog: openDialog,
+              startUpdate: startUpdate,
+              launchInstaller: launchInstaller,
+              dismissUpdate: dismissUpdate,
+            );
+          },
       child: widget.child,
     );
+  }
+
+  void _scheduleControllerWrite(void Function(AppUpdateController) action) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      action(ref.read(appUpdateControllerProvider));
+    });
   }
 
   Future<String?> _getLatestVersion() async {
@@ -83,9 +144,7 @@ class _AppUpdaterState extends State<AppUpdater> {
       throw StateError('Cannot determine binary URL: latestVersion is null');
     }
     try {
-      final response = await http.get(
-        Uri.parse('$_apiBase/tags/v$version'),
-      );
+      final response = await http.get(Uri.parse('$_apiBase/tags/v$version'));
       if (response.statusCode != 200) {
         throw StateError(
           'Failed to fetch release assets for v$version '

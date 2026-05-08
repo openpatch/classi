@@ -8,7 +8,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/security/security_preferences_service.dart';
 import '../../core/session/app_session_controller.dart';
+import '../../core/update/app_update_controller.dart';
 import '../../shared/utils/formatting.dart';
+import '../../shared/widgets/app_updater.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../setup/database_selection_sheet.dart';
@@ -30,139 +32,139 @@ class SettingsScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-          _SectionCard(
-            title: 'sort_students'.tr(),
-            child: SegmentedButton<StudentSortField>(
-              segments: [
-                ButtonSegment(
-                  value: StudentSortField.lastName,
-                  label: Text('sort_by_last_name'.tr()),
-                ),
-                ButtonSegment(
-                  value: StudentSortField.firstName,
-                  label: Text('sort_by_first_name'.tr()),
-                ),
-              ],
-              selected: {ref.watch(studentSortFieldProvider)},
-              onSelectionChanged: (selection) => ref
-                  .read(studentSortControllerProvider)
-                  .setSortField(selection.first),
+            _SectionCard(
+              title: 'sort_students'.tr(),
+              child: SegmentedButton<StudentSortField>(
+                segments: [
+                  ButtonSegment(
+                    value: StudentSortField.lastName,
+                    label: Text('sort_by_last_name'.tr()),
+                  ),
+                  ButtonSegment(
+                    value: StudentSortField.firstName,
+                    label: Text('sort_by_first_name'.tr()),
+                  ),
+                ],
+                selected: {ref.watch(studentSortFieldProvider)},
+                onSelectionChanged: (selection) => ref
+                    .read(studentSortControllerProvider)
+                    .setSortField(selection.first),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            title: 'theme'.tr(),
-            child: SegmentedButton<ThemeMode>(
-              segments: [
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  label: Text('theme_light'.tr()),
-                  icon: const Icon(Icons.light_mode_outlined),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  label: Text('theme_auto'.tr()),
-                  icon: const Icon(Icons.brightness_auto_outlined),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  label: Text('theme_dark'.tr()),
-                  icon: const Icon(Icons.dark_mode_outlined),
-                ),
-              ],
-              selected: {ref.watch(themeModeProvider)},
-              onSelectionChanged: (selection) => ref
-                  .read(themeControllerProvider)
-                  .setThemeMode(selection.first),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'theme'.tr(),
+              child: SegmentedButton<ThemeMode>(
+                segments: [
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    label: Text('theme_light'.tr()),
+                    icon: const Icon(Icons.light_mode_outlined),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    label: Text('theme_auto'.tr()),
+                    icon: const Icon(Icons.brightness_auto_outlined),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    label: Text('theme_dark'.tr()),
+                    icon: const Icon(Icons.dark_mode_outlined),
+                  ),
+                ],
+                selected: {ref.watch(themeModeProvider)},
+                onSelectionChanged: (selection) => ref
+                    .read(themeControllerProvider)
+                    .setThemeMode(selection.first),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          const _SectionCard(title: '', child: _GradeSystemsSection()),
-          const SizedBox(height: 16),
-          _SectionCard(
-            title: 'change_passphrase'.tr(),
-            child: _ChangePassphraseForm(),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            title: 'database_management'.tr(),
-            child: _DatabaseSection(session: session),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            title: 'backups'.tr(),
-            child: _BackupsSection(session: session),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            title: 'app_lock'.tr(),
-            child: _SecuritySection(session: session),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            title: 'sidecars'.tr(),
-            child: FutureBuilder<List<String>>(
-              future: session.sidecarPaths(),
-              builder: (context, snapshot) {
-                final paths = snapshot.data ?? const <String>[];
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [for (final path in paths) SelectableText(path)],
-                );
-              },
+            const SizedBox(height: 16),
+            const _SectionCard(title: '', child: _GradeSystemsSection()),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'change_passphrase'.tr(),
+              child: _ChangePassphraseForm(),
             ),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            title: 'version'.tr(),
-            child: FutureBuilder<DateTime?>(
-              future: database?.lastModified(),
-              builder: (context, snapshot) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(database?.databasePath ?? ''),
-                    if (database != null) ...[
-                      const SizedBox(height: 12),
-                      FutureBuilder<int>(
-                        future: database.fileSizeBytes(),
-                        builder: (context, sizeSnapshot) =>
-                            Text('${sizeSnapshot.data ?? 0} bytes'),
-                      ),
-                      if (snapshot.data != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Text(
-                            '${'last_modified'.tr()}: '
-                            '${DateFormat.yMMMd(context.locale.toLanguageTag()).add_Hm().format(snapshot.data!)}',
-                          ),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'database_management'.tr(),
+              child: _DatabaseSection(session: session),
+            ),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'backups'.tr(),
+              child: _BackupsSection(session: session),
+            ),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'app_lock'.tr(),
+              child: _SecuritySection(session: session),
+            ),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'sidecars'.tr(),
+              child: FutureBuilder<List<String>>(
+                future: session.sidecarPaths(),
+                builder: (context, snapshot) {
+                  final paths = snapshot.data ?? const <String>[];
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [for (final path in paths) SelectableText(path)],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'version'.tr(),
+              child: FutureBuilder<DateTime?>(
+                future: database?.lastModified(),
+                builder: (context, snapshot) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(database?.databasePath ?? ''),
+                      if (database != null) ...[
+                        const SizedBox(height: 12),
+                        FutureBuilder<int>(
+                          future: database.fileSizeBytes(),
+                          builder: (context, sizeSnapshot) =>
+                              Text('${sizeSnapshot.data ?? 0} bytes'),
                         ),
+                        if (snapshot.data != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              '${'last_modified'.tr()}: '
+                              '${DateFormat.yMMMd(context.locale.toLanguageTag()).add_Hm().format(snapshot.data!)}',
+                            ),
+                          ),
+                      ],
                     ],
-                  ],
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            title: 'app_version'.tr(),
-            child: const _AppInfoSection(),
-          ),
-        ],
-      ),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'app_version'.tr(),
+              child: const _AppInfoSection(),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _AppInfoSection extends StatefulWidget {
+class _AppInfoSection extends ConsumerStatefulWidget {
   const _AppInfoSection();
 
   @override
-  State<_AppInfoSection> createState() => _AppInfoSectionState();
+  ConsumerState<_AppInfoSection> createState() => _AppInfoSectionState();
 }
 
-class _AppInfoSectionState extends State<_AppInfoSection> {
+class _AppInfoSectionState extends ConsumerState<_AppInfoSection> {
   static const String _kGitHash = String.fromEnvironment('GIT_HASH');
 
   late final Future<PackageInfo> _packageInfoFuture =
@@ -170,6 +172,7 @@ class _AppInfoSectionState extends State<_AppInfoSection> {
 
   @override
   Widget build(BuildContext context) {
+    final appUpdate = ref.watch(appUpdateControllerProvider);
     return FutureBuilder<PackageInfo>(
       future: _packageInfoFuture,
       builder: (context, snapshot) {
@@ -179,6 +182,39 @@ class _AppInfoSectionState extends State<_AppInfoSection> {
           children: [
             if (info != null)
               SelectableText('${info.version}+${info.buildNumber}'),
+            if (isDesktopPlatform) ...[
+              const SizedBox(height: 12),
+              Text(
+                'app_update_status_title'.tr(),
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                appUpdate.status == AppUpdateStatus.available &&
+                        appUpdate.latestVersion != null
+                    ? 'app_update_status_available_version'.tr(
+                        namedArgs: {'version': appUpdate.latestVersion!},
+                      )
+                    : appUpdate.status.translationKey.tr(),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed:
+                    appUpdate.status == AppUpdateStatus.checking ||
+                        !appUpdate.canCheckForUpdates
+                    ? null
+                    : () => ref
+                          .read(appUpdateControllerProvider)
+                          .checkForUpdates(),
+                icon: appUpdate.status == AppUpdateStatus.checking
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.system_update_alt),
+                label: Text('app_update_check_now'.tr()),
+              ),
+            ],
             if (_kGitHash.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text('build_commit'.tr()),
@@ -396,8 +432,9 @@ class _ChangePassphraseFormState extends ConsumerState<_ChangePassphraseForm> {
           },
           decoration: InputDecoration(
             labelText: 'current_passphrase'.tr(),
-            errorText:
-                _wrongCurrentPassphrase ? 'invalid_passphrase'.tr() : null,
+            errorText: _wrongCurrentPassphrase
+                ? 'invalid_passphrase'.tr()
+                : null,
           ),
         ),
         const SizedBox(height: 12),
@@ -439,9 +476,9 @@ class _ChangePassphraseFormState extends ConsumerState<_ChangePassphraseForm> {
 
     if (newPass != confirm) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('passphrase_mismatch'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('passphrase_mismatch'.tr())));
       return;
     }
 
@@ -562,8 +599,7 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
   }
 
   Future<void> _checkAvailability() async {
-    final available =
-        await ref.read(appSessionProvider).isBiometricAvailable();
+    final available = await ref.read(appSessionProvider).isBiometricAvailable();
     if (mounted) setState(() => _available = available);
   }
 
@@ -667,13 +703,15 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
       _testingConnection = true;
       _connectionOk = null;
     });
-    final ok = await ref.read(appSessionProvider).testWebDavConnection(
-      url: _urlController.text,
-      username: _usernameController.text,
-      password: _passwordController.text.isNotEmpty
-          ? _passwordController.text
-          : null,
-    );
+    final ok = await ref
+        .read(appSessionProvider)
+        .testWebDavConnection(
+          url: _urlController.text,
+          username: _usernameController.text,
+          password: _passwordController.text.isNotEmpty
+              ? _passwordController.text
+              : null,
+        );
     if (mounted) {
       setState(() {
         _testingConnection = false;
@@ -687,7 +725,10 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     try {
       final errorCode = await ref.read(appSessionProvider).exportNow();
       if (!mounted) return;
-      final code = errorCode ?? ref.read(appSessionProvider).lastBackupMessageCode ?? 'backup_exported';
+      final code =
+          errorCode ??
+          ref.read(appSessionProvider).lastBackupMessageCode ??
+          'backup_exported';
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(code.tr())));
@@ -748,10 +789,7 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
           spacing: 12,
           runSpacing: 12,
           children: [
-            FilledButton(
-              onPressed: _saveSettings,
-              child: Text('save'.tr()),
-            ),
+            FilledButton(onPressed: _saveSettings, child: Text('save'.tr())),
             OutlinedButton.icon(
               onPressed: _testingConnection ? null : _testConnection,
               icon: _testingConnection
@@ -763,13 +801,13 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
                       _connectionOk == null
                           ? Icons.wifi_find_outlined
                           : (_connectionOk!
-                              ? Icons.check_circle_outline
-                              : Icons.error_outline),
+                                ? Icons.check_circle_outline
+                                : Icons.error_outline),
                       color: _connectionOk == null
                           ? null
                           : (_connectionOk!
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.error),
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.error),
                     ),
               label: Text('webdav_test_connection'.tr()),
             ),
@@ -915,9 +953,7 @@ class _MaxVersionsPicker extends StatelessWidget {
                   ButtonSegment(
                     value: n,
                     label: Text(
-                      n == 1
-                          ? 'backup_versions_no_history'.tr()
-                          : n.toString(),
+                      n == 1 ? 'backup_versions_no_history'.tr() : n.toString(),
                     ),
                   ),
               ],

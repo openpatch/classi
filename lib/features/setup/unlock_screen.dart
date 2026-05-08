@@ -20,6 +20,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   final _controller = TextEditingController();
   bool _isUnlocking = false;
   bool _biometricAvailable = false;
+  bool _isCheckingWebDavStatus = false;
 
   @override
   void initState() {
@@ -28,8 +29,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   Future<void> _checkBiometricAvailability() async {
-    final available =
-        await ref.read(appSessionProvider).isBiometricAvailable();
+    final available = await ref.read(appSessionProvider).isBiometricAvailable();
     if (mounted) setState(() => _biometricAvailable = available);
   }
 
@@ -43,6 +43,14 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   Widget build(BuildContext context) {
     final session = ref.watch(appSessionProvider);
     final showBiometric = _biometricAvailable && session.biometricEnabled;
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
+    final showWebDavStatus =
+        session.isWebDavConfigured ||
+        session.webDavAutoExportEnabled ||
+        session.webDavAutoImportEnabled ||
+        session.lastExportedAt != null ||
+        session.lastImportedAt != null ||
+        session.lastBackupMessageCode != null;
 
     return Scaffold(
       body: SafeArea(
@@ -84,6 +92,131 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                             ),
                             const SizedBox(height: 16),
                             const AutoImportPromptCard(),
+                            if (showWebDavStatus) ...[
+                              const SizedBox(height: 12),
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'webdav_sync_status_title'.tr(),
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        session.webDavSyncStatus.translationKey
+                                            .tr(),
+                                      ),
+                                      if (session
+                                              .pendingImportRemoteModifiedAt !=
+                                          null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'newer_backup_exported_at'.tr(
+                                            namedArgs: {
+                                              'datetime':
+                                                  DateFormat.yMd(
+                                                    localeTag,
+                                                  ).add_Hm().format(
+                                                    session
+                                                        .pendingImportRemoteModifiedAt!
+                                                        .toLocal(),
+                                                  ),
+                                            },
+                                          ),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                      ],
+                                      if (session.lastExportedAt != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'last_exported_at'.tr(
+                                            namedArgs: {
+                                              'datetime':
+                                                  DateFormat.yMd(
+                                                    localeTag,
+                                                  ).add_Hm().format(
+                                                    session.lastExportedAt!
+                                                        .toLocal(),
+                                                  ),
+                                            },
+                                          ),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                      ],
+                                      if (session.lastImportedAt != null) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'last_imported_at'.tr(
+                                            namedArgs: {
+                                              'datetime':
+                                                  DateFormat.yMd(
+                                                    localeTag,
+                                                  ).add_Hm().format(
+                                                    session.lastImportedAt!
+                                                        .toLocal(),
+                                                  ),
+                                            },
+                                          ),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                      ],
+                                      if (session.lastBackupMessageCode !=
+                                          null) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          session.lastBackupMessageCode!.tr(),
+                                          style: TextStyle(
+                                            color:
+                                                session.lastBackupMessageIsError
+                                                ? Theme.of(
+                                                    context,
+                                                  ).colorScheme.error
+                                                : Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 8),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: OutlinedButton.icon(
+                                          onPressed:
+                                              _isCheckingWebDavStatus ||
+                                                  _isUnlocking
+                                              ? null
+                                              : _refreshWebDavStatus,
+                                          icon: _isCheckingWebDavStatus
+                                              ? const SizedBox.square(
+                                                  dimension: 16,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : const Icon(Icons.sync),
+                                          label: Text(
+                                            'webdav_sync_check_now'.tr(),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 24),
                             TextField(
                               controller: _controller,
@@ -214,11 +347,20 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     try {
       await ref
           .read(appSessionProvider)
-          .unlockWithBiometrics(
-            localizedReason: 'biometric_reason'.tr(),
-          );
+          .unlockWithBiometrics(localizedReason: 'biometric_reason'.tr());
     } finally {
       if (mounted) setState(() => _isUnlocking = false);
+    }
+  }
+
+  Future<void> _refreshWebDavStatus() async {
+    setState(() => _isCheckingWebDavStatus = true);
+    try {
+      await ref.read(appSessionProvider).refreshWebDavSyncStatus();
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingWebDavStatus = false);
+      }
     }
   }
 }

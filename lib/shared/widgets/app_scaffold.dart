@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/app_providers.dart';
-import 'app_updater.dart';
 
 class AppScaffold extends ConsumerWidget {
   const AppScaffold({required this.child, super.key});
@@ -80,7 +79,8 @@ class AppScaffold extends ConsumerWidget {
         body: child,
         bottomNavigationBar: NavigationBar(
           selectedIndex: selectedIndex,
-          onDestinationSelected: (index) => context.go(destinations[index].path),
+          onDestinationSelected: (index) =>
+              context.go(destinations[index].path),
           destinations: [
             for (final destination in destinations)
               NavigationDestination(
@@ -93,7 +93,7 @@ class AppScaffold extends ConsumerWidget {
       );
     }
 
-    Widget result = isDesktopPlatform ? AppUpdater(child: scaffold) : scaffold;
+    Widget result = scaffold;
 
     if (isExporting) {
       result = Stack(

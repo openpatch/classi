@@ -28,6 +28,7 @@ class SeatingPlanGrid extends StatefulWidget {
     required this.onPositionChanged,
     this.editMode = false,
     this.lessonOverlayBuilder,
+    this.lessonOpacityBuilder,
     this.onChipTap,
     super.key,
   });
@@ -49,6 +50,9 @@ class SeatingPlanGrid extends StatefulWidget {
 
   /// Optional overlay widget for lesson-mode indicators.
   final Widget? Function(Student student)? lessonOverlayBuilder;
+
+  /// Optional opacity override for lesson-mode chips.
+  final double Function(Student student)? lessonOpacityBuilder;
 
   /// Called when a chip is tapped in view mode.
   final void Function(Student student)? onChipTap;
@@ -123,8 +127,8 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
           Text(
             'unplaced_students'.tr(),
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
+              color: Theme.of(context).colorScheme.outline,
+            ),
           ),
           const SizedBox(height: AppSpacing.xSmall),
           Wrap(
@@ -135,6 +139,7 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
                 SeatingPlanChip(
                   student: student,
                   onTap: () => widget.onChipTap?.call(student),
+                  opacity: widget.lessonOpacityBuilder?.call(student) ?? 1,
                 ),
             ],
           ),
@@ -156,6 +161,7 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
         student: student,
         isSelected: isSelected,
         lessonOverlay: widget.lessonOverlayBuilder?.call(student),
+        opacity: widget.lessonOpacityBuilder?.call(student) ?? 1,
         onTap: () {
           if (widget.editMode) {
             setState(() {
@@ -185,12 +191,14 @@ class _OccupiedCell extends StatelessWidget {
     required this.student,
     required this.isSelected,
     required this.onTap,
+    required this.opacity,
     this.lessonOverlay,
   });
 
   final Student student;
   final bool isSelected;
   final VoidCallback onTap;
+  final double opacity;
   final Widget? lessonOverlay;
 
   @override
@@ -211,6 +219,7 @@ class _OccupiedCell extends StatelessWidget {
           child: SeatingPlanChip(
             student: student,
             onTap: onTap,
+            opacity: opacity,
             lessonOverlay: lessonOverlay,
           ),
         ),
