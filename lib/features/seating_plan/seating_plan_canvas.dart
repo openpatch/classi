@@ -42,8 +42,28 @@ class _SeatingPlanCanvasState extends State<SeatingPlanCanvas> {
   /// Live overrides while a drag is in progress, so the chip moves smoothly.
   final Map<int, Offset> _dragOffsets = {};
 
+  /// Positions committed locally on drop, before the parent stream delivers
+  /// the persisted value. Prevents a chip from snapping back to its old
+  /// position while another chip is being dragged.
+  final Map<int, Offset> _committedPositions = {};
+
   static const double _canvasWidth = 1200.0;
   static const double _canvasHeight = 900.0;
+
+  @override
+  void didUpdateWidget(SeatingPlanCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Once the stream-backed positions arrive, discard any locally cached
+    // value for chips that are not currently being dragged.
+    if (!identical(oldWidget.positions, widget.positions)) {
+      _committedPositions.removeWhere((id, _) => !_dragOffsets.containsKey(id));
+    }
+  }
+
+  Offset _baseFor(int studentId) =>
+      _committedPositions[studentId] ??
+      widget.positions[studentId] ??
+      Offset.zero;
 
   Offset _clamp(Offset offset) {
     return Offset(
@@ -76,7 +96,7 @@ class _SeatingPlanCanvasState extends State<SeatingPlanCanvas> {
   }
 
   Widget _buildChip(Student student) {
-    final base = widget.positions[student.id] ?? Offset.zero;
+    final base = _baseFor(student.id);
     final current = _dragOffsets[student.id] ?? base;
 
     return Positioned(
@@ -92,7 +112,11 @@ class _SeatingPlanCanvasState extends State<SeatingPlanCanvas> {
         },
         onPanEnd: (_) {
           final newOffset = _dragOffsets[student.id] ?? base;
-          _dragOffsets.remove(student.id);
+          setState(() {
+            _dragOffsets.remove(student.id);
+            // Cache locally so the chip stays put until the stream catches up.
+            _committedPositions[student.id] = newOffset;
+          });
           widget.onPositionChanged(student.id, newOffset.dx, newOffset.dy);
         },
         child: SeatingPlanChip(
