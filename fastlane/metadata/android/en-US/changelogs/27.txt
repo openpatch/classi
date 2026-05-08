@@ -1,0 +1,5 @@
+Features
+
+- Improve error handling and notify users on failure
+
+
