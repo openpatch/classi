@@ -181,9 +181,11 @@ class GroupDetailScreen extends ConsumerWidget {
                   ),
                 ),
           body: ContentConstraints(
-            child: ListView(
+            child: SingleChildScrollView(
               padding: appScreenPadding,
-              children: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 if (archived && archivedDate != null)
                   Card(
                     color: Theme.of(context).colorScheme.secondaryContainer,
@@ -370,7 +372,8 @@ class GroupDetailScreen extends ConsumerWidget {
                       ? null
                       : () => _addGroupNote(context, ref, group, students),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         );
