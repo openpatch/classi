@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -394,16 +395,27 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
 
-    await ref
-        .read(studentRepositoryProvider)
-        .addStudent(
-          groupId: groupId,
-          firstName: result.firstName,
-          lastName: result.lastName,
-          originNote: result.originNote,
-          avatarJson: result.avatarJson,
-        );
-    _refreshStudentSection(ref, groupId);
+    try {
+      await ref
+          .read(studentRepositoryProvider)
+          .addStudent(
+            groupId: groupId,
+            firstName: result.firstName,
+            lastName: result.lastName,
+            originNote: result.originNote,
+            avatarJson: result.avatarJson,
+          );
+      _refreshStudentSection(ref, groupId);
+    } catch (e, st) {
+      developer.log(
+        'Failed to add student',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
   }
 
   Future<void> _batchCreateStudents(
@@ -416,21 +428,33 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
 
-    await ref
-        .read(studentRepositoryProvider)
-        .addStudents(groupId: groupId, students: drafts);
-    _refreshStudentSection(ref, groupId);
-    if (!context.mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'students_created'.tr(namedArgs: {'count': drafts.length.toString()}),
+    try {
+      await ref
+          .read(studentRepositoryProvider)
+          .addStudents(groupId: groupId, students: drafts);
+      _refreshStudentSection(ref, groupId);
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'students_created'.tr(
+              namedArgs: {'count': drafts.length.toString()},
+            ),
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e, st) {
+      developer.log(
+        'Failed to batch create students',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
   }
 
   Future<void> _importWebUntisStudents(
@@ -518,14 +542,25 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
 
-    await ref
-        .read(listRepositoryProvider)
-        .createListWithOptions(
-          groupId: group.id,
-          name: result.name,
-          populateFromGroupStudents: result.populateFromGroupStudents,
-          sortField: ref.read(studentSortFieldProvider),
-        );
+    try {
+      await ref
+          .read(listRepositoryProvider)
+          .createListWithOptions(
+            groupId: group.id,
+            name: result.name,
+            populateFromGroupStudents: result.populateFromGroupStudents,
+            sortField: ref.read(studentSortFieldProvider),
+          );
+    } catch (e, st) {
+      developer.log(
+        'Failed to create list',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
   }
 
   Future<void> _addGroupNote(
@@ -545,15 +580,26 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
 
-    await ref
-        .read(noteRepositoryProvider)
-        .saveNote(
-          body: result.body,
-          groupId: result.groupId,
-          studentIds: result.studentIds,
-          isTodo: result.isTodo,
-          createdAt: result.createdAt,
-        );
+    try {
+      await ref
+          .read(noteRepositoryProvider)
+          .saveNote(
+            body: result.body,
+            groupId: result.groupId,
+            studentIds: result.studentIds,
+            isTodo: result.isTodo,
+            createdAt: result.createdAt,
+          );
+    } catch (e, st) {
+      developer.log(
+        'Failed to add note',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
   }
 
   Future<void> _editList(
@@ -571,9 +617,20 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
 
-    await ref
-        .read(listRepositoryProvider)
-        .renameList(listId: list.id, name: name);
+    try {
+      await ref
+          .read(listRepositoryProvider)
+          .renameList(listId: list.id, name: name);
+    } catch (e, st) {
+      developer.log(
+        'Failed to rename list',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
   }
 
   Future<String?> _showListNameDialog({
@@ -618,7 +675,18 @@ class GroupDetailScreen extends ConsumerWidget {
       body: list.name,
     );
     if (confirmed) {
-      await ref.read(listRepositoryProvider).deleteList(list.id);
+      try {
+        await ref.read(listRepositoryProvider).deleteList(list.id);
+      } catch (e, st) {
+        developer.log(
+          'Failed to delete list',
+          name: 'classi.group_detail',
+          level: 1000,
+          error: e,
+          stackTrace: st,
+        );
+        if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+      }
     }
   }
 
@@ -644,16 +712,27 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
 
-    await ref
-        .read(noteRepositoryProvider)
-        .updateNote(
-          note: note,
-          body: result.body,
-          groupId: result.groupId,
-          studentIds: result.studentIds,
-          isTodo: result.isTodo,
-          createdAt: result.createdAt,
-        );
+    try {
+      await ref
+          .read(noteRepositoryProvider)
+          .updateNote(
+            note: note,
+            body: result.body,
+            groupId: result.groupId,
+            studentIds: result.studentIds,
+            isTodo: result.isTodo,
+            createdAt: result.createdAt,
+          );
+    } catch (e, st) {
+      developer.log(
+        'Failed to update note',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
   }
 
   Future<void> _deleteNote(
@@ -667,7 +746,18 @@ class GroupDetailScreen extends ConsumerWidget {
       body: note.body,
     );
     if (confirmed) {
-      await ref.read(noteRepositoryProvider).deleteNote(note.id);
+      try {
+        await ref.read(noteRepositoryProvider).deleteNote(note.id);
+      } catch (e, st) {
+        developer.log(
+          'Failed to delete note',
+          name: 'classi.group_detail',
+          level: 1000,
+          error: e,
+          stackTrace: st,
+        );
+        if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+      }
     }
   }
 
@@ -694,15 +784,26 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
 
-    await ref
-        .read(groupRepositoryProvider)
-        .updateGroup(
-          id: group.id,
-          name: result.name,
-          colorHex: result.colorHex,
-          gradeScale: result.gradeScale,
-          gradeCategories: result.gradeCategories,
-        );
+    try {
+      await ref
+          .read(groupRepositoryProvider)
+          .updateGroup(
+            id: group.id,
+            name: result.name,
+            colorHex: result.colorHex,
+            gradeScale: result.gradeScale,
+            gradeCategories: result.gradeCategories,
+          );
+    } catch (e, st) {
+      developer.log(
+        'Failed to edit group',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
   }
 }
 

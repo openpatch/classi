@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../../core/providers/app_providers.dart';
 import '../../core/storage/database_path_service.dart';
+import '../../shared/widgets/app_error_state.dart';
 import 'webdav_restore_flow.dart';
 
 enum _DatabaseSelectionAction { openExisting, createNew, restoreFromWebDav }
@@ -112,9 +113,7 @@ Future<void> _openExistingDatabase({
   }
 
   if (!DatabasePathService.isPackagePath(path)) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('library_package_required'.tr())));
+    showErrorSnackBar(context, 'library_package_required'.tr());
     return;
   }
 
@@ -387,7 +386,5 @@ Future<void> _applyDatabaseSelection({
     return;
   }
 
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(errorCode.tr())));
+  showErrorSnackBar(context, errorCode.tr());
 }

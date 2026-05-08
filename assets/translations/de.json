@@ -194,6 +194,7 @@
   "open_student": "Schüler:in öffnen",
   "origin_note": "Hinweis",
   "overwrite": "Überschreiben",
+  "passphrase_changed": "Passphrase geändert.",
   "passphrase_mismatch": "Die Passphrasen stimmen nicht überein.",
   "passphrase_required": "Bitte gib eine Passphrase ein.",
   "populate_from_group": "Aus Gruppe übernehmen",

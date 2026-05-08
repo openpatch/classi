@@ -12,6 +12,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/security/security_preferences_service.dart';
 import '../../core/session/app_session_controller.dart';
 import '../../core/storage/database_path_service.dart';
+import '../../shared/widgets/app_error_state.dart';
 import 'auto_import_prompt_card.dart';
 import 'database_selection_sheet.dart';
 import 'webdav_restore_flow.dart';
@@ -141,9 +142,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       if (session.status == AppSessionStatus.ready) {
         context.go('/setup/recovery');
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('error_loading_database'.tr())));
+        showErrorSnackBar(context, 'error_loading_database'.tr());
       }
     } catch (e, st) {
       developer.log(
@@ -153,11 +152,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         error: e,
         stackTrace: st,
       );
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('error_loading_database'.tr())));
-      }
+      if (mounted) showErrorSnackBar(context, 'error_loading_database'.tr());
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -191,11 +186,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         error: e,
         stackTrace: st,
       );
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('backup_import_failed'.tr())));
-      }
+      if (mounted) showErrorSnackBar(context, 'backup_import_failed'.tr());
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

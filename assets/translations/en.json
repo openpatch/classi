@@ -194,6 +194,7 @@
   "open_student": "Open student",
   "origin_note": "Note",
   "overwrite": "Overwrite",
+  "passphrase_changed": "Passphrase changed.",
   "passphrase_mismatch": "Passphrases do not match.",
   "passphrase_required": "Please enter a passphrase.",
   "populate_from_group": "Populate from group",

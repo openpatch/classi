@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/session/app_session_controller.dart';
 import '../../core/storage/library_backup_service.dart';
+import '../../shared/widgets/app_error_state.dart';
 
 Future<String?> restoreWebDavBackupFlow({
   required BuildContext context,
@@ -66,9 +67,7 @@ Future<WebDavBackupEntry?> showWebDavBackupPicker({
       backups = await ref.read(appSessionProvider).listWebDavBackups();
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('webdav_connection_failed'.tr())));
+        showErrorSnackBar(context, 'webdav_connection_failed'.tr());
       }
       return null;
     }
@@ -78,9 +77,7 @@ Future<WebDavBackupEntry?> showWebDavBackupPicker({
   }
 
   if (backups.isEmpty) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('no_webdav_backups_found'.tr())));
+    showErrorSnackBar(context, 'no_webdav_backups_found'.tr());
     return null;
   }
 

@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,14 +109,26 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen>
       return;
     }
 
-    await ref
-        .read(groupRepositoryProvider)
-        .createGroup(
-          name: result.name,
-          colorHex: result.colorHex,
-          gradeScale: result.gradeScale,
-          gradeCategories: result.gradeCategories,
-        );
+    try {
+      await ref
+          .read(groupRepositoryProvider)
+          .createGroup(
+            name: result.name,
+            colorHex: result.colorHex,
+            gradeScale: result.gradeScale,
+            gradeCategories: result.gradeCategories,
+          );
+    } catch (e, st) {
+      developer.log(
+        'Failed to create group',
+        name: 'classi.groups',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (!mounted) return;
+      showErrorSnackBar(context, 'generic_error'.tr());
+    }
   }
 }
 
@@ -237,13 +251,26 @@ class _GroupsList extends ConsumerWidget {
           title: 'edit'.tr(),
         );
         if (result != null) {
-          await repository.updateGroup(
-            id: group.id,
-            name: result.name,
-            colorHex: result.colorHex,
-            gradeScale: result.gradeScale,
-            gradeCategories: result.gradeCategories,
-          );
+          try {
+            await repository.updateGroup(
+              id: group.id,
+              name: result.name,
+              colorHex: result.colorHex,
+              gradeScale: result.gradeScale,
+              gradeCategories: result.gradeCategories,
+            );
+          } catch (e, st) {
+            developer.log(
+              'Failed to update group',
+              name: 'classi.groups',
+              level: 1000,
+              error: e,
+              stackTrace: st,
+            );
+            if (context.mounted) {
+              showErrorSnackBar(context, 'generic_error'.tr());
+            }
+          }
         }
         return;
       case _GroupAction.clone:
@@ -263,13 +290,26 @@ class _GroupsList extends ConsumerWidget {
           title: 'clone_group'.tr(),
         );
         if (result != null) {
-          await repository.cloneGroup(
-            sourceGroupId: group.id,
-            newName: result.name,
-            colorHex: result.colorHex,
-            gradeScale: result.gradeScale,
-            gradeCategories: result.gradeCategories,
-          );
+          try {
+            await repository.cloneGroup(
+              sourceGroupId: group.id,
+              newName: result.name,
+              colorHex: result.colorHex,
+              gradeScale: result.gradeScale,
+              gradeCategories: result.gradeCategories,
+            );
+          } catch (e, st) {
+            developer.log(
+              'Failed to clone group',
+              name: 'classi.groups',
+              level: 1000,
+              error: e,
+              stackTrace: st,
+            );
+            if (context.mounted) {
+              showErrorSnackBar(context, 'generic_error'.tr());
+            }
+          }
         }
         return;
       case _GroupAction.archive:
@@ -280,11 +320,37 @@ class _GroupsList extends ConsumerWidget {
           confirmKey: 'archive_group',
         );
         if (confirmed) {
-          await repository.archiveGroup(group.id);
+          try {
+            await repository.archiveGroup(group.id);
+          } catch (e, st) {
+            developer.log(
+              'Failed to archive group',
+              name: 'classi.groups',
+              level: 1000,
+              error: e,
+              stackTrace: st,
+            );
+            if (context.mounted) {
+              showErrorSnackBar(context, 'generic_error'.tr());
+            }
+          }
         }
         return;
       case _GroupAction.unarchive:
-        await repository.unarchiveGroup(group.id);
+        try {
+          await repository.unarchiveGroup(group.id);
+        } catch (e, st) {
+          developer.log(
+            'Failed to unarchive group',
+            name: 'classi.groups',
+            level: 1000,
+            error: e,
+            stackTrace: st,
+          );
+          if (context.mounted) {
+            showErrorSnackBar(context, 'generic_error'.tr());
+          }
+        }
         return;
       case _GroupAction.delete:
         final confirmed = await showConfirmDialog(
@@ -293,7 +359,20 @@ class _GroupsList extends ConsumerWidget {
           body: 'confirm_delete_group_body'.tr(),
         );
         if (confirmed) {
-          await repository.deleteGroup(group.id);
+          try {
+            await repository.deleteGroup(group.id);
+          } catch (e, st) {
+            developer.log(
+              'Failed to delete group',
+              name: 'classi.groups',
+              level: 1000,
+              error: e,
+              stackTrace: st,
+            );
+            if (context.mounted) {
+              showErrorSnackBar(context, 'generic_error'.tr());
+            }
+          }
         }
         return;
     }
