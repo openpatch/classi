@@ -106,16 +106,28 @@ class AppDatabase extends _$AppDatabase {
         ''');
       }
       if (from < 12) {
-        await migrator.addColumn(
-          attendanceLogsTable,
-          attendanceLogsTable.isAbsent,
-        );
+        final cols = await customSelect(
+          "PRAGMA table_info('attendance_logs_table')",
+        ).get();
+        final existing = {for (final r in cols) r.data['name'] as String};
+        if (!existing.contains('is_absent')) {
+          await migrator.addColumn(
+            attendanceLogsTable,
+            attendanceLogsTable.isAbsent,
+          );
+        }
       }
       if (from < 13) {
-        await migrator.addColumn(
-          attendanceLogsTable,
-          attendanceLogsTable.isExcused,
-        );
+        final cols = await customSelect(
+          "PRAGMA table_info('attendance_logs_table')",
+        ).get();
+        final existing = {for (final r in cols) r.data['name'] as String};
+        if (!existing.contains('is_excused')) {
+          await migrator.addColumn(
+            attendanceLogsTable,
+            attendanceLogsTable.isExcused,
+          );
+        }
       }
     },
   );
