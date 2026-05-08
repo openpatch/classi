@@ -20,5 +20,10 @@ class SeatingPlansTable extends Table {
   /// Number of columns in the seating grid.
   IntColumn get columns => integer().withDefault(const Constant(6))();
 
+  /// Whether this plan is the default for its group.
+  ///
+  /// At most one plan per group should have this set to `true`.
+  BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

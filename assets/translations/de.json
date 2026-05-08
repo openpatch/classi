@@ -231,6 +231,8 @@
   "grid_columns": "Spalten",
   "edit_layout": "Layout bearbeiten",
   "unplaced_students": "Nicht platzierte Schüler",
+  "default_seating_plan_name": "Sitzplan",
+  "set_as_default": "Als Standard festlegen",
   "list_view": "Liste",
   "search_students": "Schüler:innen suchen",
   "select_all_students": "Alle auswählen",

@@ -42,6 +42,27 @@ class SeatingPlanRepository {
         );
   }
 
+  /// Marks [planId] as the default for [groupId] and clears any other default.
+  Future<void> setDefaultPlan(int groupId, int planId) {
+    return _database.transaction(() async {
+      await (_database.update(_database.seatingPlansTable)
+            ..where((t) => t.groupId.equals(groupId)))
+          .write(const SeatingPlansTableCompanion(isDefault: Value(false)));
+      await (_database.update(_database.seatingPlansTable)
+            ..where((t) => t.id.equals(planId)))
+          .write(const SeatingPlansTableCompanion(isDefault: Value(true)));
+    });
+  }
+
+  /// Returns the default plan for [groupId], falling back to the first plan.
+  ///
+  /// Returns `null` if the group has no seating plans yet.
+  Future<SeatingPlan?> getDefaultOrFirstPlan(int groupId) async {
+    final plans = await watchPlansForGroup(groupId).first;
+    if (plans.isEmpty) return null;
+    return plans.where((p) => p.isDefault).firstOrNull ?? plans.first;
+  }
+
   Future<void> deletePlan(int id) {
     return (_database.delete(_database.seatingPlansTable)
           ..where((t) => t.id.equals(id)))
