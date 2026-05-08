@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-05-08
+
+### Bug Fixes
+
+- Align grade table header with rows using Expanded columns
+- *(lessons)* Load grades reactively when category changes
+
+
+### Features
+
+- *(lessons)* Add lesson notes and attendance states
+- Improve teacher UX with quick note, class average line, and attendance badge
+- Add date-range filter and parent summary screen
+- Custom date range filter, overflow fix, and summary screen filtering
+- Add quick note FAB to parent summary screen
+- *(ui)* Improve layout for desktop and wide screens
+- *(lessons)* Add category-driven lesson planner
+
+
 ## [1.4.4] - 2026-05-07
 
 ### Bug Fixes
