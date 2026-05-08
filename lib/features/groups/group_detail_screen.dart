@@ -1769,28 +1769,22 @@ class _SeatingPlanView extends ConsumerWidget {
     final positions =
         positionsValue.value ?? const <int, ({int col, int row})>{};
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadii.medium),
-      child: ColoredBox(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.small),
-          child: SeatingPlanGrid(
-            students: students,
-            columns: plan.columns,
-            positions: positions,
-            editMode: editMode,
-            onChipTap: onChipTap,
-            onPositionChanged: (studentId, col, row) {
-              ref.read(seatingPlanRepositoryProvider).upsertPosition(
-                planId: plan.id,
-                studentId: studentId,
-                col: col,
-                row: row,
-              );
-            },
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.small),
+      child: SeatingPlanGrid(
+        students: students,
+        columns: plan.columns,
+        positions: positions,
+        editMode: editMode,
+        onChipTap: onChipTap,
+        onPositionChanged: (studentId, col, row) {
+          ref.read(seatingPlanRepositoryProvider).upsertPosition(
+            planId: plan.id,
+            studentId: studentId,
+            col: col,
+            row: row,
+          );
+        },
       ),
     );
   }
