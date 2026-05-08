@@ -72,16 +72,24 @@ class SeatingPlanRepository {
     required int col,
     required int row,
   }) {
-    return _database
-        .into(_database.seatingPlanPositionsTable)
-        .insertOnConflictUpdate(
-          SeatingPlanPositionsTableCompanion.insert(
-            seatingPlanId: planId,
-            studentId: studentId,
-            colIndex: Value(col),
-            rowIndex: Value(row),
-          ),
-        );
+    return _database.into(_database.seatingPlanPositionsTable).insert(
+      SeatingPlanPositionsTableCompanion.insert(
+        seatingPlanId: planId,
+        studentId: studentId,
+        colIndex: Value(col),
+        rowIndex: Value(row),
+      ),
+      onConflict: DoUpdate(
+        (_) => SeatingPlanPositionsTableCompanion(
+          colIndex: Value(col),
+          rowIndex: Value(row),
+        ),
+        target: [
+          _database.seatingPlanPositionsTable.seatingPlanId,
+          _database.seatingPlanPositionsTable.studentId,
+        ],
+      ),
+    );
   }
 
   /// Ensures every student in [students] has a position row for [planId].
