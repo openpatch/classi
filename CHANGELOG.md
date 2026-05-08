@@ -2,12 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-05-08
+
+### Bug Fixes
+
+- *(database)* Make v12/v13 attendance migrations idempotent
+- *(seating-plan)* Prevent chip from snapping back on concurrent drag
+- *(seating-plan)* Fix UNIQUE constraint error and remove dark background
+- *(seating-plan)* Select next plan after deleting the active one
+- *(groups)* Replace ListView with SingleChildScrollView in group detail
+
+
+### Features
+
+- *(seating-plan)* Add seating plan feature
+- *(seating-plan)* Replace free-drag canvas with configurable grid
+- *(seating-plan)* Auto-expand columns like rows
+- *(seating-plan)* Default plan with star + auto-load on view switch
+
+
+### Miscellaneous Tasks
+
+- *(release)* Update X-AppImage-Version in Linux desktop file on tag
+
+
 ## [1.5.0] - 2026-05-08
 
 ### Bug Fixes
 
 - Align grade table header with rows using Expanded columns
 - *(lessons)* Load grades reactively when category changes
+- *(android)* Remove redundant edge-to-edge helper
 
 
 ### Features
