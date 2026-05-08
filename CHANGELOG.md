@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.2] - 2026-05-08
+
+### Bug Fixes
+
+- *(app)* Refine sync, update, and seating feedback
+
+
 ## [1.6.1] - 2026-05-08
 
 ### Features
