@@ -2,5 +2,22 @@ Bug Fixes
 
 - Remove redundant edge-to-edge helper
 - Make v12/v13 attendance migrations idempotent
+- Prevent chip from snapping back on concurrent drag
+- Fix UNIQUE constraint error and remove dark background
+- Select next plan after deleting the active one
+- Replace ListView with SingleChildScrollView in group detail
+
+
+Features
+
+- Add seating plan feature
+- Replace free-drag canvas with configurable grid
+- Auto-expand columns like rows
+- Default plan with star + auto-load on view switch
+
+
+Miscellaneous Tasks
+
+- Update X-AppImage-Version in Linux desktop file on tag
 
 
