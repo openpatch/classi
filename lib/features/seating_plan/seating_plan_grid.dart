@@ -72,6 +72,12 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
     return maxRow + 2;
   }
 
+  int get _colCount {
+    if (widget.positions.isEmpty) return widget.columns + 1;
+    final maxCol = widget.positions.values.map((p) => p.col).reduce(max);
+    return max(maxCol + 2, widget.columns + 1);
+  }
+
   @override
   Widget build(BuildContext context) {
     final studentById = {for (final s in widget.students) s.id: s};
@@ -88,6 +94,7 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
         .toList();
 
     final rows = _rowCount;
+    final cols = _colCount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,14 +103,14 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SizedBox(
-            width: _cellSize * widget.columns,
+            width: _cellSize * cols,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (int row = 0; row < rows; row++)
                   Row(
                     children: [
-                      for (int col = 0; col < widget.columns; col++)
+                      for (int col = 0; col < cols; col++)
                         _buildCell(context, col, row, cellToStudent),
                     ],
                   ),
