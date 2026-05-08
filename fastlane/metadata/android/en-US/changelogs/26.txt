@@ -1,5 +1,6 @@
 Bug Fixes
 
 - Remove redundant edge-to-edge helper
+- Make v12/v13 attendance migrations idempotent
 
 
