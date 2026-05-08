@@ -28,6 +28,8 @@ import '../lessons/lesson_support.dart';
 import '../lessons/lesson_widgets.dart';
 import '../notes/note_editor.dart';
 import '../notes/note_links.dart';
+import '../seating_plan/seating_plan_canvas.dart';
+import '../seating_plan/seating_plan_selector_sheet.dart';
 import '../students/student_batch_create_sheet.dart';
 import '../students/student_form.dart';
 import '../students/student_import_parser.dart';
@@ -313,6 +315,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     categories: categories,
                     averagesValue: averagesValue,
                     categoryAveragesValue: categoryAveragesValue,
+                    groupId: group.id,
                     onAddStudent: archived
                         ? null
                         : () => _addStudent(context, ref, group.id),
@@ -1470,7 +1473,9 @@ class _GroupNoteTile extends StatelessWidget {
   }
 }
 
-class _StudentsSection extends StatelessWidget {
+enum _StudentViewMode { list, seatingPlan }
+
+class _StudentsSection extends ConsumerStatefulWidget {
   const _StudentsSection({
     required this.students,
     required this.sortField,
@@ -1481,6 +1486,7 @@ class _StudentsSection extends StatelessWidget {
     required this.onAddStudent,
     required this.onBatchCreateStudents,
     required this.onImportStudents,
+    required this.groupId,
   });
 
   final List<Student> students;
@@ -1492,12 +1498,39 @@ class _StudentsSection extends StatelessWidget {
   final VoidCallback? onAddStudent;
   final VoidCallback? onBatchCreateStudents;
   final VoidCallback? onImportStudents;
+  final int groupId;
+
+  @override
+  ConsumerState<_StudentsSection> createState() => _StudentsSectionState();
+}
+
+class _StudentsSectionState extends ConsumerState<_StudentsSection> {
+  _StudentViewMode _viewMode = _StudentViewMode.list;
+  SeatingPlan? _activePlan;
+
+  Future<void> _openPlanSelector(BuildContext context) async {
+    final selected = await showSeatingPlanSelectorSheet(
+      context: context,
+      groupId: widget.groupId,
+      activePlan: _activePlan,
+    );
+    if (!mounted) return;
+    if (selected != null) {
+      setState(() => _activePlan = selected);
+      await ref
+          .read(seatingPlanRepositoryProvider)
+          .initializePositionsForPlan(
+            planId: selected.id,
+            students: widget.students,
+          );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final averages = averagesValue.value ?? const <int, double>{};
+    final averages = widget.averagesValue.value ?? const <int, double>{};
     final categoryAverages =
-        categoryAveragesValue.value ?? const <int, Map<String, double>>{};
+        widget.categoryAveragesValue.value ?? const <int, Map<String, double>>{};
 
     return Card(
       child: Padding(
@@ -1513,112 +1546,224 @@ class _StudentsSection extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.medium),
-            Wrap(
-              spacing: AppSpacing.small,
-              runSpacing: AppSpacing.small,
-              children: [
-                if (onAddStudent != null)
-                  FilledButton.tonalIcon(
-                    onPressed: onAddStudent,
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: Text('add_student'.tr()),
-                  ),
-                if (onBatchCreateStudents != null)
-                  OutlinedButton.icon(
-                    onPressed: onBatchCreateStudents,
-                    icon: const Icon(Icons.group_add_outlined),
-                    label: Text('batch_create_students'.tr()),
-                  ),
-                if (onImportStudents != null)
-                  OutlinedButton.icon(
-                    onPressed: onImportStudents,
-                    icon: const Icon(Icons.upload_file_outlined),
-                    label: Text('import_webuntis'.tr()),
+                if (widget.students.isNotEmpty)
+                  SegmentedButton<_StudentViewMode>(
+                    segments: [
+                      ButtonSegment(
+                        value: _StudentViewMode.list,
+                        icon: const Icon(Icons.list),
+                        tooltip: 'list_view'.tr(),
+                      ),
+                      ButtonSegment(
+                        value: _StudentViewMode.seatingPlan,
+                        icon: const Icon(Icons.grid_view_outlined),
+                        tooltip: 'seating_plan'.tr(),
+                      ),
+                    ],
+                    selected: {_viewMode},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) {
+                      setState(() => _viewMode = selection.first);
+                    },
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
               ],
             ),
             const SizedBox(height: AppSpacing.medium),
-            if (students.isEmpty)
-              Text('empty_students'.tr())
-            else
-              for (final student in students)
-                Builder(
-                  builder: (context) {
-                    final average = averages[student.id];
-                    final perCategory =
-                        categoryAverages[student.id] ?? const {};
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.small),
-                      child: SurfaceListTile(
-                        onTap: () => context.push('/students/${student.id}'),
-                        leading: StudentAvatar(student: student),
-                        title: Text(
-                          studentDisplayName(
-                            firstName: student.firstName,
-                            lastName: student.lastName,
-                            sortField: sortField,
-                          ),
+            if (_viewMode == _StudentViewMode.list) ...[
+              Wrap(
+                spacing: AppSpacing.small,
+                runSpacing: AppSpacing.small,
+                children: [
+                  if (widget.onAddStudent != null)
+                    FilledButton.tonalIcon(
+                      onPressed: widget.onAddStudent,
+                      icon: const Icon(Icons.person_add_alt_1),
+                      label: Text('add_student'.tr()),
+                    ),
+                  if (widget.onBatchCreateStudents != null)
+                    OutlinedButton.icon(
+                      onPressed: widget.onBatchCreateStudents,
+                      icon: const Icon(Icons.group_add_outlined),
+                      label: Text('batch_create_students'.tr()),
+                    ),
+                  if (widget.onImportStudents != null)
+                    OutlinedButton.icon(
+                      onPressed: widget.onImportStudents,
+                      icon: const Icon(Icons.upload_file_outlined),
+                      label: Text('import_webuntis'.tr()),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.medium),
+              if (widget.students.isEmpty)
+                Text('empty_students'.tr())
+              else
+                for (final student in widget.students)
+                  Builder(
+                    builder: (context) {
+                      final average = averages[student.id];
+                      final perCategory =
+                          categoryAverages[student.id] ?? const {};
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: AppSpacing.small,
                         ),
-                        subtitle:
-                            student.originNote == null && perCategory.isEmpty
-                            ? null
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (student.originNote != null)
-                                    Text(student.originNote!),
-                                  if (perCategory.isNotEmpty) ...[
+                        child: SurfaceListTile(
+                          onTap: () =>
+                              context.push('/students/${student.id}'),
+                          leading: StudentAvatar(student: student),
+                          title: Text(
+                            studentDisplayName(
+                              firstName: student.firstName,
+                              lastName: student.lastName,
+                              sortField: widget.sortField,
+                            ),
+                          ),
+                          subtitle:
+                              student.originNote == null &&
+                                  perCategory.isEmpty
+                              ? null
+                              : Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
                                     if (student.originNote != null)
-                                      const SizedBox(height: 6),
-                                    Wrap(
-                                      spacing: AppSpacing.small,
-                                      runSpacing: AppSpacing.small,
-                                      children: [
-                                        for (final category in categories)
-                                          if (perCategory[category.id]
-                                              case final value?)
-                                            _CategoryAverageChip(
-                                              label:
-                                                  '${category.name}: ${gradeLabelForNumericValue(value, gradeScaleEntries)}',
-                                              color: colorForCategory(category),
-                                            ),
-                                      ],
+                                      Text(student.originNote!),
+                                    if (perCategory.isNotEmpty) ...[
+                                      if (student.originNote != null)
+                                        const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: AppSpacing.small,
+                                        runSpacing: AppSpacing.small,
+                                        children: [
+                                          for (final category
+                                              in widget.categories)
+                                            if (perCategory[category.id]
+                                                case final value?)
+                                              _CategoryAverageChip(
+                                                label:
+                                                    '${category.name}: ${gradeLabelForNumericValue(value, widget.gradeScaleEntries)}',
+                                                color: colorForCategory(
+                                                  category,
+                                                ),
+                                              ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                          trailing: average == null
+                              ? null
+                              : Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'average'.tr(),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall,
+                                    ),
+                                    Text(
+                                      gradeLabelForNumericValue(
+                                        average,
+                                        widget.gradeScaleEntries,
+                                      ),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
                                     ),
                                   ],
-                                ],
-                              ),
-                        trailing: average == null
-                            ? null
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'average'.tr(),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelSmall,
-                                  ),
-                                  Text(
-                                    gradeLabelForNumericValue(
-                                      average,
-                                      gradeScaleEntries,
-                                    ),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                ],
-                              ),
-                      ),
-                    );
-                  },
+                                ),
+                        ),
+                      );
+                    },
+                  ),
+            ] else ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _activePlan?.name ?? 'seating_plan'.tr(),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _openPlanSelector(context),
+                    icon: const Icon(Icons.tune_outlined, size: 18),
+                    label: Text('seating_plans'.tr()),
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.medium),
+              if (_activePlan == null)
+                Center(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openPlanSelector(context),
+                    icon: const Icon(Icons.add),
+                    label: Text('add_seating_plan'.tr()),
+                  ),
+                )
+              else
+                _SeatingPlanView(
+                  plan: _activePlan!,
+                  students: widget.students,
+                  onChipTap: (student) =>
+                      context.push('/students/${student.id}'),
                 ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SeatingPlanView extends ConsumerWidget {
+  const _SeatingPlanView({
+    required this.plan,
+    required this.students,
+    required this.onChipTap,
+  });
+
+  final SeatingPlan plan;
+  final List<Student> students;
+  final void Function(Student student) onChipTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final positionsValue = ref.watch(seatingPlanPositionsProvider(plan.id));
+    final positions = positionsValue.value ?? const <int, Offset>{};
+
+    return SizedBox(
+      height: 400,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.medium),
+        child: ColoredBox(
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          child: SeatingPlanCanvas(
+            students: students,
+            positions: positions,
+            onChipTap: onChipTap,
+            onPositionChanged: (studentId, x, y) {
+              ref
+                  .read(seatingPlanRepositoryProvider)
+                  .upsertPosition(
+                    planId: plan.id,
+                    studentId: studentId,
+                    x: x,
+                    y: y,
+                  );
+            },
+          ),
         ),
       ),
     );

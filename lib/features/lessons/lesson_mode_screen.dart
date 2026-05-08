@@ -17,6 +17,7 @@ import '../../shared/theme/app_ui.dart';
 import '../grades/grade_picker_dialog.dart';
 import '../notes/note_editor.dart';
 import '../notes/note_links.dart';
+import '../seating_plan/lesson_seating_view.dart';
 import 'lesson_sections.dart';
 import 'lesson_support.dart';
 import 'lesson_widgets.dart';
@@ -45,6 +46,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
   late final TextEditingController _sessionController;
   late DateTime _selectedDate;
   String? _selectedCategoryId;
+  _LessonViewMode _viewMode = _LessonViewMode.list;
 
   @override
   void initState() {
@@ -238,52 +240,109 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                           _deleteNote(context: context, note: note),
                     ),
                     const SizedBox(height: AppSpacing.large),
-                    LessonStudentsTable(
-                      students: students,
-                      absentStudents: absentStudents,
-                      excusedStudents: excusedStudents,
-                      materialSelections: materialSelections,
-                      homeworkSelections: homeworkSelections,
-                      gradeSelections: gradeSelections,
-                      noteCountsByStudent: noteCountsByStudent,
-                      onOpenStudent: (student) =>
-                          context.push('/students/${student.id}'),
-                      onSetAbsent: (student) =>
-                          _setAbsent(studentId: student.id, absent: true),
-                      onSetPresent: (student) =>
-                          _setAbsent(studentId: student.id, absent: false),
-                      onToggleExcused: (student, excused) => _toggleExcused(
-                        studentId: student.id,
-                        excused: excused,
-                      ),
-                      onMaterialChanged: (student, value) => _setMaterialValue(
-                        studentId: student.id,
-                        value: value,
-                      ),
-                      onHomeworkChanged: (student, value) => _setHomeworkValue(
-                        studentId: student.id,
-                        value: value,
-                      ),
-                      onPickGrade: (student) => _pickGrade(
-                        studentId: student.id,
-                        category: selectedCategory,
-                        currentValue:
-                            gradeSelections[student.id] ??
-                            _noGradeSelectionValue,
-                        gradeScale: gradeScale,
-                      ),
-                      onOpenNotes: (student) => _showStudentNotes(
-                        context: context,
-                        group: group,
-                        students: students,
-                        student: student,
-                      ),
-                      onAddQuickNote: (student) => _addQuickNote(
-                        context: context,
-                        group: group,
-                        student: student,
-                      ),
+                    _LessonViewToggle(
+                      viewMode: _viewMode,
+                      onChanged: (mode) =>
+                          setState(() => _viewMode = mode),
                     ),
+                    const SizedBox(height: AppSpacing.medium),
+                    if (_viewMode == _LessonViewMode.list)
+                      LessonStudentsTable(
+                        students: students,
+                        absentStudents: absentStudents,
+                        excusedStudents: excusedStudents,
+                        materialSelections: materialSelections,
+                        homeworkSelections: homeworkSelections,
+                        gradeSelections: gradeSelections,
+                        noteCountsByStudent: noteCountsByStudent,
+                        onOpenStudent: (student) =>
+                            context.push('/students/${student.id}'),
+                        onSetAbsent: (student) =>
+                            _setAbsent(studentId: student.id, absent: true),
+                        onSetPresent: (student) =>
+                            _setAbsent(studentId: student.id, absent: false),
+                        onToggleExcused: (student, excused) => _toggleExcused(
+                          studentId: student.id,
+                          excused: excused,
+                        ),
+                        onMaterialChanged: (student, value) =>
+                            _setMaterialValue(
+                          studentId: student.id,
+                          value: value,
+                        ),
+                        onHomeworkChanged: (student, value) =>
+                            _setHomeworkValue(
+                          studentId: student.id,
+                          value: value,
+                        ),
+                        onPickGrade: (student) => _pickGrade(
+                          studentId: student.id,
+                          category: selectedCategory,
+                          currentValue:
+                              gradeSelections[student.id] ??
+                              _noGradeSelectionValue,
+                          gradeScale: gradeScale,
+                        ),
+                        onOpenNotes: (student) => _showStudentNotes(
+                          context: context,
+                          group: group,
+                          students: students,
+                          student: student,
+                        ),
+                        onAddQuickNote: (student) => _addQuickNote(
+                          context: context,
+                          group: group,
+                          student: student,
+                        ),
+                      )
+                    else
+                      LessonSeatingView(
+                        groupId: widget.groupId,
+                        students: students,
+                        absentStudents: absentStudents,
+                        excusedStudents: excusedStudents,
+                        gradeSelections: gradeSelections,
+                        noteCountsByStudent: noteCountsByStudent,
+                        onSetAbsent: (student) =>
+                            _setAbsent(studentId: student.id, absent: true),
+                        onSetPresent: (student) =>
+                            _setAbsent(studentId: student.id, absent: false),
+                        onToggleExcused: (student, excused) => _toggleExcused(
+                          studentId: student.id,
+                          excused: excused,
+                        ),
+                        onMaterialChanged: (student, value) =>
+                            _setMaterialValue(
+                          studentId: student.id,
+                          value: value,
+                        ),
+                        onHomeworkChanged: (student, value) =>
+                            _setHomeworkValue(
+                          studentId: student.id,
+                          value: value,
+                        ),
+                        onPickGrade: (student) => _pickGrade(
+                          studentId: student.id,
+                          category: selectedCategory,
+                          currentValue:
+                              gradeSelections[student.id] ??
+                              _noGradeSelectionValue,
+                          gradeScale: gradeScale,
+                        ),
+                        onOpenNotes: (student) => _showStudentNotes(
+                          context: context,
+                          group: group,
+                          students: students,
+                          student: student,
+                        ),
+                        onAddQuickNote: (student) => _addQuickNote(
+                          context: context,
+                          group: group,
+                          student: student,
+                        ),
+                        onOpenStudent: (student) =>
+                            context.push('/students/${student.id}'),
+                      ),
                   ],
                 ),
               );
@@ -798,4 +857,37 @@ class _QuickNoteDialog extends StatelessWidget {
 
   void _submit(BuildContext context) =>
       Navigator.of(context).pop(controller.text);
+}
+
+enum _LessonViewMode { list, seatingPlan }
+
+class _LessonViewToggle extends StatelessWidget {
+  const _LessonViewToggle({
+    required this.viewMode,
+    required this.onChanged,
+  });
+
+  final _LessonViewMode viewMode;
+  final ValueChanged<_LessonViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<_LessonViewMode>(
+      segments: [
+        ButtonSegment(
+          value: _LessonViewMode.list,
+          icon: const Icon(Icons.list_outlined),
+          label: Text('list_view'.tr()),
+        ),
+        ButtonSegment(
+          value: _LessonViewMode.seatingPlan,
+          icon: const Icon(Icons.grid_view_outlined),
+          label: Text('seating_plan'.tr()),
+        ),
+      ],
+      selected: {viewMode},
+      onSelectionChanged: (modes) => onChanged(modes.first),
+      showSelectedIcon: false,
+    );
+  }
 }
