@@ -17,5 +17,8 @@ class SeatingPlansTable extends Table {
 
   TextColumn get name => text().withLength(min: 1, max: 120)();
 
+  /// Number of columns in the seating grid.
+  IntColumn get columns => integer().withDefault(const Constant(6))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

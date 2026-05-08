@@ -150,7 +150,7 @@ final groupSeatingPlansProvider = StreamProvider.autoDispose
     );
 
 final seatingPlanPositionsProvider = StreamProvider.autoDispose
-    .family<Map<int, Offset>, int>(
+    .family<Map<int, ({int col, int row})>, int>(
       (ref, planId) => ref
           .watch(seatingPlanRepositoryProvider)
           .watchPositionsForPlan(planId),

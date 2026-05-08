@@ -7,7 +7,7 @@ import '../../core/providers/app_providers.dart';
 import '../../shared/theme/app_ui.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/student_avatar.dart';
-import '../seating_plan/seating_plan_canvas.dart';
+import '../seating_plan/seating_plan_grid.dart';
 import '../seating_plan/seating_plan_selector_sheet.dart';
 
 /// A seating plan view for use inside the lesson mode screen.
@@ -71,6 +71,7 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
           .initializePositionsForPlan(
             planId: selected.id,
             students: widget.students,
+            columns: selected.columns,
           );
     }
   }
@@ -251,25 +252,23 @@ class _SeatingCanvas extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final positionsValue = ref.watch(seatingPlanPositionsProvider(plan.id));
-    final positions = positionsValue.value ?? const <int, Offset>{};
+    final positions =
+        positionsValue.value ?? const <int, ({int col, int row})>{};
 
-    return SizedBox(
-      height: 400,
-      child: SeatingPlanCanvas(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.medium,
+        0,
+        AppSpacing.medium,
+        AppSpacing.medium,
+      ),
+      child: SeatingPlanGrid(
         students: students,
+        columns: plan.columns,
         positions: positions,
         onChipTap: onChipTap,
         lessonOverlayBuilder: overlayBuilder,
-        onPositionChanged: (studentId, x, y) {
-          ref
-              .read(seatingPlanRepositoryProvider)
-              .upsertPosition(
-                planId: plan.id,
-                studentId: studentId,
-                x: x,
-                y: y,
-              );
-        },
+        onPositionChanged: (_, _, _) {},
       ),
     );
   }

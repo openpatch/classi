@@ -58,7 +58,7 @@ class AppDatabase extends _$AppDatabase {
   final String databasePath;
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +136,17 @@ class AppDatabase extends _$AppDatabase {
       if (from < 14) {
         await migrator.createTable(seatingPlansTable);
         await migrator.createTable(seatingPlanPositionsTable);
+      }
+      if (from < 15) {
+        await migrator.addColumn(seatingPlansTable, seatingPlansTable.columns);
+        await migrator.addColumn(
+          seatingPlanPositionsTable,
+          seatingPlanPositionsTable.colIndex,
+        );
+        await migrator.addColumn(
+          seatingPlanPositionsTable,
+          seatingPlanPositionsTable.rowIndex,
+        );
       }
     },
   );

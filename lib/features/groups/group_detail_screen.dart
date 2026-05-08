@@ -28,7 +28,7 @@ import '../lessons/lesson_support.dart';
 import '../lessons/lesson_widgets.dart';
 import '../notes/note_editor.dart';
 import '../notes/note_links.dart';
-import '../seating_plan/seating_plan_canvas.dart';
+import '../seating_plan/seating_plan_grid.dart';
 import '../seating_plan/seating_plan_selector_sheet.dart';
 import '../students/student_batch_create_sheet.dart';
 import '../students/student_form.dart';
@@ -1507,6 +1507,7 @@ class _StudentsSection extends ConsumerStatefulWidget {
 class _StudentsSectionState extends ConsumerState<_StudentsSection> {
   _StudentViewMode _viewMode = _StudentViewMode.list;
   SeatingPlan? _activePlan;
+  bool _editMode = false;
 
   Future<void> _openPlanSelector(BuildContext context) async {
     final selected = await showSeatingPlanSelectorSheet(
@@ -1516,12 +1517,16 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
     );
     if (!mounted) return;
     if (selected != null) {
-      setState(() => _activePlan = selected);
+      setState(() {
+        _activePlan = selected;
+        _editMode = false;
+      });
       await ref
           .read(seatingPlanRepositoryProvider)
           .initializePositionsForPlan(
             planId: selected.id,
             students: widget.students,
+            columns: selected.columns,
           );
     }
   }
@@ -1693,13 +1698,30 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                     _activePlan?.name ?? 'seating_plan'.tr(),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () => _openPlanSelector(context),
-                    icon: const Icon(Icons.tune_outlined, size: 18),
-                    label: Text('seating_plans'.tr()),
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_activePlan != null)
+                        IconButton(
+                          icon: Icon(
+                            _editMode ? Icons.check : Icons.edit_outlined,
+                          ),
+                          tooltip: _editMode
+                              ? 'done'.tr()
+                              : 'edit_layout'.tr(),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () =>
+                              setState(() => _editMode = !_editMode),
+                        ),
+                      OutlinedButton.icon(
+                        onPressed: () => _openPlanSelector(context),
+                        icon: const Icon(Icons.tune_outlined, size: 18),
+                        label: Text('seating_plans'.tr()),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1716,6 +1738,7 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                 _SeatingPlanView(
                   plan: _activePlan!,
                   students: widget.students,
+                  editMode: _editMode,
                   onChipTap: (student) =>
                       context.push('/students/${student.id}'),
                 ),
@@ -1731,37 +1754,40 @@ class _SeatingPlanView extends ConsumerWidget {
   const _SeatingPlanView({
     required this.plan,
     required this.students,
+    required this.editMode,
     required this.onChipTap,
   });
 
   final SeatingPlan plan;
   final List<Student> students;
+  final bool editMode;
   final void Function(Student student) onChipTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final positionsValue = ref.watch(seatingPlanPositionsProvider(plan.id));
-    final positions = positionsValue.value ?? const <int, Offset>{};
+    final positions =
+        positionsValue.value ?? const <int, ({int col, int row})>{};
 
-    return SizedBox(
-      height: 400,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadii.medium),
-        child: ColoredBox(
-          color: Theme.of(context).colorScheme.surfaceContainerLowest,
-          child: SeatingPlanCanvas(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.medium),
+      child: ColoredBox(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.small),
+          child: SeatingPlanGrid(
             students: students,
+            columns: plan.columns,
             positions: positions,
+            editMode: editMode,
             onChipTap: onChipTap,
-            onPositionChanged: (studentId, x, y) {
-              ref
-                  .read(seatingPlanRepositoryProvider)
-                  .upsertPosition(
-                    planId: plan.id,
-                    studentId: studentId,
-                    x: x,
-                    y: y,
-                  );
+            onPositionChanged: (studentId, col, row) {
+              ref.read(seatingPlanRepositoryProvider).upsertPosition(
+                planId: plan.id,
+                studentId: studentId,
+                col: col,
+                row: row,
+              );
             },
           ),
         ),

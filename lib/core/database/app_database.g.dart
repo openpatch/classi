@@ -4127,6 +4127,18 @@ class $SeatingPlansTableTable extends SeatingPlansTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _columnsMeta = const VerificationMeta(
+    'columns',
+  );
+  @override
+  late final GeneratedColumn<int> columns = GeneratedColumn<int>(
+    'columns',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(6),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4140,7 +4152,7 @@ class $SeatingPlansTableTable extends SeatingPlansTable
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, groupId, name, createdAt];
+  List<GeneratedColumn> get $columns => [id, groupId, name, columns, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -4172,6 +4184,12 @@ class $SeatingPlansTableTable extends SeatingPlansTable
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
+    if (data.containsKey('columns')) {
+      context.handle(
+        _columnsMeta,
+        columns.isAcceptableOrUnknown(data['columns']!, _columnsMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4199,6 +4217,10 @@ class $SeatingPlansTableTable extends SeatingPlansTable
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      columns: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}columns'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -4216,11 +4238,15 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
   final int id;
   final int groupId;
   final String name;
+
+  /// Number of columns in the seating grid.
+  final int columns;
   final DateTime createdAt;
   const SeatingPlan({
     required this.id,
     required this.groupId,
     required this.name,
+    required this.columns,
     required this.createdAt,
   });
   @override
@@ -4229,6 +4255,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
     map['id'] = Variable<int>(id);
     map['group_id'] = Variable<int>(groupId);
     map['name'] = Variable<String>(name);
+    map['columns'] = Variable<int>(columns);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -4238,6 +4265,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
       id: Value(id),
       groupId: Value(groupId),
       name: Value(name),
+      columns: Value(columns),
       createdAt: Value(createdAt),
     );
   }
@@ -4251,6 +4279,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
       id: serializer.fromJson<int>(json['id']),
       groupId: serializer.fromJson<int>(json['groupId']),
       name: serializer.fromJson<String>(json['name']),
+      columns: serializer.fromJson<int>(json['columns']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -4261,6 +4290,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
       'id': serializer.toJson<int>(id),
       'groupId': serializer.toJson<int>(groupId),
       'name': serializer.toJson<String>(name),
+      'columns': serializer.toJson<int>(columns),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -4269,11 +4299,13 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
     int? id,
     int? groupId,
     String? name,
+    int? columns,
     DateTime? createdAt,
   }) => SeatingPlan(
     id: id ?? this.id,
     groupId: groupId ?? this.groupId,
     name: name ?? this.name,
+    columns: columns ?? this.columns,
     createdAt: createdAt ?? this.createdAt,
   );
   SeatingPlan copyWithCompanion(SeatingPlansTableCompanion data) {
@@ -4281,6 +4313,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
       id: data.id.present ? data.id.value : this.id,
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       name: data.name.present ? data.name.value : this.name,
+      columns: data.columns.present ? data.columns.value : this.columns,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -4291,13 +4324,14 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
           ..write('id: $id, ')
           ..write('groupId: $groupId, ')
           ..write('name: $name, ')
+          ..write('columns: $columns, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, groupId, name, createdAt);
+  int get hashCode => Object.hash(id, groupId, name, columns, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4305,6 +4339,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
           other.id == this.id &&
           other.groupId == this.groupId &&
           other.name == this.name &&
+          other.columns == this.columns &&
           other.createdAt == this.createdAt);
 }
 
@@ -4312,17 +4347,20 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
   final Value<int> id;
   final Value<int> groupId;
   final Value<String> name;
+  final Value<int> columns;
   final Value<DateTime> createdAt;
   const SeatingPlansTableCompanion({
     this.id = const Value.absent(),
     this.groupId = const Value.absent(),
     this.name = const Value.absent(),
+    this.columns = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   SeatingPlansTableCompanion.insert({
     this.id = const Value.absent(),
     required int groupId,
     required String name,
+    this.columns = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : groupId = Value(groupId),
        name = Value(name);
@@ -4330,12 +4368,14 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
     Expression<int>? id,
     Expression<int>? groupId,
     Expression<String>? name,
+    Expression<int>? columns,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (groupId != null) 'group_id': groupId,
       if (name != null) 'name': name,
+      if (columns != null) 'columns': columns,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -4344,12 +4384,14 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
     Value<int>? id,
     Value<int>? groupId,
     Value<String>? name,
+    Value<int>? columns,
     Value<DateTime>? createdAt,
   }) {
     return SeatingPlansTableCompanion(
       id: id ?? this.id,
       groupId: groupId ?? this.groupId,
       name: name ?? this.name,
+      columns: columns ?? this.columns,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -4366,6 +4408,9 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
+    if (columns.present) {
+      map['columns'] = Variable<int>(columns.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4378,6 +4423,7 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
           ..write('id: $id, ')
           ..write('groupId: $groupId, ')
           ..write('name: $name, ')
+          ..write('columns: $columns, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -4431,28 +4477,38 @@ class $SeatingPlanPositionsTableTable extends SeatingPlanPositionsTable
       'REFERENCES students_table (id) ON DELETE CASCADE',
     ),
   );
-  static const VerificationMeta _xMeta = const VerificationMeta('x');
-  @override
-  late final GeneratedColumn<double> x = GeneratedColumn<double>(
-    'x',
-    aliasedName,
-    false,
-    type: DriftSqlType.double,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0.0),
-  );
-  static const VerificationMeta _yMeta = const VerificationMeta('y');
-  @override
-  late final GeneratedColumn<double> y = GeneratedColumn<double>(
-    'y',
-    aliasedName,
-    false,
-    type: DriftSqlType.double,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0.0),
+  static const VerificationMeta _colIndexMeta = const VerificationMeta(
+    'colIndex',
   );
   @override
-  List<GeneratedColumn> get $columns => [id, seatingPlanId, studentId, x, y];
+  late final GeneratedColumn<int> colIndex = GeneratedColumn<int>(
+    'col_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _rowIndexMeta = const VerificationMeta(
+    'rowIndex',
+  );
+  @override
+  late final GeneratedColumn<int> rowIndex = GeneratedColumn<int>(
+    'row_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    seatingPlanId,
+    studentId,
+    colIndex,
+    rowIndex,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -4487,11 +4543,17 @@ class $SeatingPlanPositionsTableTable extends SeatingPlanPositionsTable
     } else if (isInserting) {
       context.missing(_studentIdMeta);
     }
-    if (data.containsKey('x')) {
-      context.handle(_xMeta, x.isAcceptableOrUnknown(data['x']!, _xMeta));
+    if (data.containsKey('col_index')) {
+      context.handle(
+        _colIndexMeta,
+        colIndex.isAcceptableOrUnknown(data['col_index']!, _colIndexMeta),
+      );
     }
-    if (data.containsKey('y')) {
-      context.handle(_yMeta, y.isAcceptableOrUnknown(data['y']!, _yMeta));
+    if (data.containsKey('row_index')) {
+      context.handle(
+        _rowIndexMeta,
+        rowIndex.isAcceptableOrUnknown(data['row_index']!, _rowIndexMeta),
+      );
     }
     return context;
   }
@@ -4518,13 +4580,13 @@ class $SeatingPlanPositionsTableTable extends SeatingPlanPositionsTable
         DriftSqlType.int,
         data['${effectivePrefix}student_id'],
       )!,
-      x: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}x'],
+      colIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}col_index'],
       )!,
-      y: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}y'],
+      rowIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}row_index'],
       )!,
     );
   }
@@ -4540,14 +4602,18 @@ class SeatingPlanPosition extends DataClass
   final int id;
   final int seatingPlanId;
   final int studentId;
-  final double x;
-  final double y;
+
+  /// Zero-based column index within the seating grid.
+  final int colIndex;
+
+  /// Zero-based row index within the seating grid.
+  final int rowIndex;
   const SeatingPlanPosition({
     required this.id,
     required this.seatingPlanId,
     required this.studentId,
-    required this.x,
-    required this.y,
+    required this.colIndex,
+    required this.rowIndex,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4555,8 +4621,8 @@ class SeatingPlanPosition extends DataClass
     map['id'] = Variable<int>(id);
     map['seating_plan_id'] = Variable<int>(seatingPlanId);
     map['student_id'] = Variable<int>(studentId);
-    map['x'] = Variable<double>(x);
-    map['y'] = Variable<double>(y);
+    map['col_index'] = Variable<int>(colIndex);
+    map['row_index'] = Variable<int>(rowIndex);
     return map;
   }
 
@@ -4565,8 +4631,8 @@ class SeatingPlanPosition extends DataClass
       id: Value(id),
       seatingPlanId: Value(seatingPlanId),
       studentId: Value(studentId),
-      x: Value(x),
-      y: Value(y),
+      colIndex: Value(colIndex),
+      rowIndex: Value(rowIndex),
     );
   }
 
@@ -4579,8 +4645,8 @@ class SeatingPlanPosition extends DataClass
       id: serializer.fromJson<int>(json['id']),
       seatingPlanId: serializer.fromJson<int>(json['seatingPlanId']),
       studentId: serializer.fromJson<int>(json['studentId']),
-      x: serializer.fromJson<double>(json['x']),
-      y: serializer.fromJson<double>(json['y']),
+      colIndex: serializer.fromJson<int>(json['colIndex']),
+      rowIndex: serializer.fromJson<int>(json['rowIndex']),
     );
   }
   @override
@@ -4590,8 +4656,8 @@ class SeatingPlanPosition extends DataClass
       'id': serializer.toJson<int>(id),
       'seatingPlanId': serializer.toJson<int>(seatingPlanId),
       'studentId': serializer.toJson<int>(studentId),
-      'x': serializer.toJson<double>(x),
-      'y': serializer.toJson<double>(y),
+      'colIndex': serializer.toJson<int>(colIndex),
+      'rowIndex': serializer.toJson<int>(rowIndex),
     };
   }
 
@@ -4599,14 +4665,14 @@ class SeatingPlanPosition extends DataClass
     int? id,
     int? seatingPlanId,
     int? studentId,
-    double? x,
-    double? y,
+    int? colIndex,
+    int? rowIndex,
   }) => SeatingPlanPosition(
     id: id ?? this.id,
     seatingPlanId: seatingPlanId ?? this.seatingPlanId,
     studentId: studentId ?? this.studentId,
-    x: x ?? this.x,
-    y: y ?? this.y,
+    colIndex: colIndex ?? this.colIndex,
+    rowIndex: rowIndex ?? this.rowIndex,
   );
   SeatingPlanPosition copyWithCompanion(
     SeatingPlanPositionsTableCompanion data,
@@ -4617,8 +4683,8 @@ class SeatingPlanPosition extends DataClass
           ? data.seatingPlanId.value
           : this.seatingPlanId,
       studentId: data.studentId.present ? data.studentId.value : this.studentId,
-      x: data.x.present ? data.x.value : this.x,
-      y: data.y.present ? data.y.value : this.y,
+      colIndex: data.colIndex.present ? data.colIndex.value : this.colIndex,
+      rowIndex: data.rowIndex.present ? data.rowIndex.value : this.rowIndex,
     );
   }
 
@@ -4628,14 +4694,15 @@ class SeatingPlanPosition extends DataClass
           ..write('id: $id, ')
           ..write('seatingPlanId: $seatingPlanId, ')
           ..write('studentId: $studentId, ')
-          ..write('x: $x, ')
-          ..write('y: $y')
+          ..write('colIndex: $colIndex, ')
+          ..write('rowIndex: $rowIndex')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, seatingPlanId, studentId, x, y);
+  int get hashCode =>
+      Object.hash(id, seatingPlanId, studentId, colIndex, rowIndex);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4643,8 +4710,8 @@ class SeatingPlanPosition extends DataClass
           other.id == this.id &&
           other.seatingPlanId == this.seatingPlanId &&
           other.studentId == this.studentId &&
-          other.x == this.x &&
-          other.y == this.y);
+          other.colIndex == this.colIndex &&
+          other.rowIndex == this.rowIndex);
 }
 
 class SeatingPlanPositionsTableCompanion
@@ -4652,36 +4719,36 @@ class SeatingPlanPositionsTableCompanion
   final Value<int> id;
   final Value<int> seatingPlanId;
   final Value<int> studentId;
-  final Value<double> x;
-  final Value<double> y;
+  final Value<int> colIndex;
+  final Value<int> rowIndex;
   const SeatingPlanPositionsTableCompanion({
     this.id = const Value.absent(),
     this.seatingPlanId = const Value.absent(),
     this.studentId = const Value.absent(),
-    this.x = const Value.absent(),
-    this.y = const Value.absent(),
+    this.colIndex = const Value.absent(),
+    this.rowIndex = const Value.absent(),
   });
   SeatingPlanPositionsTableCompanion.insert({
     this.id = const Value.absent(),
     required int seatingPlanId,
     required int studentId,
-    this.x = const Value.absent(),
-    this.y = const Value.absent(),
+    this.colIndex = const Value.absent(),
+    this.rowIndex = const Value.absent(),
   }) : seatingPlanId = Value(seatingPlanId),
        studentId = Value(studentId);
   static Insertable<SeatingPlanPosition> custom({
     Expression<int>? id,
     Expression<int>? seatingPlanId,
     Expression<int>? studentId,
-    Expression<double>? x,
-    Expression<double>? y,
+    Expression<int>? colIndex,
+    Expression<int>? rowIndex,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (seatingPlanId != null) 'seating_plan_id': seatingPlanId,
       if (studentId != null) 'student_id': studentId,
-      if (x != null) 'x': x,
-      if (y != null) 'y': y,
+      if (colIndex != null) 'col_index': colIndex,
+      if (rowIndex != null) 'row_index': rowIndex,
     });
   }
 
@@ -4689,15 +4756,15 @@ class SeatingPlanPositionsTableCompanion
     Value<int>? id,
     Value<int>? seatingPlanId,
     Value<int>? studentId,
-    Value<double>? x,
-    Value<double>? y,
+    Value<int>? colIndex,
+    Value<int>? rowIndex,
   }) {
     return SeatingPlanPositionsTableCompanion(
       id: id ?? this.id,
       seatingPlanId: seatingPlanId ?? this.seatingPlanId,
       studentId: studentId ?? this.studentId,
-      x: x ?? this.x,
-      y: y ?? this.y,
+      colIndex: colIndex ?? this.colIndex,
+      rowIndex: rowIndex ?? this.rowIndex,
     );
   }
 
@@ -4713,11 +4780,11 @@ class SeatingPlanPositionsTableCompanion
     if (studentId.present) {
       map['student_id'] = Variable<int>(studentId.value);
     }
-    if (x.present) {
-      map['x'] = Variable<double>(x.value);
+    if (colIndex.present) {
+      map['col_index'] = Variable<int>(colIndex.value);
     }
-    if (y.present) {
-      map['y'] = Variable<double>(y.value);
+    if (rowIndex.present) {
+      map['row_index'] = Variable<int>(rowIndex.value);
     }
     return map;
   }
@@ -4728,8 +4795,8 @@ class SeatingPlanPositionsTableCompanion
           ..write('id: $id, ')
           ..write('seatingPlanId: $seatingPlanId, ')
           ..write('studentId: $studentId, ')
-          ..write('x: $x, ')
-          ..write('y: $y')
+          ..write('colIndex: $colIndex, ')
+          ..write('rowIndex: $rowIndex')
           ..write(')'))
         .toString();
   }
@@ -9395,6 +9462,7 @@ typedef $$SeatingPlansTableTableCreateCompanionBuilder =
       Value<int> id,
       required int groupId,
       required String name,
+      Value<int> columns,
       Value<DateTime> createdAt,
     });
 typedef $$SeatingPlansTableTableUpdateCompanionBuilder =
@@ -9402,6 +9470,7 @@ typedef $$SeatingPlansTableTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> groupId,
       Value<String> name,
+      Value<int> columns,
       Value<DateTime> createdAt,
     });
 
@@ -9481,6 +9550,11 @@ class $$SeatingPlansTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get columns => $composableBuilder(
+    column: $table.columns,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -9556,6 +9630,11 @@ class $$SeatingPlansTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get columns => $composableBuilder(
+    column: $table.columns,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9599,6 +9678,9 @@ class $$SeatingPlansTableTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get columns =>
+      $composableBuilder(column: $table.columns, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -9693,11 +9775,13 @@ class $$SeatingPlansTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> groupId = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<int> columns = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SeatingPlansTableCompanion(
                 id: id,
                 groupId: groupId,
                 name: name,
+                columns: columns,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -9705,11 +9789,13 @@ class $$SeatingPlansTableTableTableManager
                 Value<int> id = const Value.absent(),
                 required int groupId,
                 required String name,
+                Value<int> columns = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SeatingPlansTableCompanion.insert(
                 id: id,
                 groupId: groupId,
                 name: name,
+                columns: columns,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -9812,16 +9898,16 @@ typedef $$SeatingPlanPositionsTableTableCreateCompanionBuilder =
       Value<int> id,
       required int seatingPlanId,
       required int studentId,
-      Value<double> x,
-      Value<double> y,
+      Value<int> colIndex,
+      Value<int> rowIndex,
     });
 typedef $$SeatingPlanPositionsTableTableUpdateCompanionBuilder =
     SeatingPlanPositionsTableCompanion Function({
       Value<int> id,
       Value<int> seatingPlanId,
       Value<int> studentId,
-      Value<double> x,
-      Value<double> y,
+      Value<int> colIndex,
+      Value<int> rowIndex,
     });
 
 final class $$SeatingPlanPositionsTableTableReferences
@@ -9896,13 +9982,13 @@ class $$SeatingPlanPositionsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get x => $composableBuilder(
-    column: $table.x,
+  ColumnFilters<int> get colIndex => $composableBuilder(
+    column: $table.colIndex,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get y => $composableBuilder(
-    column: $table.y,
+  ColumnFilters<int> get rowIndex => $composableBuilder(
+    column: $table.rowIndex,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9967,13 +10053,13 @@ class $$SeatingPlanPositionsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get x => $composableBuilder(
-    column: $table.x,
+  ColumnOrderings<int> get colIndex => $composableBuilder(
+    column: $table.colIndex,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get y => $composableBuilder(
-    column: $table.y,
+  ColumnOrderings<int> get rowIndex => $composableBuilder(
+    column: $table.rowIndex,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -10036,11 +10122,11 @@ class $$SeatingPlanPositionsTableTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<double> get x =>
-      $composableBuilder(column: $table.x, builder: (column) => column);
+  GeneratedColumn<int> get colIndex =>
+      $composableBuilder(column: $table.colIndex, builder: (column) => column);
 
-  GeneratedColumn<double> get y =>
-      $composableBuilder(column: $table.y, builder: (column) => column);
+  GeneratedColumn<int> get rowIndex =>
+      $composableBuilder(column: $table.rowIndex, builder: (column) => column);
 
   $$SeatingPlansTableTableAnnotationComposer get seatingPlanId {
     final $$SeatingPlansTableTableAnnotationComposer composer =
@@ -10132,28 +10218,28 @@ class $$SeatingPlanPositionsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> seatingPlanId = const Value.absent(),
                 Value<int> studentId = const Value.absent(),
-                Value<double> x = const Value.absent(),
-                Value<double> y = const Value.absent(),
+                Value<int> colIndex = const Value.absent(),
+                Value<int> rowIndex = const Value.absent(),
               }) => SeatingPlanPositionsTableCompanion(
                 id: id,
                 seatingPlanId: seatingPlanId,
                 studentId: studentId,
-                x: x,
-                y: y,
+                colIndex: colIndex,
+                rowIndex: rowIndex,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required int seatingPlanId,
                 required int studentId,
-                Value<double> x = const Value.absent(),
-                Value<double> y = const Value.absent(),
+                Value<int> colIndex = const Value.absent(),
+                Value<int> rowIndex = const Value.absent(),
               }) => SeatingPlanPositionsTableCompanion.insert(
                 id: id,
                 seatingPlanId: seatingPlanId,
                 studentId: studentId,
-                x: x,
-                y: y,
+                colIndex: colIndex,
+                rowIndex: rowIndex,
               ),
           withReferenceMapper: (p0) => p0
               .map(
