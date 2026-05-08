@@ -231,6 +231,8 @@
   "grid_columns": "Columns",
   "edit_layout": "Edit layout",
   "unplaced_students": "Unplaced students",
+  "default_seating_plan_name": "Seating plan",
+  "set_as_default": "Set as default",
   "list_view": "List",
   "search_students": "Search students",
   "select_all_students": "Select all",

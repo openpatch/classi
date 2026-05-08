@@ -4139,6 +4139,21 @@ class $SeatingPlansTableTable extends SeatingPlansTable
     requiredDuringInsert: false,
     defaultValue: const Constant(6),
   );
+  static const VerificationMeta _isDefaultMeta = const VerificationMeta(
+    'isDefault',
+  );
+  @override
+  late final GeneratedColumn<bool> isDefault = GeneratedColumn<bool>(
+    'is_default',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_default" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4152,7 +4167,14 @@ class $SeatingPlansTableTable extends SeatingPlansTable
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, groupId, name, columns, createdAt];
+  List<GeneratedColumn> get $columns => [
+    id,
+    groupId,
+    name,
+    columns,
+    isDefault,
+    createdAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -4190,6 +4212,12 @@ class $SeatingPlansTableTable extends SeatingPlansTable
         columns.isAcceptableOrUnknown(data['columns']!, _columnsMeta),
       );
     }
+    if (data.containsKey('is_default')) {
+      context.handle(
+        _isDefaultMeta,
+        isDefault.isAcceptableOrUnknown(data['is_default']!, _isDefaultMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4221,6 +4249,10 @@ class $SeatingPlansTableTable extends SeatingPlansTable
         DriftSqlType.int,
         data['${effectivePrefix}columns'],
       )!,
+      isDefault: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_default'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -4241,12 +4273,18 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
 
   /// Number of columns in the seating grid.
   final int columns;
+
+  /// Whether this plan is the default for its group.
+  ///
+  /// At most one plan per group should have this set to `true`.
+  final bool isDefault;
   final DateTime createdAt;
   const SeatingPlan({
     required this.id,
     required this.groupId,
     required this.name,
     required this.columns,
+    required this.isDefault,
     required this.createdAt,
   });
   @override
@@ -4256,6 +4294,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
     map['group_id'] = Variable<int>(groupId);
     map['name'] = Variable<String>(name);
     map['columns'] = Variable<int>(columns);
+    map['is_default'] = Variable<bool>(isDefault);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -4266,6 +4305,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
       groupId: Value(groupId),
       name: Value(name),
       columns: Value(columns),
+      isDefault: Value(isDefault),
       createdAt: Value(createdAt),
     );
   }
@@ -4280,6 +4320,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
       groupId: serializer.fromJson<int>(json['groupId']),
       name: serializer.fromJson<String>(json['name']),
       columns: serializer.fromJson<int>(json['columns']),
+      isDefault: serializer.fromJson<bool>(json['isDefault']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -4291,6 +4332,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
       'groupId': serializer.toJson<int>(groupId),
       'name': serializer.toJson<String>(name),
       'columns': serializer.toJson<int>(columns),
+      'isDefault': serializer.toJson<bool>(isDefault),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -4300,12 +4342,14 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
     int? groupId,
     String? name,
     int? columns,
+    bool? isDefault,
     DateTime? createdAt,
   }) => SeatingPlan(
     id: id ?? this.id,
     groupId: groupId ?? this.groupId,
     name: name ?? this.name,
     columns: columns ?? this.columns,
+    isDefault: isDefault ?? this.isDefault,
     createdAt: createdAt ?? this.createdAt,
   );
   SeatingPlan copyWithCompanion(SeatingPlansTableCompanion data) {
@@ -4314,6 +4358,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       name: data.name.present ? data.name.value : this.name,
       columns: data.columns.present ? data.columns.value : this.columns,
+      isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -4325,13 +4370,15 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
           ..write('groupId: $groupId, ')
           ..write('name: $name, ')
           ..write('columns: $columns, ')
+          ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, groupId, name, columns, createdAt);
+  int get hashCode =>
+      Object.hash(id, groupId, name, columns, isDefault, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4340,6 +4387,7 @@ class SeatingPlan extends DataClass implements Insertable<SeatingPlan> {
           other.groupId == this.groupId &&
           other.name == this.name &&
           other.columns == this.columns &&
+          other.isDefault == this.isDefault &&
           other.createdAt == this.createdAt);
 }
 
@@ -4348,12 +4396,14 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
   final Value<int> groupId;
   final Value<String> name;
   final Value<int> columns;
+  final Value<bool> isDefault;
   final Value<DateTime> createdAt;
   const SeatingPlansTableCompanion({
     this.id = const Value.absent(),
     this.groupId = const Value.absent(),
     this.name = const Value.absent(),
     this.columns = const Value.absent(),
+    this.isDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   SeatingPlansTableCompanion.insert({
@@ -4361,6 +4411,7 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
     required int groupId,
     required String name,
     this.columns = const Value.absent(),
+    this.isDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : groupId = Value(groupId),
        name = Value(name);
@@ -4369,6 +4420,7 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
     Expression<int>? groupId,
     Expression<String>? name,
     Expression<int>? columns,
+    Expression<bool>? isDefault,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -4376,6 +4428,7 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
       if (groupId != null) 'group_id': groupId,
       if (name != null) 'name': name,
       if (columns != null) 'columns': columns,
+      if (isDefault != null) 'is_default': isDefault,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -4385,6 +4438,7 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
     Value<int>? groupId,
     Value<String>? name,
     Value<int>? columns,
+    Value<bool>? isDefault,
     Value<DateTime>? createdAt,
   }) {
     return SeatingPlansTableCompanion(
@@ -4392,6 +4446,7 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
       groupId: groupId ?? this.groupId,
       name: name ?? this.name,
       columns: columns ?? this.columns,
+      isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -4411,6 +4466,9 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
     if (columns.present) {
       map['columns'] = Variable<int>(columns.value);
     }
+    if (isDefault.present) {
+      map['is_default'] = Variable<bool>(isDefault.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4424,6 +4482,7 @@ class SeatingPlansTableCompanion extends UpdateCompanion<SeatingPlan> {
           ..write('groupId: $groupId, ')
           ..write('name: $name, ')
           ..write('columns: $columns, ')
+          ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -9463,6 +9522,7 @@ typedef $$SeatingPlansTableTableCreateCompanionBuilder =
       required int groupId,
       required String name,
       Value<int> columns,
+      Value<bool> isDefault,
       Value<DateTime> createdAt,
     });
 typedef $$SeatingPlansTableTableUpdateCompanionBuilder =
@@ -9471,6 +9531,7 @@ typedef $$SeatingPlansTableTableUpdateCompanionBuilder =
       Value<int> groupId,
       Value<String> name,
       Value<int> columns,
+      Value<bool> isDefault,
       Value<DateTime> createdAt,
     });
 
@@ -9555,6 +9616,11 @@ class $$SeatingPlansTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isDefault => $composableBuilder(
+    column: $table.isDefault,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -9635,6 +9701,11 @@ class $$SeatingPlansTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isDefault => $composableBuilder(
+    column: $table.isDefault,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9681,6 +9752,9 @@ class $$SeatingPlansTableTableAnnotationComposer
 
   GeneratedColumn<int> get columns =>
       $composableBuilder(column: $table.columns, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDefault =>
+      $composableBuilder(column: $table.isDefault, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -9776,12 +9850,14 @@ class $$SeatingPlansTableTableTableManager
                 Value<int> groupId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<int> columns = const Value.absent(),
+                Value<bool> isDefault = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SeatingPlansTableCompanion(
                 id: id,
                 groupId: groupId,
                 name: name,
                 columns: columns,
+                isDefault: isDefault,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -9790,12 +9866,14 @@ class $$SeatingPlansTableTableTableManager
                 required int groupId,
                 required String name,
                 Value<int> columns = const Value.absent(),
+                Value<bool> isDefault = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SeatingPlansTableCompanion.insert(
                 id: id,
                 groupId: groupId,
                 name: name,
                 columns: columns,
+                isDefault: isDefault,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

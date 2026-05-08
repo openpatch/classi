@@ -99,10 +99,32 @@ class _SeatingPlanSelectorSheet extends ConsumerWidget {
                       selectedColor:
                           Theme.of(context).colorScheme.primary,
                       onTap: () => Navigator.of(context).pop(plan),
-                      trailing: _PlanActions(
-                        plan: plan,
-                        onRename: () => _renamePlan(context, ref, plan),
-                        onDelete: () => _deletePlan(context, ref, plan),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              plan.isDefault
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: plan.isDefault
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                            tooltip: 'set_as_default'.tr(),
+                            visualDensity: VisualDensity.compact,
+                            onPressed: plan.isDefault
+                                ? null
+                                : () => ref
+                                      .read(seatingPlanRepositoryProvider)
+                                      .setDefaultPlan(groupId, plan.id),
+                          ),
+                          _PlanActions(
+                            plan: plan,
+                            onRename: () => _renamePlan(context, ref, plan),
+                            onDelete: () => _deletePlan(context, ref, plan),
+                          ),
+                        ],
                       ),
                     ),
                 ],

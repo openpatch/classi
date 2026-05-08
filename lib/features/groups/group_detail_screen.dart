@@ -1509,6 +1509,30 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
   SeatingPlan? _activePlan;
   bool _editMode = false;
 
+  Future<void> _ensureActivePlan() async {
+    final repo = ref.read(seatingPlanRepositoryProvider);
+    var plan = await repo.getDefaultOrFirstPlan(widget.groupId);
+    if (plan == null) {
+      final id = await repo.createPlan(
+        groupId: widget.groupId,
+        name: 'default_seating_plan_name'.tr(),
+        columns: 6,
+      );
+      final plans = await repo.watchPlansForGroup(widget.groupId).first;
+      plan = plans.where((p) => p.id == id).firstOrNull;
+    }
+    if (plan == null || !mounted) return;
+    setState(() {
+      _activePlan = plan;
+      _editMode = false;
+    });
+    await repo.initializePositionsForPlan(
+      planId: plan.id,
+      students: widget.students,
+      columns: plan.columns,
+    );
+  }
+
   Future<void> _openPlanSelector(BuildContext context) async {
     final selected = await showSeatingPlanSelectorSheet(
       context: context,
@@ -1568,7 +1592,12 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                     selected: {_viewMode},
                     showSelectedIcon: false,
                     onSelectionChanged: (selection) {
-                      setState(() => _viewMode = selection.first);
+                      final mode = selection.first;
+                      setState(() => _viewMode = mode);
+                      if (mode == _StudentViewMode.seatingPlan &&
+                          _activePlan == null) {
+                        _ensureActivePlan();
+                      }
                     },
                     style: const ButtonStyle(
                       visualDensity: VisualDensity.compact,

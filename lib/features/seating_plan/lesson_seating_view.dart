@@ -57,6 +57,33 @@ class LessonSeatingView extends ConsumerStatefulWidget {
 class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
   SeatingPlan? _activePlan;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureActivePlan());
+  }
+
+  Future<void> _ensureActivePlan() async {
+    final repo = ref.read(seatingPlanRepositoryProvider);
+    var plan = await repo.getDefaultOrFirstPlan(widget.groupId);
+    if (plan == null) {
+      final id = await repo.createPlan(
+        groupId: widget.groupId,
+        name: 'default_seating_plan_name'.tr(),
+        columns: 6,
+      );
+      final plans = await repo.watchPlansForGroup(widget.groupId).first;
+      plan = plans.where((p) => p.id == id).firstOrNull;
+    }
+    if (plan == null || !mounted) return;
+    setState(() => _activePlan = plan);
+    await repo.initializePositionsForPlan(
+      planId: plan.id,
+      students: widget.students,
+      columns: plan.columns,
+    );
+  }
+
   Future<void> _openPlanSelector() async {
     final selected = await showSeatingPlanSelectorSheet(
       context: context,
