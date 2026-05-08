@@ -51,11 +51,17 @@ jobs:
           sed -i "s/^version: .*/version: ${VERSION}+${VERSION_CODE}/" pubspec.yaml
           echo $((VERSION_CODE + 1)) > version_code.txt
 
+      - name: Bump version in Linux desktop file
+        run: |
+          set -e
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          sed -i "s/^X-AppImage-Version=.*/X-AppImage-Version=${VERSION}/" linux/org.openpatch.classi.desktop
+
       - name: Commit CHANGELOG.md, pubspec.yaml and version code
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore(release): bump version to ${{ github.ref_name }}"
-          file_pattern: CHANGELOG.md pubspec.yaml version_code.txt
+          file_pattern: CHANGELOG.md pubspec.yaml version_code.txt linux/org.openpatch.classi.desktop
 
   build-android:
     name: Build Android
