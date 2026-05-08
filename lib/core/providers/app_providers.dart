@@ -26,6 +26,7 @@ import '../session/app_session_controller.dart';
 import '../storage/database_path_service.dart';
 import '../storage/library_backup_preferences_service.dart';
 import '../storage/library_backup_service.dart';
+import '../update/app_update_controller.dart';
 
 final keyServiceProvider = Provider<KeyService>((ref) => KeyService());
 
@@ -48,6 +49,10 @@ final libraryBackupServiceProvider = Provider<LibraryBackupService>(
 
 final biometricServiceProvider = Provider<BiometricService>(
   (ref) => BiometricService(),
+);
+
+final appUpdateControllerProvider = ChangeNotifierProvider<AppUpdateController>(
+  (ref) => AppUpdateController(),
 );
 
 final appSessionProvider = ChangeNotifierProvider<AppSessionController>((ref) {
@@ -76,12 +81,11 @@ final studentSortFieldProvider = Provider<StudentSortField>(
   (ref) => ref.watch(studentSortControllerProvider).sortField,
 );
 
-final themeControllerProvider =
-    ChangeNotifierProvider<ThemeController>((ref) {
-      final controller = ThemeController();
-      unawaited(controller.initialize());
-      return controller;
-    });
+final themeControllerProvider = ChangeNotifierProvider<ThemeController>((ref) {
+  final controller = ThemeController();
+  unawaited(controller.initialize());
+  return controller;
+});
 
 final themeModeProvider = Provider<ThemeMode>(
   (ref) => ref.watch(themeControllerProvider).themeMode,
@@ -144,9 +148,8 @@ final seatingPlanRepositoryProvider = Provider<SeatingPlanRepository>(
 
 final groupSeatingPlansProvider = StreamProvider.autoDispose
     .family<List<SeatingPlan>, int>(
-      (ref, groupId) => ref
-          .watch(seatingPlanRepositoryProvider)
-          .watchPlansForGroup(groupId),
+      (ref, groupId) =>
+          ref.watch(seatingPlanRepositoryProvider).watchPlansForGroup(groupId),
     );
 
 final seatingPlanPositionsProvider = StreamProvider.autoDispose

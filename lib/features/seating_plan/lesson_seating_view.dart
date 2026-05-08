@@ -179,9 +179,9 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
               child: Text(
                 grade,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -246,6 +246,8 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
               students: widget.students,
               onChipTap: _onChipTap,
               overlayBuilder: _buildOverlay,
+              opacityBuilder: (student) =>
+                  widget.absentStudents.contains(student.id) ? 0.5 : 1,
             ),
           if (plan != null)
             Padding(
@@ -258,8 +260,8 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
               child: Text(
                 'tap_student_for_actions'.tr(),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
+                  color: Theme.of(context).colorScheme.outline,
+                ),
               ),
             ),
         ],
@@ -274,12 +276,14 @@ class _SeatingCanvas extends ConsumerWidget {
     required this.students,
     required this.onChipTap,
     required this.overlayBuilder,
+    required this.opacityBuilder,
   });
 
   final SeatingPlan plan;
   final List<Student> students;
   final void Function(Student student) onChipTap;
   final Widget? Function(Student student) overlayBuilder;
+  final double Function(Student student) opacityBuilder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -300,6 +304,7 @@ class _SeatingCanvas extends ConsumerWidget {
         positions: positions,
         onChipTap: onChipTap,
         lessonOverlayBuilder: overlayBuilder,
+        lessonOpacityBuilder: opacityBuilder,
         onPositionChanged: (_, _, _) {},
       ),
     );

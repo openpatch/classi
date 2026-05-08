@@ -29,6 +29,19 @@ enum AppSessionErrorCode {
   final String translationKey;
 }
 
+enum WebDavSyncStatus {
+  notConfigured('webdav_sync_not_configured'),
+  disabled('webdav_sync_disabled'),
+  checking('webdav_sync_checking'),
+  current('webdav_sync_current'),
+  behind('webdav_sync_behind'),
+  offline('webdav_sync_offline');
+
+  const WebDavSyncStatus(this.translationKey);
+
+  final String translationKey;
+}
+
 class AppSessionController extends ChangeNotifier {
   AppSessionController({
     required KeyService keyService,
@@ -75,6 +88,7 @@ class AppSessionController extends ChangeNotifier {
   DateTime? _lastExportedAt;
   DateTime? _lastImportedAt;
   bool _isExporting = false;
+  WebDavSyncStatus _webDavSyncStatus = WebDavSyncStatus.notConfigured;
   Future<void>? _pendingLockCleanup;
   String? _lastBackupMessageCode;
   bool _lastBackupMessageIsError = false;
@@ -103,6 +117,7 @@ class AppSessionController extends ChangeNotifier {
   DateTime? get lastExportedAt => _lastExportedAt;
   DateTime? get lastImportedAt => _lastImportedAt;
   bool get isExporting => _isExporting;
+  WebDavSyncStatus get webDavSyncStatus => _webDavSyncStatus;
   String? get lastBackupMessageCode => _lastBackupMessageCode;
   bool get lastBackupMessageIsError => _lastBackupMessageIsError;
   bool get hasPendingRecoveryKey => _pendingRecoveryKey != null;
@@ -588,6 +603,14 @@ class AppSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshWebDavSyncStatus() async {
+    _webDavSyncStatus = WebDavSyncStatus.checking;
+    notifyListeners();
+    await _loadBackupPreferences();
+    await _updatePendingAutoImportAvailability();
+    notifyListeners();
+  }
+
   /// Dismisses the pending import prompt for the current remote backup version.
   ///
   /// The prompt will reappear if the remote backup is replaced by a newer one.
@@ -988,14 +1011,24 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<void> _updatePendingAutoImportAvailability() async {
-    if (!_webDavAutoImportEnabled || !isWebDavConfigured) {
+    if (!isWebDavConfigured) {
+      _webDavSyncStatus = WebDavSyncStatus.notConfigured;
+      _pendingWebDavImport = false;
+      _pendingImportRemoteModifiedAt = null;
+      return;
+    }
+    if (!_webDavAutoImportEnabled) {
+      _webDavSyncStatus = WebDavSyncStatus.disabled;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
       return;
     }
 
+    _webDavSyncStatus = WebDavSyncStatus.checking;
+
     final client = await createWebDavClient();
     if (client == null) {
+      _webDavSyncStatus = WebDavSyncStatus.notConfigured;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
       return;
@@ -1015,6 +1048,7 @@ class AppSessionController extends ChangeNotifier {
           );
 
       if (backupModified == null) {
+        _webDavSyncStatus = WebDavSyncStatus.current;
         _pendingWebDavImport = false;
         _pendingImportRemoteModifiedAt = null;
         return;
@@ -1024,6 +1058,7 @@ class AppSessionController extends ChangeNotifier {
       final dismissedAt = await _libraryBackupPreferencesService
           .pendingImportDismissedAt();
       if (dismissedAt != null && !backupModified.isAfter(dismissedAt)) {
+        _webDavSyncStatus = WebDavSyncStatus.current;
         _pendingWebDavImport = false;
         _pendingImportRemoteModifiedAt = null;
         return;
@@ -1065,6 +1100,9 @@ class AppSessionController extends ChangeNotifier {
       }
 
       _pendingWebDavImport = isNewer;
+      _webDavSyncStatus = isNewer
+          ? WebDavSyncStatus.behind
+          : WebDavSyncStatus.current;
       _pendingImportRemoteModifiedAt = isNewer ? backupModified : null;
     } catch (error, stackTrace) {
       _logUnexpectedError(
@@ -1072,6 +1110,7 @@ class AppSessionController extends ChangeNotifier {
         error: error,
         stackTrace: stackTrace,
       );
+      _webDavSyncStatus = WebDavSyncStatus.offline;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
     }
