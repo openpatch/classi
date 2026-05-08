@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
@@ -347,8 +348,21 @@ class StudentDetailScreen extends ConsumerWidget {
       initialAvatarJson: student.avatarJson,
       title: 'edit'.tr(),
       onDelete: () async {
-        await ref.read(studentRepositoryProvider).deleteStudent(student.id);
-        deleted = true;
+        try {
+          await ref.read(studentRepositoryProvider).deleteStudent(student.id);
+          deleted = true;
+        } catch (e, st) {
+          developer.log(
+            'Failed to delete student',
+            name: 'classi.student_detail',
+            level: 1000,
+            error: e,
+            stackTrace: st,
+          );
+          if (context.mounted) {
+            showErrorSnackBar(context, 'generic_error'.tr());
+          }
+        }
       },
     );
     if (deleted) {
@@ -364,15 +378,26 @@ class StudentDetailScreen extends ConsumerWidget {
       return;
     }
 
-    await ref
-        .read(studentRepositoryProvider)
-        .updateStudent(
-          id: student.id,
-          firstName: result.firstName,
-          lastName: result.lastName,
-          originNote: result.originNote,
-          avatarJson: result.avatarJson,
-        );
+    try {
+      await ref
+          .read(studentRepositoryProvider)
+          .updateStudent(
+            id: student.id,
+            firstName: result.firstName,
+            lastName: result.lastName,
+            originNote: result.originNote,
+            avatarJson: result.avatarJson,
+          );
+    } catch (e, st) {
+      developer.log(
+        'Failed to update student',
+        name: 'classi.student_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
   }
 }
 

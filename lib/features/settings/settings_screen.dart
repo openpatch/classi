@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/security/security_preferences_service.dart';
 import '../../core/session/app_session_controller.dart';
 import '../../shared/utils/formatting.dart';
+import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../setup/database_selection_sheet.dart';
 import 'grade_system_controller.dart';
@@ -367,6 +370,8 @@ class _ChangePassphraseFormState extends ConsumerState<_ChangePassphraseForm> {
   final _currentController = TextEditingController();
   final _newController = TextEditingController();
   final _confirmController = TextEditingController();
+  bool _isSaving = false;
+  bool _wrongCurrentPassphrase = false;
 
   @override
   void dispose() {
@@ -384,7 +389,16 @@ class _ChangePassphraseFormState extends ConsumerState<_ChangePassphraseForm> {
         TextField(
           controller: _currentController,
           obscureText: true,
-          decoration: InputDecoration(labelText: 'current_passphrase'.tr()),
+          onChanged: (_) {
+            if (_wrongCurrentPassphrase) {
+              setState(() => _wrongCurrentPassphrase = false);
+            }
+          },
+          decoration: InputDecoration(
+            labelText: 'current_passphrase'.tr(),
+            errorText:
+                _wrongCurrentPassphrase ? 'invalid_passphrase'.tr() : null,
+          ),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -396,48 +410,70 @@ class _ChangePassphraseFormState extends ConsumerState<_ChangePassphraseForm> {
         TextField(
           controller: _confirmController,
           obscureText: true,
+          onSubmitted: (_) => _submit(),
           decoration: InputDecoration(labelText: 'confirm_passphrase'.tr()),
         ),
         const SizedBox(height: 12),
         Align(
           alignment: Alignment.centerRight,
           child: FilledButton(
-            onPressed: () async {
-              if (_newController.text != _confirmController.text) {
-                if (!context.mounted) {
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('passphrase_mismatch'.tr())),
-                );
-                return;
-              }
-
-              final success = await ref
-                  .read(appSessionProvider)
-                  .changePassphrase(
-                    _currentController.text.trim(),
-                    _newController.text.trim(),
-                  );
-              if (!success) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('invalid_passphrase'.tr())),
-                  );
-                }
-                return;
-              }
-              if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('save'.tr())));
-              }
-            },
-            child: Text('save'.tr()),
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text('save'.tr()),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _submit() async {
+    final current = _currentController.text.trim();
+    final newPass = _newController.text.trim();
+    final confirm = _confirmController.text.trim();
+
+    if (current.isEmpty || newPass.isEmpty) return;
+
+    if (newPass != confirm) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('passphrase_mismatch'.tr())),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final success = await ref
+          .read(appSessionProvider)
+          .changePassphrase(current, newPass);
+      if (!mounted) return;
+      if (!success) {
+        setState(() => _wrongCurrentPassphrase = true);
+        return;
+      }
+      _currentController.clear();
+      _newController.clear();
+      _confirmController.clear();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('passphrase_changed'.tr())));
+    } catch (e, st) {
+      developer.log(
+        'Failed to change passphrase',
+        name: 'classi.settings',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (!mounted) return;
+      showErrorSnackBar(context, 'generic_error'.tr());
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 }
 
