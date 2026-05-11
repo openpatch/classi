@@ -65,6 +65,7 @@ class AppSessionController extends ChangeNotifier {
   final BiometricService _biometricService;
 
   AppDatabase? _database;
+  String? _databasePath;
   AppSessionStatus _status = AppSessionStatus.loading;
   AppSessionErrorCode? _errorCode;
   DateTime? _openedAt;
@@ -95,6 +96,7 @@ class AppSessionController extends ChangeNotifier {
 
   AppSessionStatus get status => _status;
   AppDatabase? get database => _database;
+  String? get databasePath => _databasePath;
   AppSessionErrorCode? get errorCode => _errorCode;
   String? get errorMessage => _errorCode?.translationKey;
   bool get lockOnBackground => _lockOnBackground;
@@ -133,6 +135,7 @@ class AppSessionController extends ChangeNotifier {
     _beginLoading();
 
     try {
+      await _refreshDatabasePath();
       await _loadSecurityPreferences();
       await _loadBackupPreferences();
       await _resolveCurrentDatabaseState();
@@ -373,12 +376,33 @@ class AppSessionController extends ChangeNotifier {
       return;
     }
 
+    final currentDbFile = await _databasePathService.getDatabaseFile();
+    final biometricPassphrase = await _keyService.getBiometricPassphrase(
+      currentDbFile,
+    );
+    final webDavPassword = await _keyService.getWebDavPassword(currentDbFile);
+
     _status = AppSessionStatus.loading;
     notifyListeners();
 
     await _persistOpenDatabaseState(markSessionClean: true);
     await _databasePathService.moveTo(folderPath);
+    await _refreshDatabasePath();
+    final nextDbFile = await _databasePathService.getDatabaseFile();
+    if (biometricPassphrase != null) {
+      await _keyService.saveBiometricPassphrase(
+        nextDbFile,
+        biometricPassphrase,
+      );
+      await _keyService.clearBiometricPassphrase(currentDbFile);
+    }
+    if (webDavPassword != null) {
+      await _keyService.setWebDavPassword(nextDbFile, webDavPassword);
+      await _keyService.clearWebDavPassword(currentDbFile);
+    }
     await _openDatabase(passphrase);
+    await _loadSecurityPreferences();
+    await _loadBackupPreferences();
     _status = AppSessionStatus.ready;
     notifyListeners();
   }
@@ -433,6 +457,7 @@ class AppSessionController extends ChangeNotifier {
   /// be written.
   Future<void> setNewDatabasePath(String path) async {
     await _databasePathService.setDatabaseFilePath(path);
+    await _refreshDatabasePath();
     notifyListeners();
   }
 
@@ -442,8 +467,7 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<List<String>> sidecarPaths() async {
-    final dbFile = await _databasePathService.getDatabaseFile();
-    return _keyService.securityArtifactPaths(dbFile);
+    return _databasePathService.sidecarPaths();
   }
 
   Future<String?> selectDatabase(
@@ -484,6 +508,9 @@ class AppSessionController extends ChangeNotifier {
       await _loadBackupPreferences();
       await _persistOpenDatabaseState(markSessionClean: true);
       await _databasePathService.setDatabaseFilePath(databasePath);
+      await _refreshDatabasePath();
+      await _loadSecurityPreferences();
+      await _loadBackupPreferences();
       await _resolveCurrentDatabaseState();
       return null;
     } catch (error, stackTrace) {
@@ -567,10 +594,11 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<void> setWebDavPassword(String? password) async {
+    final dbFile = await _databasePathService.getDatabaseFile();
     if (password == null || password.isEmpty) {
-      await _keyService.clearWebDavPassword();
+      await _keyService.clearWebDavPassword(dbFile);
     } else {
-      await _keyService.setWebDavPassword(password);
+      await _keyService.setWebDavPassword(dbFile, password);
     }
   }
 
@@ -657,8 +685,9 @@ class AppSessionController extends ChangeNotifier {
     final effectiveUrl = url ?? _webDavUrl;
     if (effectiveUrl == null || effectiveUrl.isEmpty) return false;
     final effectiveUsername = username ?? _webDavUsername ?? '';
+    final dbFile = await _databasePathService.getDatabaseFile();
     final effectivePassword =
-        password ?? await _keyService.getWebDavPassword() ?? '';
+        password ?? await _keyService.getWebDavPassword(dbFile) ?? '';
     final client = webdav.newClient(
       effectiveUrl,
       user: effectiveUsername,
@@ -870,6 +899,7 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<void> _resolveCurrentDatabaseState() async {
+    await _refreshDatabasePath();
     final dbFile = await _databasePathService.getDatabaseFile();
     final hasSecuritySetup = await _keyService.hasSecuritySetup(dbFile);
     if (!hasSecuritySetup) {
@@ -884,6 +914,10 @@ class AppSessionController extends ChangeNotifier {
     _pendingRecoveryKey = null;
     _status = AppSessionStatus.locked;
     await _updatePendingAutoImportAvailability();
+  }
+
+  Future<void> _refreshDatabasePath() async {
+    _databasePath = await _databasePathService.getCurrentDatabasePath();
   }
 
   Future<void> _persistOpenDatabaseState({
@@ -1121,7 +1155,8 @@ class AppSessionController extends ChangeNotifier {
     final url = _webDavUrl;
     if (url == null || url.isEmpty) return null;
     final username = _webDavUsername ?? '';
-    final password = await _keyService.getWebDavPassword() ?? '';
+    final dbFile = await _databasePathService.getDatabaseFile();
+    final password = await _keyService.getWebDavPassword(dbFile) ?? '';
     return webdav.newClient(url, user: username, password: password);
   }
 
@@ -1148,6 +1183,7 @@ class AppSessionController extends ChangeNotifier {
       );
       if (persistDestinationPath) {
         await _databasePathService.setDatabaseFilePath(destinationPath);
+        await _refreshDatabasePath();
       }
       await _libraryBackupService.restoreBackupFromBytes(
         bytes: bytes,
@@ -1159,6 +1195,8 @@ class AppSessionController extends ChangeNotifier {
       await _libraryBackupPreferencesService.setLastImportedAt(importedAt);
       await _libraryBackupPreferencesService.setPendingImportDismissedAt(null);
 
+      await _loadSecurityPreferences();
+      await _loadBackupPreferences();
       await _resolveCurrentDatabaseState();
       _setBackupMessage('backup_restored');
       return null;

@@ -14,6 +14,7 @@ import 'package:classi/core/session/app_session_controller.dart';
 import 'package:classi/core/storage/database_path_service.dart';
 import 'package:classi/core/storage/library_backup_preferences_service.dart';
 import 'package:classi/core/storage/library_backup_service.dart';
+import 'package:classi/core/storage/project_settings_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -30,13 +31,18 @@ void main() {
     );
     backupService = LibraryBackupService();
     keyService = _TestKeyService();
+    final databasePathService = _TestDatabasePathService(
+      '${tempDirectory.path}/test.classi',
+    );
     controller = AppSessionController(
       keyService: keyService,
-      databasePathService: _TestDatabasePathService(
-        '${tempDirectory.path}/test.classi',
+      databasePathService: databasePathService,
+      securityPreferencesService: _securityPreferencesServiceFor(
+        databasePathService,
       ),
-      securityPreferencesService: SecurityPreferencesService(),
-      libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+      libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+        databasePathService,
+      ),
       libraryBackupService: backupService,
       biometricService: BiometricService(),
     );
@@ -119,13 +125,18 @@ void main() {
   test('lock keeps the database available until export finishes', () async {
     final delayingBackupService = _DelayingLibraryBackupService();
     controller.dispose();
+    final databasePathService = _TestDatabasePathService(
+      '${tempDirectory.path}/test.classi',
+    );
     controller = AppSessionController(
       keyService: keyService,
-      databasePathService: _TestDatabasePathService(
-        '${tempDirectory.path}/test.classi',
+      databasePathService: databasePathService,
+      securityPreferencesService: _securityPreferencesServiceFor(
+        databasePathService,
       ),
-      securityPreferencesService: SecurityPreferencesService(),
-      libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+      libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+        databasePathService,
+      ),
       libraryBackupService: delayingBackupService,
       biometricService: BiometricService(),
     );
@@ -161,13 +172,18 @@ void main() {
 
   test('lock switches to locked before database close completes', () async {
     controller.dispose();
+    final databasePathService = _TestDatabasePathService(
+      '${tempDirectory.path}/test.classi',
+    );
     final delayedCloseController = _CloseDelayingAppSessionController(
       keyService: keyService,
-      databasePathService: _TestDatabasePathService(
-        '${tempDirectory.path}/test.classi',
+      databasePathService: databasePathService,
+      securityPreferencesService: _securityPreferencesServiceFor(
+        databasePathService,
       ),
-      securityPreferencesService: SecurityPreferencesService(),
-      libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+      libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+        databasePathService,
+      ),
       libraryBackupService: backupService,
       biometricService: BiometricService(),
     );
@@ -196,13 +212,18 @@ void main() {
 
   test('unlock waits for pending post-lock cleanup', () async {
     controller.dispose();
+    final databasePathService = _TestDatabasePathService(
+      '${tempDirectory.path}/test.classi',
+    );
     final delayedCloseController = _CloseDelayingAppSessionController(
       keyService: keyService,
-      databasePathService: _TestDatabasePathService(
-        '${tempDirectory.path}/test.classi',
+      databasePathService: databasePathService,
+      securityPreferencesService: _securityPreferencesServiceFor(
+        databasePathService,
       ),
-      securityPreferencesService: SecurityPreferencesService(),
-      libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+      libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+        databasePathService,
+      ),
       libraryBackupService: backupService,
       biometricService: BiometricService(),
     );
@@ -257,13 +278,18 @@ void main() {
       );
       final restoreService = _RestoringLibraryBackupService(archiveBytes);
       controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/blank.classi',
+      );
       controller = _RestoringAppSessionController(
         keyService: keyService,
-        databasePathService: _TestDatabasePathService(
-          '${tempDirectory.path}/blank.classi',
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
         ),
-        securityPreferencesService: SecurityPreferencesService(),
-        libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
         libraryBackupService: restoreService,
         biometricService: BiometricService(),
       );
@@ -349,13 +375,18 @@ void main() {
         remoteModifiedAt: DateTime.utc(2026, 5, 7, 8, 1),
       );
       controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
       controller = _WebDavAppSessionController(
         keyService: keyService,
-        databasePathService: _TestDatabasePathService(
-          '${tempDirectory.path}/test.classi',
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
         ),
-        securityPreferencesService: SecurityPreferencesService(),
-        libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
         libraryBackupService: exportService,
         biometricService: BiometricService(),
       );
@@ -370,13 +401,18 @@ void main() {
       expect(controller.hasPendingAutoImport, isFalse);
 
       controller.dispose();
+      final reloadedPathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
       controller = _WebDavAppSessionController(
         keyService: keyService,
-        databasePathService: _TestDatabasePathService(
-          '${tempDirectory.path}/test.classi',
+        databasePathService: reloadedPathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          reloadedPathService,
         ),
-        securityPreferencesService: SecurityPreferencesService(),
-        libraryBackupPreferencesService: LibraryBackupPreferencesService(),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          reloadedPathService,
+        ),
         libraryBackupService: exportService,
         biometricService: BiometricService(),
       );
@@ -409,7 +445,27 @@ class _TestDatabasePathService extends DatabasePathService {
 
 class _TestKeyService extends KeyService {
   @override
-  Future<String?> getWebDavPassword() async => '';
+  Future<String?> getWebDavPassword(File dbFile) async => '';
+}
+
+SecurityPreferencesService _securityPreferencesServiceFor(
+  DatabasePathService databasePathService,
+) {
+  return SecurityPreferencesService(
+    projectSettingsStore: ProjectSettingsStore(
+      databasePathService: databasePathService,
+    ),
+  );
+}
+
+LibraryBackupPreferencesService _libraryBackupPreferencesServiceFor(
+  DatabasePathService databasePathService,
+) {
+  return LibraryBackupPreferencesService(
+    projectSettingsStore: ProjectSettingsStore(
+      databasePathService: databasePathService,
+    ),
+  );
 }
 
 class _DelayingLibraryBackupService extends LibraryBackupService {

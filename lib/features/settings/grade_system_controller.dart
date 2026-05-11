@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/storage/project_settings_store.dart';
 import '../../shared/utils/formatting.dart';
 
 class GradeSystemDefinition {
@@ -77,6 +78,12 @@ class GradeSystemDefinition {
 
 class GradeSystemController extends ChangeNotifier {
   static const _storageKey = 'grade-systems-json';
+  static const _storagePath = ['grades', 'systems'];
+
+  GradeSystemController({ProjectSettingsStore? projectSettingsStore})
+    : _projectSettingsStore = projectSettingsStore ?? ProjectSettingsStore();
+
+  final ProjectSettingsStore _projectSettingsStore;
 
   List<GradeSystemDefinition> _systems = const [];
   bool _initialized = false;
@@ -85,20 +92,38 @@ class GradeSystemController extends ChangeNotifier {
   bool get initialized => _initialized;
 
   Future<void> initialize() async {
-    final preferences = await SharedPreferences.getInstance();
-    final storedJson = preferences.getString(_storageKey);
+    final settings = await _projectSettingsStore.read();
+    final storedJson = _storedJsonFromProjectSettings(settings);
     if (storedJson == null || storedJson.trim().isEmpty) {
+      final preferences = await SharedPreferences.getInstance();
+      final legacyJson = preferences.getString(_storageKey);
+      if (legacyJson != null && legacyJson.trim().isNotEmpty) {
+        await _loadFromStoredJson(legacyJson);
+        if (await _projectSettingsStore.hasProjectContainer()) {
+          await preferences.remove(_storageKey);
+        }
+        return;
+      }
       _systems = _defaultSystems;
-      await _persist(preferences);
-      _initialized = true;
-      notifyListeners();
+      if (await _projectSettingsStore.hasProjectContainer()) {
+        await _persist();
+      } else {
+        _initialized = true;
+        notifyListeners();
+      }
       return;
     }
 
+    await _loadFromStoredJson(storedJson);
+  }
+
+  Future<void> _loadFromStoredJson(String storedJson) async {
     final decoded = jsonDecode(storedJson);
     if (decoded is! List) {
       _systems = _defaultSystems;
-      await _persist(preferences);
+      if (await _projectSettingsStore.hasProjectContainer()) {
+        await _persist();
+      }
       _initialized = true;
       notifyListeners();
       return;
@@ -113,8 +138,8 @@ class GradeSystemController extends ChangeNotifier {
     }
 
     _systems = parsed.isEmpty ? _defaultSystems : parsed;
-    if (parsed.isEmpty) {
-      await _persist(preferences);
+    if (parsed.isEmpty && await _projectSettingsStore.hasProjectContainer()) {
+      await _persist();
     }
     _initialized = true;
     notifyListeners();
@@ -182,13 +207,24 @@ class GradeSystemController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _persist([SharedPreferences? preferences]) async {
-    final resolvedPreferences =
-        preferences ?? await SharedPreferences.getInstance();
-    await resolvedPreferences.setString(
-      _storageKey,
-      jsonEncode([for (final system in _systems) system.toJson()]),
-    );
+  Future<void> _persist() async {
+    await _projectSettingsStore.update((settings) {
+      ProjectSettingsStore.setPath(settings, _storagePath, [
+        for (final system in _systems) system.toJson(),
+      ]);
+      return settings;
+    });
+
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_storageKey);
+  }
+
+  String? _storedJsonFromProjectSettings(Map<String, dynamic> settings) {
+    final storedList = ProjectSettingsStore.listAt(settings, _storagePath);
+    if (storedList == null) {
+      return null;
+    }
+    return jsonEncode(storedList);
   }
 
   List<GradeSystemDefinition> get _defaultSystems => const [

@@ -34,6 +34,9 @@ and portable across devices.
 Classi stores your library in a `.classi` folder that you choose during the
 first-run setup. The setup wizard always requires an explicit folder selection
 so your data is never silently placed inside an app-private directory.
+Library-specific settings such as grade systems, sorting, theme, lock, and
+WebDAV backup configuration are stored inside that `.classi` folder too, so
+they move with the project instead of being kept as global app preferences.
 
 **Recommended locations:**
 
