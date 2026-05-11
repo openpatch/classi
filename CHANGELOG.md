@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-05-11
+
+### Bug Fixes
+
+- *(settings)* Store settings in classi projects
+
+
 ## [1.6.2] - 2026-05-08
 
 ### Bug Fixes
