@@ -1,0 +1,5 @@
+Bug Fixes
+
+- Store settings in classi projects
+
+
