@@ -26,6 +26,7 @@ import '../session/app_session_controller.dart';
 import '../storage/database_path_service.dart';
 import '../storage/library_backup_preferences_service.dart';
 import '../storage/library_backup_service.dart';
+import '../storage/project_settings_store.dart';
 import '../update/app_update_controller.dart';
 
 final keyServiceProvider = Provider<KeyService>((ref) => KeyService());
@@ -34,13 +35,23 @@ final databasePathServiceProvider = Provider<DatabasePathService>(
   (ref) => DatabasePathService(),
 );
 
+final projectSettingsStoreProvider = Provider<ProjectSettingsStore>(
+  (ref) => ProjectSettingsStore(
+    databasePathService: ref.watch(databasePathServiceProvider),
+  ),
+);
+
 final securityPreferencesServiceProvider = Provider<SecurityPreferencesService>(
-  (ref) => SecurityPreferencesService(),
+  (ref) => SecurityPreferencesService(
+    projectSettingsStore: ref.watch(projectSettingsStoreProvider),
+  ),
 );
 
 final libraryBackupPreferencesServiceProvider =
     Provider<LibraryBackupPreferencesService>(
-      (ref) => LibraryBackupPreferencesService(),
+      (ref) => LibraryBackupPreferencesService(
+        projectSettingsStore: ref.watch(projectSettingsStoreProvider),
+      ),
     );
 
 final libraryBackupServiceProvider = Provider<LibraryBackupService>(
@@ -70,10 +81,21 @@ final appSessionProvider = ChangeNotifierProvider<AppSessionController>((ref) {
   return controller;
 });
 
+final selectedDatabasePathProvider = Provider<String?>(
+  (ref) => ref.watch(appSessionProvider).databasePath,
+);
+
 final studentSortControllerProvider =
     ChangeNotifierProvider<StudentSortController>((ref) {
-      final controller = StudentSortController();
+      final controller = StudentSortController(
+        projectSettingsStore: ref.watch(projectSettingsStoreProvider),
+      );
       unawaited(controller.initialize());
+      ref.listen<String?>(selectedDatabasePathProvider, (previous, next) {
+        if (previous != next) {
+          unawaited(controller.initialize());
+        }
+      });
       return controller;
     });
 
@@ -82,8 +104,15 @@ final studentSortFieldProvider = Provider<StudentSortField>(
 );
 
 final themeControllerProvider = ChangeNotifierProvider<ThemeController>((ref) {
-  final controller = ThemeController();
+  final controller = ThemeController(
+    projectSettingsStore: ref.watch(projectSettingsStoreProvider),
+  );
   unawaited(controller.initialize());
+  ref.listen<String?>(selectedDatabasePathProvider, (previous, next) {
+    if (previous != next) {
+      unawaited(controller.initialize());
+    }
+  });
   return controller;
 });
 
@@ -93,8 +122,15 @@ final themeModeProvider = Provider<ThemeMode>(
 
 final gradeSystemControllerProvider =
     ChangeNotifierProvider<GradeSystemController>((ref) {
-      final controller = GradeSystemController();
+      final controller = GradeSystemController(
+        projectSettingsStore: ref.watch(projectSettingsStoreProvider),
+      );
       unawaited(controller.initialize());
+      ref.listen<String?>(selectedDatabasePathProvider, (previous, next) {
+        if (previous != next) {
+          unawaited(controller.initialize());
+        }
+      });
       return controller;
     });
 

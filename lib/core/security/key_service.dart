@@ -42,10 +42,7 @@ class KeyService {
   /// Stores [passphrase] in secure storage so that a successful biometric
   /// authentication can retrieve it and unlock the database without re-typing.
   Future<void> saveBiometricPassphrase(File dbFile, String passphrase) =>
-      _storage.write(
-        key: _biometricPassphraseKey(dbFile),
-        value: passphrase,
-      );
+      _storage.write(key: _biometricPassphraseKey(dbFile), value: passphrase);
 
   /// Returns the passphrase previously saved for biometric unlock, or `null`
   /// when none has been stored.
@@ -56,19 +53,38 @@ class KeyService {
   Future<void> clearBiometricPassphrase(File dbFile) =>
       _storage.delete(key: _biometricPassphraseKey(dbFile));
 
-  static const String _webDavPasswordKey = 'backup.webdav_password';
+  static const String _legacyWebDavPasswordKey = 'backup.webdav_password';
 
-  /// Returns the stored WebDAV password, or `null` if none has been set.
-  Future<String?> getWebDavPassword() =>
-      _storage.read(key: _webDavPasswordKey);
+  String _webDavPasswordKey(File dbFile) =>
+      'backup.webdav_password.${dbFile.path}';
 
-  /// Stores the WebDAV password in secure storage.
-  Future<void> setWebDavPassword(String password) =>
-      _storage.write(key: _webDavPasswordKey, value: password);
+  /// Returns the stored WebDAV password for [dbFile], or `null` if none exists.
+  Future<String?> getWebDavPassword(File dbFile) async {
+    final scopedKey = _webDavPasswordKey(dbFile);
+    final scoped = await _storage.read(key: scopedKey);
+    if (scoped != null) {
+      return scoped;
+    }
 
-  /// Removes the stored WebDAV password.
-  Future<void> clearWebDavPassword() =>
-      _storage.delete(key: _webDavPasswordKey);
+    final legacy = await _storage.read(key: _legacyWebDavPasswordKey);
+    if (legacy != null) {
+      await _storage.write(key: scopedKey, value: legacy);
+      await _storage.delete(key: _legacyWebDavPasswordKey);
+    }
+    return legacy;
+  }
+
+  /// Stores the WebDAV password in secure storage for [dbFile].
+  Future<void> setWebDavPassword(File dbFile, String password) async {
+    await _storage.write(key: _webDavPasswordKey(dbFile), value: password);
+    await _storage.delete(key: _legacyWebDavPasswordKey);
+  }
+
+  /// Removes the stored WebDAV password for [dbFile].
+  Future<void> clearWebDavPassword(File dbFile) async {
+    await _storage.delete(key: _webDavPasswordKey(dbFile));
+    await _storage.delete(key: _legacyWebDavPasswordKey);
+  }
 
   Future<SecurityBootstrapResult> bootstrapSecurity({
     required File dbFile,

@@ -32,6 +32,7 @@ void main() {
       '/tmp/classi.classi/data.db',
       '/tmp/classi.classi/data.db-wal',
       '/tmp/classi.classi/data.db-shm',
+      '/tmp/classi.classi/data.db.settings.json',
       '/tmp/classi.classi/data.db.security.json',
       '/tmp/classi.classi/data.db.integrity.json',
     ]);

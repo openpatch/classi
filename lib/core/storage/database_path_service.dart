@@ -10,6 +10,7 @@ const String _databasePathPreferenceKey = 'db_file_path';
 const List<String> _sidecars = [
   '-wal',
   '-shm',
+  '.settings.json',
   '.security.json',
   '.integrity.json',
 ];
@@ -144,6 +145,9 @@ class DatabasePathService {
     }
     return path;
   }
+
+  static String projectSettingsPathFor(String path) =>
+      '${databaseFilePathFor(path)}.settings.json';
 
   static String containerParentPathFor(String path) {
     if (isPackagePath(path)) {

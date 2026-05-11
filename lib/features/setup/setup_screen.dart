@@ -131,9 +131,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
     try {
       final session = ref.read(appSessionProvider);
-      await _persistSetupPreferences(session);
-
       await session.setNewDatabasePath(_databasePath);
+      await _persistSetupPreferences(session);
       if (!mounted) return;
 
       await session.createDatabase(_passphraseController.text.trim());
@@ -163,6 +162,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
     try {
       final session = ref.read(appSessionProvider);
+      await session.setNewDatabasePath(_databasePath);
       // Only save the step-3 WebDAV form if the user filled it in, so that
       // credentials entered via the picker's credential sheet are preserved
       // across retries when the form is left empty.
