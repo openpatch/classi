@@ -16,8 +16,9 @@ const double _cellSize = 96.0;
 /// vertically.
 ///
 /// **Edit mode** (`editMode: true`): Tap a chip to select it (highlighted
-/// background). Then tap any empty cell to move the student there. Tap the
-/// selected chip again to deselect without moving.
+/// background). Then tap any cell to move the student there. Tapping another
+/// occupied cell swaps the two students. Edit mode also exposes one extra row
+/// and column on each side of the current layout.
 ///
 /// **View mode**: Tapping a chip invokes [onChipTap].
 class SeatingPlanGrid extends StatefulWidget {
@@ -70,16 +71,27 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
     if (!widget.editMode) _selectedStudentId = null;
   }
 
-  int get _rowCount {
-    if (widget.positions.isEmpty) return 2;
-    final maxRow = widget.positions.values.map((p) => p.row).reduce(max);
-    return maxRow + 2;
-  }
+  _GridBounds get _bounds {
+    if (widget.positions.isEmpty) {
+      return _GridBounds(
+        rowStart: widget.editMode ? -1 : 0,
+        rowEnd: widget.editMode ? 1 : 0,
+        colStart: widget.editMode ? -1 : 0,
+        colEnd: widget.columns - 1 + (widget.editMode ? 1 : 0),
+      );
+    }
 
-  int get _colCount {
-    if (widget.positions.isEmpty) return widget.columns + 1;
+    final minRow = widget.positions.values.map((p) => p.row).reduce(min);
+    final maxRow = widget.positions.values.map((p) => p.row).reduce(max);
+    final minCol = widget.positions.values.map((p) => p.col).reduce(min);
     final maxCol = widget.positions.values.map((p) => p.col).reduce(max);
-    return max(maxCol + 2, widget.columns + 1);
+
+    return _GridBounds(
+      rowStart: widget.editMode ? minRow - 1 : minRow,
+      rowEnd: widget.editMode ? maxRow + 1 : maxRow,
+      colStart: widget.editMode ? minCol - 1 : minCol,
+      colEnd: max(maxCol, widget.columns - 1) + (widget.editMode ? 1 : 0),
+    );
   }
 
   @override
@@ -97,8 +109,7 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
         .where((s) => !widget.positions.containsKey(s.id))
         .toList();
 
-    final rows = _rowCount;
-    final cols = _colCount;
+    final bounds = _bounds;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,14 +118,18 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SizedBox(
-            width: _cellSize * cols,
+            width: _cellSize * bounds.colCount,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (int row = 0; row < rows; row++)
+                for (int row = bounds.rowStart; row <= bounds.rowEnd; row++)
                   Row(
                     children: [
-                      for (int col = 0; col < cols; col++)
+                      for (
+                        int col = bounds.colStart;
+                        col <= bounds.colEnd;
+                        col++
+                      )
                         _buildCell(context, col, row, cellToStudent),
                     ],
                   ),
@@ -158,15 +173,23 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
     if (student != null) {
       final isSelected = student.id == _selectedStudentId;
       return _OccupiedCell(
+        key: ValueKey('seating-plan-cell-$col-$row'),
         student: student,
         isSelected: isSelected,
+        isSwapTarget:
+            widget.editMode &&
+            _selectedStudentId != null &&
+            _selectedStudentId != student.id,
         lessonOverlay: widget.lessonOverlayBuilder?.call(student),
         opacity: widget.lessonOpacityBuilder?.call(student) ?? 1,
         onTap: () {
           if (widget.editMode) {
-            setState(() {
-              _selectedStudentId = isSelected ? null : student.id;
-            });
+            if (_selectedStudentId != null && !isSelected) {
+              widget.onPositionChanged(_selectedStudentId!, col, row);
+              setState(() => _selectedStudentId = null);
+              return;
+            }
+            setState(() => _selectedStudentId = isSelected ? null : student.id);
           } else {
             widget.onChipTap?.call(student);
           }
@@ -175,6 +198,7 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
     }
 
     return _EmptyCell(
+      key: ValueKey('seating-plan-cell-$col-$row'),
       highlight: widget.editMode && _selectedStudentId != null,
       onTap: widget.editMode && _selectedStudentId != null
           ? () {
@@ -188,8 +212,10 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
 
 class _OccupiedCell extends StatelessWidget {
   const _OccupiedCell({
+    required super.key,
     required this.student,
     required this.isSelected,
+    required this.isSwapTarget,
     required this.onTap,
     required this.opacity,
     this.lessonOverlay,
@@ -197,6 +223,7 @@ class _OccupiedCell extends StatelessWidget {
 
   final Student student;
   final bool isSelected;
+  final bool isSwapTarget;
   final VoidCallback onTap;
   final double opacity;
   final Widget? lessonOverlay;
@@ -213,6 +240,9 @@ class _OccupiedCell extends StatelessWidget {
           color: isSelected
               ? Theme.of(context).colorScheme.primaryContainer
               : Colors.transparent,
+          border: isSwapTarget
+              ? Border.all(color: Theme.of(context).colorScheme.primary)
+              : null,
           borderRadius: BorderRadius.circular(AppRadii.medium),
         ),
         child: Center(
@@ -229,7 +259,7 @@ class _OccupiedCell extends StatelessWidget {
 }
 
 class _EmptyCell extends StatelessWidget {
-  const _EmptyCell({this.highlight = false, this.onTap});
+  const _EmptyCell({required super.key, this.highlight = false, this.onTap});
 
   final bool highlight;
   final VoidCallback? onTap;
@@ -265,4 +295,20 @@ class _EmptyCell extends StatelessWidget {
       ),
     );
   }
+}
+
+class _GridBounds {
+  const _GridBounds({
+    required this.rowStart,
+    required this.rowEnd,
+    required this.colStart,
+    required this.colEnd,
+  });
+
+  final int rowStart;
+  final int rowEnd;
+  final int colStart;
+  final int colEnd;
+
+  int get colCount => colEnd - colStart + 1;
 }

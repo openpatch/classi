@@ -187,192 +187,195 @@ class GroupDetailScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                if (archived && archivedDate != null)
-                  Card(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    child: ListTile(
-                      leading: const Icon(Icons.archive_outlined),
-                      title: Text(
-                        'archived_banner'.tr(namedArgs: {'date': archivedDate}),
-                      ),
-                      onTap: () => ref
-                          .read(groupRepositoryProvider)
-                          .unarchiveGroup(group.id),
-                    ),
-                  ),
-                Card(
-                  child: Padding(
-                    padding: appCardPadding,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 10,
-                              backgroundColor: groupColor.withValues(
-                                alpha: 0.18,
-                              ),
-                              child: CircleAvatar(
-                                radius: 5,
-                                backgroundColor: groupColor,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                group.name,
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.headlineSmall,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.medium),
-                        Wrap(
-                          spacing: AppSpacing.small,
-                          runSpacing: AppSpacing.small,
-                          children: [
-                            Chip(
-                              avatar: const Icon(
-                                Icons.people_outline,
-                                size: 18,
-                              ),
-                              label: Text(
-                                '${students.length} ${'students'.tr()}',
-                              ),
-                            ),
-                            Chip(
-                              avatar: const Icon(
-                                Icons.category_outlined,
-                                size: 18,
-                              ),
-                              label: Text(
-                                '${categories.length} ${'grade_categories'.tr()}',
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.small),
-                        ExpansionTile(
-                          tilePadding: EdgeInsets.zero,
-                          title: Text('grades'.tr()),
-                          childrenPadding: const EdgeInsets.only(
-                            bottom: AppSpacing.small,
+                  if (archived && archivedDate != null)
+                    Card(
+                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      child: ListTile(
+                        leading: const Icon(Icons.archive_outlined),
+                        title: Text(
+                          'archived_banner'.tr(
+                            namedArgs: {'date': archivedDate},
                           ),
-                          children: [
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Wrap(
-                                spacing: AppSpacing.small,
-                                runSpacing: AppSpacing.small,
-                                children: [
-                                  for (final grade in parseGradeScale(
-                                    group.gradeScaleJson,
-                                  ))
-                                    Chip(label: Text(grade)),
-                                ],
+                        ),
+                        onTap: () => ref
+                            .read(groupRepositoryProvider)
+                            .unarchiveGroup(group.id),
+                      ),
+                    ),
+                  Card(
+                    child: Padding(
+                      padding: appCardPadding,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 10,
+                                backgroundColor: groupColor.withValues(
+                                  alpha: 0.18,
+                                ),
+                                child: CircleAvatar(
+                                  radius: 5,
+                                  backgroundColor: groupColor,
+                                ),
                               ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  group.name,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.medium),
+                          Wrap(
+                            spacing: AppSpacing.small,
+                            runSpacing: AppSpacing.small,
+                            children: [
+                              Chip(
+                                avatar: const Icon(
+                                  Icons.people_outline,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  '${students.length} ${'students'.tr()}',
+                                ),
+                              ),
+                              Chip(
+                                avatar: const Icon(
+                                  Icons.category_outlined,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  '${categories.length} ${'grade_categories'.tr()}',
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.small),
+                          ExpansionTile(
+                            tilePadding: EdgeInsets.zero,
+                            title: Text('grades'.tr()),
+                            childrenPadding: const EdgeInsets.only(
+                              bottom: AppSpacing.small,
                             ),
-                            const SizedBox(height: AppSpacing.medium),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Wrap(
-                                spacing: AppSpacing.small,
-                                runSpacing: AppSpacing.small,
-                                children: [
-                                  for (final category in categories)
-                                    Chip(
-                                      avatar: CircleAvatar(
-                                        radius: 8,
-                                        backgroundColor: colorForCategory(
-                                          category,
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Wrap(
+                                  spacing: AppSpacing.small,
+                                  runSpacing: AppSpacing.small,
+                                  children: [
+                                    for (final grade in parseGradeScale(
+                                      group.gradeScaleJson,
+                                    ))
+                                      Chip(label: Text(grade)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.medium),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Wrap(
+                                  spacing: AppSpacing.small,
+                                  runSpacing: AppSpacing.small,
+                                  children: [
+                                    for (final category in categories)
+                                      Chip(
+                                        avatar: CircleAvatar(
+                                          radius: 8,
+                                          backgroundColor: colorForCategory(
+                                            category,
+                                          ),
+                                        ),
+                                        label: Text(
+                                          '${category.name} (${formatNumber(category.weight)})',
                                         ),
                                       ),
-                                      label: Text(
-                                        '${category.name} (${formatNumber(category.weight)})',
-                                      ),
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.large),
-                _LessonCalendarCard(
-                  groupId: group.id,
-                  groupColor: groupColor,
-                  categories: categories,
-                ),
-                const SizedBox(height: AppSpacing.large),
-                studentsValue.when(
-                  data: (loadedStudents) => _StudentsSection(
-                    students: loadedStudents,
-                    sortField: sortField,
-                    gradeScaleEntries: gradeScaleEntries,
-                    categories: categories,
-                    averagesValue: averagesValue,
-                    categoryAveragesValue: categoryAveragesValue,
+                  const SizedBox(height: AppSpacing.large),
+                  _LessonCalendarCard(
                     groupId: group.id,
-                    onAddStudent: archived
-                        ? null
-                        : () => _addStudent(context, ref, group.id),
-                    onBatchCreateStudents: archived
-                        ? null
-                        : () => _batchCreateStudents(context, ref, group.id),
-                    onImportStudents: archived
-                        ? null
-                        : () => _importWebUntisStudents(context, ref, group.id),
+                    groupColor: groupColor,
+                    categories: categories,
                   ),
-                  error: (error, _) => const AppErrorText(),
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                ),
-                const SizedBox(height: AppSpacing.large),
-                _GroupListsCard(
-                  groupId: group.id,
-                  activeListsValue: listsValue,
-                  archivedListsValue: archivedListsValue,
-                  progress:
-                      listProgressValue.value ?? const <int, ListProgress>{},
-                  onAddList: archived
-                      ? null
-                      : () => _createList(context, ref, group),
-                  onEditList: (list) => _editList(context, ref, list),
-                  onArchiveList: (list) =>
-                      ref.read(listRepositoryProvider).archiveList(list.id),
-                  onUnarchiveList: (list) =>
-                      ref.read(listRepositoryProvider).unarchiveList(list.id),
-                  onDeleteList: (list) => _deleteList(context, ref, list),
-                  onDeleteListDirect: (list) =>
-                      ref.read(listRepositoryProvider).deleteList(list.id),
-                ),
-                const SizedBox(height: AppSpacing.large),
-                _GroupNotesCard(
-                  activeNotesValue: notesValue,
-                  archivedNotesValue: archivedNotesValue,
-                  students: students,
-                  onEditNote: (note) =>
-                      _editNote(context, ref, group, students, note),
-                  onToggleNote: (note) => ref
-                      .read(noteRepositoryProvider)
-                      .toggleTodo(note, !note.todoDone),
-                  onArchiveNote: (note) =>
-                      ref.read(noteRepositoryProvider).archiveNote(note.id),
-                  onUnarchiveNote: (note) =>
-                      ref.read(noteRepositoryProvider).unarchiveNote(note.id),
-                  onDeleteNote: (note) => _deleteNote(context, ref, note),
-                  onDeleteNoteDirect: (note) =>
-                      ref.read(noteRepositoryProvider).deleteNote(note.id),
-                  onAddNote: archived
-                      ? null
-                      : () => _addGroupNote(context, ref, group, students),
-                ),
+                  const SizedBox(height: AppSpacing.large),
+                  studentsValue.when(
+                    data: (loadedStudents) => _StudentsSection(
+                      students: loadedStudents,
+                      sortField: sortField,
+                      gradeScaleEntries: gradeScaleEntries,
+                      categories: categories,
+                      averagesValue: averagesValue,
+                      categoryAveragesValue: categoryAveragesValue,
+                      groupId: group.id,
+                      onAddStudent: archived
+                          ? null
+                          : () => _addStudent(context, ref, group.id),
+                      onBatchCreateStudents: archived
+                          ? null
+                          : () => _batchCreateStudents(context, ref, group.id),
+                      onImportStudents: archived
+                          ? null
+                          : () =>
+                                _importWebUntisStudents(context, ref, group.id),
+                    ),
+                    error: (error, _) => const AppErrorText(),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                  ),
+                  const SizedBox(height: AppSpacing.large),
+                  _GroupListsCard(
+                    groupId: group.id,
+                    activeListsValue: listsValue,
+                    archivedListsValue: archivedListsValue,
+                    progress:
+                        listProgressValue.value ?? const <int, ListProgress>{},
+                    onAddList: archived
+                        ? null
+                        : () => _createList(context, ref, group),
+                    onEditList: (list) => _editList(context, ref, list),
+                    onArchiveList: (list) =>
+                        ref.read(listRepositoryProvider).archiveList(list.id),
+                    onUnarchiveList: (list) =>
+                        ref.read(listRepositoryProvider).unarchiveList(list.id),
+                    onDeleteList: (list) => _deleteList(context, ref, list),
+                    onDeleteListDirect: (list) =>
+                        ref.read(listRepositoryProvider).deleteList(list.id),
+                  ),
+                  const SizedBox(height: AppSpacing.large),
+                  _GroupNotesCard(
+                    activeNotesValue: notesValue,
+                    archivedNotesValue: archivedNotesValue,
+                    students: students,
+                    onEditNote: (note) =>
+                        _editNote(context, ref, group, students, note),
+                    onToggleNote: (note) => ref
+                        .read(noteRepositoryProvider)
+                        .toggleTodo(note, !note.todoDone),
+                    onArchiveNote: (note) =>
+                        ref.read(noteRepositoryProvider).archiveNote(note.id),
+                    onUnarchiveNote: (note) =>
+                        ref.read(noteRepositoryProvider).unarchiveNote(note.id),
+                    onDeleteNote: (note) => _deleteNote(context, ref, note),
+                    onDeleteNoteDirect: (note) =>
+                        ref.read(noteRepositoryProvider).deleteNote(note.id),
+                    onAddNote: archived
+                        ? null
+                        : () => _addGroupNote(context, ref, group, students),
+                  ),
                 ],
               ),
             ),
@@ -1667,7 +1670,8 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
   Widget build(BuildContext context) {
     final averages = widget.averagesValue.value ?? const <int, double>{};
     final categoryAverages =
-        widget.categoryAveragesValue.value ?? const <int, Map<String, double>>{};
+        widget.categoryAveragesValue.value ??
+        const <int, Map<String, double>>{};
 
     return Card(
       child: Padding(
@@ -1754,8 +1758,7 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                           bottom: AppSpacing.small,
                         ),
                         child: SurfaceListTile(
-                          onTap: () =>
-                              context.push('/students/${student.id}'),
+                          onTap: () => context.push('/students/${student.id}'),
                           leading: StudentAvatar(student: student),
                           title: Text(
                             studentDisplayName(
@@ -1765,12 +1768,10 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                             ),
                           ),
                           subtitle:
-                              student.originNote == null &&
-                                  perCategory.isEmpty
+                              student.originNote == null && perCategory.isEmpty
                               ? null
                               : Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     if (student.originNote != null)
@@ -1801,10 +1802,8 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                           trailing: average == null
                               ? null
                               : Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
                                       'average'.tr(),
@@ -1843,9 +1842,7 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                           icon: Icon(
                             _editMode ? Icons.check : Icons.edit_outlined,
                           ),
-                          tooltip: _editMode
-                              ? 'done'.tr()
-                              : 'edit_layout'.tr(),
+                          tooltip: _editMode ? 'done'.tr() : 'edit_layout'.tr(),
                           visualDensity: VisualDensity.compact,
                           onPressed: () =>
                               setState(() => _editMode = !_editMode),
@@ -1915,12 +1912,14 @@ class _SeatingPlanView extends ConsumerWidget {
         editMode: editMode,
         onChipTap: onChipTap,
         onPositionChanged: (studentId, col, row) {
-          ref.read(seatingPlanRepositoryProvider).upsertPosition(
-            planId: plan.id,
-            studentId: studentId,
-            col: col,
-            row: row,
-          );
+          ref
+              .read(seatingPlanRepositoryProvider)
+              .moveStudent(
+                planId: plan.id,
+                studentId: studentId,
+                col: col,
+                row: row,
+              );
         },
       ),
     );
