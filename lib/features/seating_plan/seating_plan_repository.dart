@@ -22,24 +22,27 @@ class SeatingPlanRepository {
     required String name,
     int columns = 6,
   }) {
-    return _database.into(_database.seatingPlansTable).insert(
-      SeatingPlansTableCompanion.insert(
-        groupId: groupId,
-        name: name,
-        columns: Value(columns),
-      ),
-    );
-  }
-
-  Future<void> updatePlan(int id, {required String name, required int columns}) {
-    return (_database.update(_database.seatingPlansTable)
-          ..where((t) => t.id.equals(id)))
-        .write(
-          SeatingPlansTableCompanion(
-            name: Value(name),
+    return _database
+        .into(_database.seatingPlansTable)
+        .insert(
+          SeatingPlansTableCompanion.insert(
+            groupId: groupId,
+            name: name,
             columns: Value(columns),
           ),
         );
+  }
+
+  Future<void> updatePlan(
+    int id, {
+    required String name,
+    required int columns,
+  }) {
+    return (_database.update(
+      _database.seatingPlansTable,
+    )..where((t) => t.id.equals(id))).write(
+      SeatingPlansTableCompanion(name: Value(name), columns: Value(columns)),
+    );
   }
 
   /// Marks [planId] as the default for [groupId] and clears any other default.
@@ -64,9 +67,9 @@ class SeatingPlanRepository {
   }
 
   Future<void> deletePlan(int id) {
-    return (_database.delete(_database.seatingPlansTable)
-          ..where((t) => t.id.equals(id)))
-        .go();
+    return (_database.delete(
+      _database.seatingPlansTable,
+    )..where((t) => t.id.equals(id))).go();
   }
 
   // ── Positions ──────────────────────────────────────────────────────────────
@@ -75,15 +78,14 @@ class SeatingPlanRepository {
   ///
   /// Returns a map from studentId → (col, row) grid position.
   Stream<Map<int, ({int col, int row})>> watchPositionsForPlan(int planId) {
-    return (_database.select(_database.seatingPlanPositionsTable)
-          ..where((t) => t.seatingPlanId.equals(planId)))
-        .watch()
-        .map(
-          (rows) => {
-            for (final row in rows)
-              row.studentId: (col: row.colIndex, row: row.rowIndex),
-          },
-        );
+    return (_database.select(
+      _database.seatingPlanPositionsTable,
+    )..where((t) => t.seatingPlanId.equals(planId))).watch().map(
+      (rows) => {
+        for (final row in rows)
+          row.studentId: (col: row.colIndex, row: row.rowIndex),
+      },
+    );
   }
 
   /// Saves the grid position of a single student in a plan.
@@ -93,24 +95,88 @@ class SeatingPlanRepository {
     required int col,
     required int row,
   }) {
-    return _database.into(_database.seatingPlanPositionsTable).insert(
-      SeatingPlanPositionsTableCompanion.insert(
-        seatingPlanId: planId,
-        studentId: studentId,
-        colIndex: Value(col),
-        rowIndex: Value(row),
-      ),
-      onConflict: DoUpdate(
-        (_) => SeatingPlanPositionsTableCompanion(
+    return _database
+        .into(_database.seatingPlanPositionsTable)
+        .insert(
+          SeatingPlanPositionsTableCompanion.insert(
+            seatingPlanId: planId,
+            studentId: studentId,
+            colIndex: Value(col),
+            rowIndex: Value(row),
+          ),
+          onConflict: DoUpdate(
+            (_) => SeatingPlanPositionsTableCompanion(
+              colIndex: Value(col),
+              rowIndex: Value(row),
+            ),
+            target: [
+              _database.seatingPlanPositionsTable.seatingPlanId,
+              _database.seatingPlanPositionsTable.studentId,
+            ],
+          ),
+        );
+  }
+
+  /// Moves [studentId] to `[col, row]` within [planId].
+  ///
+  /// If another student already occupies the target cell, both students swap
+  /// positions.
+  Future<void> moveStudent({
+    required int planId,
+    required int studentId,
+    required int col,
+    required int row,
+  }) {
+    return _database.transaction(() async {
+      final source =
+          await (_database.select(_database.seatingPlanPositionsTable)..where(
+                (t) =>
+                    t.seatingPlanId.equals(planId) &
+                    t.studentId.equals(studentId),
+              ))
+              .getSingleOrNull();
+
+      if (source == null) {
+        await upsertPosition(
+          planId: planId,
+          studentId: studentId,
+          col: col,
+          row: row,
+        );
+        return;
+      }
+
+      if (source.colIndex == col && source.rowIndex == row) return;
+
+      final target =
+          await (_database.select(_database.seatingPlanPositionsTable)..where(
+                (t) =>
+                    t.seatingPlanId.equals(planId) &
+                    t.colIndex.equals(col) &
+                    t.rowIndex.equals(row),
+              ))
+              .getSingleOrNull();
+
+      if (target != null && target.studentId != studentId) {
+        await (_database.update(
+          _database.seatingPlanPositionsTable,
+        )..where((t) => t.id.equals(target.id))).write(
+          SeatingPlanPositionsTableCompanion(
+            colIndex: Value(source.colIndex),
+            rowIndex: Value(source.rowIndex),
+          ),
+        );
+      }
+
+      await (_database.update(
+        _database.seatingPlanPositionsTable,
+      )..where((t) => t.id.equals(source.id))).write(
+        SeatingPlanPositionsTableCompanion(
           colIndex: Value(col),
           rowIndex: Value(row),
         ),
-        target: [
-          _database.seatingPlanPositionsTable.seatingPlanId,
-          _database.seatingPlanPositionsTable.studentId,
-        ],
-      ),
-    );
+      );
+    });
   }
 
   /// Ensures every student in [students] has a position row for [planId].
