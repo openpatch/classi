@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.1] - 2026-05-12
+
+### Bug Fixes
+
+- *(seating-plan)* Improve edit mode moves
+
+
 ## [1.7.0] - 2026-05-11
 
 ### Bug Fixes
