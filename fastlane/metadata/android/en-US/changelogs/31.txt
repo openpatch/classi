@@ -1,0 +1,5 @@
+Features
+
+- Enhance seating plan lesson actions
+
+
