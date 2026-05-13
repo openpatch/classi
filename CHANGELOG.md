@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2026-05-13
+
+### Features
+
+- *(lesson)* Enhance seating plan lesson actions
+
+
 ## [1.7.1] - 2026-05-12
 
 ### Bug Fixes
