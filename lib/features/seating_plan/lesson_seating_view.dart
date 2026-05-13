@@ -7,6 +7,7 @@ import '../../core/providers/app_providers.dart';
 import '../../shared/theme/app_ui.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/student_avatar.dart';
+import '../lessons/lesson_widgets.dart';
 import '../seating_plan/seating_plan_grid.dart';
 import '../seating_plan/seating_plan_selector_sheet.dart';
 
@@ -20,6 +21,8 @@ class LessonSeatingView extends ConsumerStatefulWidget {
     required this.students,
     required this.absentStudents,
     required this.excusedStudents,
+    required this.materialSelections,
+    required this.homeworkSelections,
     required this.gradeSelections,
     required this.noteCountsByStudent,
     required this.onSetAbsent,
@@ -38,6 +41,8 @@ class LessonSeatingView extends ConsumerStatefulWidget {
   final List<Student> students;
   final Set<int> absentStudents;
   final Set<int> excusedStudents;
+  final Map<int, bool> materialSelections;
+  final Map<int, bool> homeworkSelections;
   final Map<int, String> gradeSelections;
   final Map<int, int> noteCountsByStudent;
   final ValueChanged<Student> onSetAbsent;
@@ -117,6 +122,8 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
         student: student,
         absent: widget.absentStudents.contains(student.id),
         excused: widget.excusedStudents.contains(student.id),
+        materialValue: widget.materialSelections[student.id],
+        homeworkValue: widget.homeworkSelections[student.id],
         grade: widget.gradeSelections[student.id],
         noteCount: widget.noteCountsByStudent[student.id] ?? 0,
         onSetAbsent: () {
@@ -128,6 +135,8 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
           widget.onSetPresent(student);
         },
         onToggleExcused: (excused) => widget.onToggleExcused(student, excused),
+        onMaterialChanged: (value) => widget.onMaterialChanged(student, value),
+        onHomeworkChanged: (value) => widget.onHomeworkChanged(student, value),
         onPickGrade: () {
           Navigator.of(ctx).pop();
           widget.onPickGrade(student);
@@ -150,9 +159,14 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
 
   Widget? _buildOverlay(Student student) {
     final absent = widget.absentStudents.contains(student.id);
+    final noteCount = widget.noteCountsByStudent[student.id] ?? 0;
+    final materialValue = widget.materialSelections[student.id];
+    final homeworkValue = widget.homeworkSelections[student.id];
     final grade = widget.gradeSelections[student.id];
+    final hasIndicators =
+        noteCount > 0 || materialValue != null || homeworkValue != null;
 
-    if (!absent && grade == null) return null;
+    if (!absent && grade == null && !hasIndicators) return null;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -185,8 +199,45 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
               ),
             ),
           ),
+        if (noteCount > 0)
+          Positioned(
+            left: -4,
+            top: -4,
+            child: _LessonOverlayIconBadge(
+              icon: Icons.sticky_note_2_outlined,
+              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+              foregroundColor: Theme.of(
+                context,
+              ).colorScheme.onSecondaryContainer,
+            ),
+          ),
+        if (materialValue != null)
+          Positioned(
+            left: -4,
+            bottom: -4,
+            child: _LessonOverlayIconBadge(
+              icon: Icons.backpack_outlined,
+              backgroundColor: _statusColor(materialValue),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        if (homeworkValue != null)
+          Positioned(
+            right: -4,
+            bottom: -4,
+            child: _LessonOverlayIconBadge(
+              icon: Icons.fact_check_outlined,
+              backgroundColor: _statusColor(homeworkValue),
+              foregroundColor: Colors.white,
+            ),
+          ),
       ],
     );
+  }
+
+  Color _statusColor(bool value) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return value ? colorScheme.primary : colorScheme.error;
   }
 
   @override
@@ -270,6 +321,39 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
   }
 }
 
+class _LessonOverlayIconBadge extends StatelessWidget {
+  const _LessonOverlayIconBadge({
+    required this.icon,
+    required this.backgroundColor,
+    required this.foregroundColor,
+  });
+
+  final IconData icon;
+  final Color backgroundColor;
+  final Color foregroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: Icon(icon, size: 10, color: foregroundColor),
+      ),
+    );
+  }
+}
+
 class _SeatingCanvas extends ConsumerWidget {
   const _SeatingCanvas({
     required this.plan,
@@ -312,16 +396,20 @@ class _SeatingCanvas extends ConsumerWidget {
 }
 
 /// A bottom sheet with all per-student lesson actions.
-class _StudentActionSheet extends ConsumerWidget {
+class _StudentActionSheet extends ConsumerStatefulWidget {
   const _StudentActionSheet({
     required this.student,
     required this.absent,
     required this.excused,
+    required this.materialValue,
+    required this.homeworkValue,
     required this.grade,
     required this.noteCount,
     required this.onSetAbsent,
     required this.onSetPresent,
     required this.onToggleExcused,
+    required this.onMaterialChanged,
+    required this.onHomeworkChanged,
     required this.onPickGrade,
     required this.onOpenNotes,
     required this.onAddQuickNote,
@@ -331,18 +419,54 @@ class _StudentActionSheet extends ConsumerWidget {
   final Student student;
   final bool absent;
   final bool excused;
+  final bool? materialValue;
+  final bool? homeworkValue;
   final String? grade;
   final int noteCount;
   final VoidCallback onSetAbsent;
   final VoidCallback onSetPresent;
   final ValueChanged<bool> onToggleExcused;
+  final ValueChanged<bool?> onMaterialChanged;
+  final ValueChanged<bool?> onHomeworkChanged;
   final VoidCallback onPickGrade;
   final VoidCallback onOpenNotes;
   final VoidCallback onAddQuickNote;
   final VoidCallback onOpenStudent;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_StudentActionSheet> createState() =>
+      _StudentActionSheetState();
+}
+
+class _StudentActionSheetState extends ConsumerState<_StudentActionSheet> {
+  late bool _excused;
+  late bool? _materialValue;
+  late bool? _homeworkValue;
+
+  @override
+  void initState() {
+    super.initState();
+    _excused = widget.excused;
+    _materialValue = widget.materialValue;
+    _homeworkValue = widget.homeworkValue;
+  }
+
+  @override
+  void didUpdateWidget(covariant _StudentActionSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.excused != widget.excused) {
+      _excused = widget.excused;
+    }
+    if (oldWidget.materialValue != widget.materialValue) {
+      _materialValue = widget.materialValue;
+    }
+    if (oldWidget.homeworkValue != widget.homeworkValue) {
+      _homeworkValue = widget.homeworkValue;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final sortField = ref.watch(studentSortFieldProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -359,13 +483,13 @@ class _StudentActionSheet extends ConsumerWidget {
         children: [
           Row(
             children: [
-              StudentAvatar(student: student, size: 40),
+              StudentAvatar(student: widget.student, size: 40),
               const SizedBox(width: AppSpacing.medium),
               Expanded(
                 child: Text(
                   studentDisplayName(
-                    firstName: student.firstName,
-                    lastName: student.lastName,
+                    firstName: widget.student.firstName,
+                    lastName: widget.student.lastName,
                     sortField: sortField,
                   ),
                   style: Theme.of(context).textTheme.titleLarge,
@@ -374,7 +498,7 @@ class _StudentActionSheet extends ConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.open_in_new_outlined),
                 tooltip: 'open_student'.tr(),
-                onPressed: onOpenStudent,
+                onPressed: widget.onOpenStudent,
               ),
             ],
           ),
@@ -386,30 +510,35 @@ class _StudentActionSheet extends ConsumerWidget {
             children: [
               Expanded(
                 child: FilledButton.tonalIcon(
-                  onPressed: absent ? onSetPresent : onSetAbsent,
+                  onPressed: widget.absent
+                      ? widget.onSetPresent
+                      : widget.onSetAbsent,
                   icon: Icon(
-                    absent
+                    widget.absent
                         ? Icons.check_circle_outline
                         : Icons.person_off_outlined,
                   ),
-                  label: Text(absent ? 'present'.tr() : 'absent'.tr()),
+                  label: Text(widget.absent ? 'present'.tr() : 'absent'.tr()),
                   style: FilledButton.styleFrom(
-                    backgroundColor: absent
+                    backgroundColor: widget.absent
                         ? colorScheme.primaryContainer
                         : colorScheme.errorContainer,
-                    foregroundColor: absent
+                    foregroundColor: widget.absent
                         ? colorScheme.onPrimaryContainer
                         : colorScheme.onErrorContainer,
                   ),
                 ),
               ),
-              if (absent) ...[
+              if (widget.absent) ...[
                 const SizedBox(width: AppSpacing.medium),
                 Expanded(
                   child: FilterChip(
                     label: Text('excused'.tr()),
-                    selected: excused,
-                    onSelected: onToggleExcused,
+                    selected: _excused,
+                    onSelected: (value) {
+                      setState(() => _excused = value);
+                      widget.onToggleExcused(value);
+                    },
                   ),
                 ),
               ],
@@ -421,21 +550,50 @@ class _StudentActionSheet extends ConsumerWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: onPickGrade,
+                  onPressed: widget.onPickGrade,
                   icon: const Icon(Icons.edit_note_outlined),
-                  label: Text(grade ?? 'grade'.tr()),
+                  label: Text(widget.grade ?? 'grade'.tr()),
                 ),
               ),
               const SizedBox(width: AppSpacing.medium),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: onOpenNotes,
+                  onPressed: widget.onOpenNotes,
                   icon: const Icon(Icons.sticky_note_2_outlined),
                   label: Text(
-                    noteCount > 0
-                        ? '${'notes'.tr()} ($noteCount)'
+                    widget.noteCount > 0
+                        ? '${'notes'.tr()} (${widget.noteCount})'
                         : 'add_note'.tr(),
                   ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.large),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: LessonTriStateField(
+                  label: 'material'.tr(),
+                  value: _materialValue,
+                  enabled: !widget.absent,
+                  onChanged: (value) {
+                    setState(() => _materialValue = value);
+                    widget.onMaterialChanged(value);
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.medium),
+              Expanded(
+                child: LessonTriStateField(
+                  label: 'homework'.tr(),
+                  value: _homeworkValue,
+                  enabled: !widget.absent,
+                  onChanged: (value) {
+                    setState(() => _homeworkValue = value);
+                    widget.onHomeworkChanged(value);
+                  },
                 ),
               ),
             ],

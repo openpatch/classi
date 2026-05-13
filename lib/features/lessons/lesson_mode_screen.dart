@@ -242,8 +242,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                     const SizedBox(height: AppSpacing.large),
                     _LessonViewToggle(
                       viewMode: _viewMode,
-                      onChanged: (mode) =>
-                          setState(() => _viewMode = mode),
+                      onChanged: (mode) => setState(() => _viewMode = mode),
                     ),
                     const SizedBox(height: AppSpacing.medium),
                     if (_viewMode == _LessonViewMode.list)
@@ -267,14 +266,14 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         ),
                         onMaterialChanged: (student, value) =>
                             _setMaterialValue(
-                          studentId: student.id,
-                          value: value,
-                        ),
+                              studentId: student.id,
+                              value: value,
+                            ),
                         onHomeworkChanged: (student, value) =>
                             _setHomeworkValue(
-                          studentId: student.id,
-                          value: value,
-                        ),
+                              studentId: student.id,
+                              value: value,
+                            ),
                         onPickGrade: (student) => _pickGrade(
                           studentId: student.id,
                           category: selectedCategory,
@@ -301,6 +300,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         students: students,
                         absentStudents: absentStudents,
                         excusedStudents: excusedStudents,
+                        materialSelections: materialSelections,
+                        homeworkSelections: homeworkSelections,
                         gradeSelections: gradeSelections,
                         noteCountsByStudent: noteCountsByStudent,
                         onSetAbsent: (student) =>
@@ -313,14 +314,14 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         ),
                         onMaterialChanged: (student, value) =>
                             _setMaterialValue(
-                          studentId: student.id,
-                          value: value,
-                        ),
+                              studentId: student.id,
+                              value: value,
+                            ),
                         onHomeworkChanged: (student, value) =>
                             _setHomeworkValue(
-                          studentId: student.id,
-                          value: value,
-                        ),
+                              studentId: student.id,
+                              value: value,
+                            ),
                         onPickGrade: (student) => _pickGrade(
                           studentId: student.id,
                           category: selectedCategory,
@@ -862,10 +863,7 @@ class _QuickNoteDialog extends StatelessWidget {
 enum _LessonViewMode { list, seatingPlan }
 
 class _LessonViewToggle extends StatelessWidget {
-  const _LessonViewToggle({
-    required this.viewMode,
-    required this.onChanged,
-  });
+  const _LessonViewToggle({required this.viewMode, required this.onChanged});
 
   final _LessonViewMode viewMode;
   final ValueChanged<_LessonViewMode> onChanged;
