@@ -250,6 +250,11 @@ jobs:
     needs: [build-android]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
       - name: Download Android AAB artifact
         uses: actions/download-artifact@v4
         with:
