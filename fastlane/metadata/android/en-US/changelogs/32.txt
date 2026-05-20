@@ -1,3 +1,8 @@
+Bug Fixes
+
+- Add FAB clearance bottom padding in lesson mode screen
+
+
 Miscellaneous Tasks
 
 - Add checkout step to publish-playstore job
