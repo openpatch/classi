@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.1] - 2026-05-20
+
+### Bug Fixes
+
+- Add FAB clearance bottom padding in lesson mode screen
+
+
+### Miscellaneous Tasks
+
+- Add checkout step to publish-playstore job
+
+
 ## [1.8.0] - 2026-05-13
 
 ### Features
