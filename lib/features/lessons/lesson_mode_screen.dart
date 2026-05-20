@@ -183,9 +183,22 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                 }
               }
 
+              // Add extra bottom padding when the FAB is visible so the last
+              // list item is not obscured by it.
+              // 56dp is the standard Material extended FAB height.
+              const kExtendedFabHeight = 56.0;
+              final hasFab = gradeCategories.length > 1;
+              final listPadding = hasFab
+                  ? appScreenPadding.copyWith(
+                      bottom: appScreenPadding.bottom +
+                          kFloatingActionButtonMargin +
+                          kExtendedFabHeight,
+                    )
+                  : appScreenPadding;
+
               return ContentConstraints(
                 child: ListView(
-                  padding: appScreenPadding,
+                  padding: listPadding,
                   children: [
                     LessonContextCard(
                       sessionController: _sessionController,
