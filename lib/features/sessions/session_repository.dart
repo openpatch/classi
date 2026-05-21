@@ -296,7 +296,6 @@ class SessionRepository {
       if (numericValue == null) continue;
       final date = DateTime.fromMillisecondsSinceEpoch(
         row.read<int>('date') * 1000,
-        isUtc: true,
       );
       final normalized = DateTime(date.year, date.month, date.day);
       final categoryId = row.read<String>('category_id');
@@ -318,7 +317,7 @@ class SessionRepository {
     List<GradeScaleEntry> gradeScale,
   ) {
     final rawDate = row.read<int>('date');
-    final date = DateTime.fromMillisecondsSinceEpoch(rawDate * 1000, isUtc: true);
+    final date = DateTime.fromMillisecondsSinceEpoch(rawDate * 1000);
     final normalizedDate = DateTime(date.year, date.month, date.day);
     final categoryId = row.read<String>('category_id');
     final sessionLabel = row.read<String>('label');
@@ -339,7 +338,6 @@ class SessionRepository {
       categoryName: row.read<String>('category_name'),
       createdAt: DateTime.fromMillisecondsSinceEpoch(
         row.read<int>('created_at') * 1000,
-        isUtc: true,
       ),
     );
 
