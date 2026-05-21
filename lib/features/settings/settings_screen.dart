@@ -8,13 +8,13 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/security/security_preferences_service.dart';
 import '../../core/session/app_session_controller.dart';
+import '../../core/storage/library_backup_service.dart';
 import '../../core/update/app_update_controller.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_updater.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../setup/database_selection_sheet.dart';
-import '../setup/webdav_restore_flow.dart';
 import 'grade_system_controller.dart';
 import 'grade_system_editor.dart';
 import '../students/student_sorting.dart';
@@ -670,6 +670,9 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
   bool? _connectionOk;
   bool _isExportingNow = false;
   bool _isRestoringNow = false;
+  List<WebDavBackupEntry>? _backups;
+  bool _loadingBackups = false;
+  bool _backupsLoadFailed = false;
 
   @override
   void initState() {
@@ -677,6 +680,9 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     _urlController.text = widget.session.webDavUrl ?? '';
     _usernameController.text = widget.session.webDavUsername ?? '';
     _serverPathController.text = widget.session.webDavServerPath ?? '/';
+    if (widget.session.isWebDavConfigured) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadBackups());
+    }
   }
 
   @override
@@ -697,7 +703,10 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     }
     final path = _serverPathController.text.trim();
     await session.setWebDavServerPath(path.isEmpty ? '/' : path);
-    if (mounted) setState(() => _connectionOk = null);
+    if (mounted) {
+      setState(() => _connectionOk = null);
+      _loadBackups();
+    }
   }
 
   Future<void> _testConnection() async {
@@ -722,6 +731,22 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     }
   }
 
+  Future<void> _loadBackups() async {
+    if (_loadingBackups) return;
+    setState(() {
+      _loadingBackups = true;
+      _backupsLoadFailed = false;
+    });
+    try {
+      final backups = await ref.read(appSessionProvider).listWebDavBackups();
+      if (mounted) setState(() => _backups = backups);
+    } catch (_) {
+      if (mounted) setState(() => _backupsLoadFailed = true);
+    } finally {
+      if (mounted) setState(() => _loadingBackups = false);
+    }
+  }
+
   Future<void> _exportNow() async {
     setState(() => _isExportingNow = true);
     try {
@@ -739,7 +764,7 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     }
   }
 
-  Future<void> _restoreNow() async {
+  Future<void> _restoreFromBackup(WebDavBackupEntry backup) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -763,11 +788,16 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     try {
       final dbPath = await widget.session.currentDatabasePath();
       if (!mounted) return;
-      await restoreWebDavBackupFlow(
-        context: context,
-        ref: ref,
-        destinationPath: dbPath,
-        createNew: false,
+      final errorCode = await ref
+          .read(appSessionProvider)
+          .restoreWebDavBackup(
+            remotePath: backup.remotePath,
+            destinationPath: dbPath,
+            createNew: false,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text((errorCode ?? 'backup_restored').tr())),
       );
     } finally {
       if (mounted) setState(() => _isRestoringNow = false);
@@ -917,20 +947,61 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
           ),
         ],
         if (isConfigured) ...[
+          const SizedBox(height: 16),
+          const Divider(height: 1),
           const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              onPressed: _isRestoringNow ? null : _restoreNow,
-              icon: _isRestoringNow
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.cloud_download_outlined),
-              label: Text('restore_backup'.tr()),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'available_backups'.tr(),
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: _loadingBackups ? null : _loadBackups,
+                icon: _loadingBackups
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
+                tooltip: 'retry'.tr(),
+              ),
+            ],
           ),
+          const SizedBox(height: 8),
+          if (_backupsLoadFailed)
+            Text(
+              'webdav_connection_failed'.tr(),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            )
+          else if (_backups == null || _loadingBackups && _backups!.isEmpty)
+            const SizedBox.shrink()
+          else if (_backups!.isEmpty)
+            Text(
+              'no_webdav_backups_found'.tr(),
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _backups!.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final backup = _backups![index];
+                return _BackupListTile(
+                  backup: backup,
+                  localeTag: localeTag,
+                  restoring: _isRestoringNow,
+                  onRestore: () => _restoreFromBackup(backup),
+                );
+              },
+            ),
         ],
         if (session.hasPendingAutoImport) ...[
           const SizedBox(height: 8),
@@ -1024,5 +1095,60 @@ class _MaxVersionsPicker extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _BackupListTile extends StatelessWidget {
+  const _BackupListTile({
+    required this.backup,
+    required this.localeTag,
+    required this.restoring,
+    required this.onRestore,
+  });
+
+  final WebDavBackupEntry backup;
+  final String localeTag;
+  final bool restoring;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    final modifiedAt = backup.modifiedAt;
+    final dateStr = modifiedAt != null
+        ? DateFormat.yMd(localeTag).add_Hm().format(modifiedAt.toLocal())
+        : null;
+    final sizeStr = backup.sizeBytes != null
+        ? _formatBytes(backup.sizeBytes!)
+        : null;
+    final subtitleParts = [?dateStr, ?sizeStr];
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.cloud_outlined),
+      title: Text(backup.libraryName),
+      subtitle: subtitleParts.isNotEmpty
+          ? Text(subtitleParts.join(' • '))
+          : null,
+      trailing: IconButton(
+        icon: restoring
+            ? const SizedBox.square(
+                dimension: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.restore_outlined),
+        tooltip: 'restore_backup'.tr(),
+        onPressed: restoring ? null : onRestore,
+      ),
+    );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    if (bytes >= 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    }
+    return '$bytes B';
   }
 }
