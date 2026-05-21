@@ -84,7 +84,7 @@ class LessonNotesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final studentsById = {for (final student in students) student.id: student};
-    final displayedNotes = notes.take(5).toList(growable: false);
+    final displayedNotes = notes;
 
     return Card(
       child: Padding(
