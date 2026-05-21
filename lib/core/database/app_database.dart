@@ -13,6 +13,7 @@ import 'tables/material_logs_table.dart';
 import 'tables/notes_table.dart';
 import 'tables/seating_plan_positions_table.dart';
 import 'tables/seating_plans_table.dart';
+import 'tables/sessions_table.dart';
 import 'tables/students_table.dart';
 
 part 'app_database.g.dart';
@@ -23,6 +24,7 @@ typedef GradeEntry = GradeEntriesTableData;
 typedef MaterialLog = MaterialLogsTableData;
 typedef HomeworkLog = HomeworkLogsTableData;
 typedef AttendanceLog = AttendanceLogsTableData;
+typedef Session = SessionsTableData;
 
 @DriftDatabase(
   tables: [
@@ -37,6 +39,7 @@ typedef AttendanceLog = AttendanceLogsTableData;
     NotesTable,
     SeatingPlansTable,
     SeatingPlanPositionsTable,
+    SessionsTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -58,7 +61,7 @@ class AppDatabase extends _$AppDatabase {
   final String databasePath;
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +139,29 @@ class AppDatabase extends _$AppDatabase {
       if (from < 14) {
         await migrator.createTable(seatingPlansTable);
         await migrator.createTable(seatingPlanPositionsTable);
+      }
+      if (from < 17) {
+        await migrator.createTable(sessionsTable);
+      }
+      if (from < 18) {
+        // Backfill sessions from existing grade entries.
+        // Grade entries belong to students, students belong to groups.
+        // Sessions are unique on (group_id, date, category_id), so we group
+        // there and pick the first label / category_name / created_at.
+        await customStatement('''
+          INSERT OR IGNORE INTO sessions_table
+            (group_id, date, label, category_id, category_name, created_at)
+          SELECT
+            s.group_id,
+            ge.date,
+            MIN(ge.session_label),
+            ge.category_id,
+            MIN(ge.category_name),
+            MIN(ge.created_at)
+          FROM grade_entries_table ge
+          JOIN students_table s ON ge.student_id = s.id
+          GROUP BY s.group_id, ge.date, ge.category_id
+        ''');
       }
     },
   );
