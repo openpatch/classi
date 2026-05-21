@@ -14,6 +14,7 @@ import '../../shared/widgets/app_updater.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../setup/database_selection_sheet.dart';
+import '../setup/webdav_restore_flow.dart';
 import 'grade_system_controller.dart';
 import 'grade_system_editor.dart';
 import '../students/student_sorting.dart';
@@ -668,6 +669,7 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
   bool _testingConnection = false;
   bool? _connectionOk;
   bool _isExportingNow = false;
+  bool _isRestoringNow = false;
 
   @override
   void initState() {
@@ -734,6 +736,41 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
       ).showSnackBar(SnackBar(content: Text(code.tr())));
     } finally {
       if (mounted) setState(() => _isExportingNow = false);
+    }
+  }
+
+  Future<void> _restoreNow() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('restore_backup'.tr()),
+        content: Text('restore_backup_overwrite_warning'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('cancel'.tr()),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('restore_backup'.tr()),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isRestoringNow = true);
+    try {
+      final dbPath = await widget.session.currentDatabasePath();
+      if (!mounted) return;
+      await restoreWebDavBackupFlow(
+        context: context,
+        ref: ref,
+        destinationPath: dbPath,
+        createNew: false,
+      );
+    } finally {
+      if (mounted) setState(() => _isRestoringNow = false);
     }
   }
 
@@ -876,6 +913,22 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
                     )
                   : const Icon(Icons.cloud_upload_outlined),
               label: Text('export_now'.tr()),
+            ),
+          ),
+        ],
+        if (isConfigured) ...[
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: _isRestoringNow ? null : _restoreNow,
+              icon: _isRestoringNow
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.cloud_download_outlined),
+              label: Text('restore_backup'.tr()),
             ),
           ),
         ],
