@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0] - 2026-05-21
+
+### Bug Fixes
+
+- *(lessons)* Create session on save, fix 1970 date in session list
+- *(calendar)* Show dots only for sessions, colored by category
+- *(sessions)* Remove isUtc: true to fix off-by-one date in table
+- *(database)* Upsert sessions from grade entries on conflict
+- *(lessons)* Show all notes instead of capping at 5
+
+
+### Features
+
+- *(database)* Migrate sessions from grade entries (v18)
+- *(database)* Also seed sessions from attendance logs in v18 migration
+- *(settings)* Add restore-from-backup button in backups section
+- *(settings)* Show inline backup list with restore per entry
+- *(notes)* Add search bar to global notes view
+- *(groups)* Add CSV export for grades, attendance, homework and summary
+- *(groups)* Let user choose save location for CSV exports
+
+
+### Styling
+
+- *(sessions)* Remove category color circles from sessions table
+- *(sessions)* Hide checkbox column in sessions table
+
+
 ## [1.8.1] - 2026-05-20
 
 ### Bug Fixes
