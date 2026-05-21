@@ -57,6 +57,7 @@ dependencies:
   updat: ^1.4.0
   window_manager: ^0.5.1
   webdav_client: ^1.2.2
+  share_plus: ^12.0.2
 
 dev_dependencies:
   build_runner: ^2.14.1

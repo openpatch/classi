@@ -172,6 +172,11 @@ class GroupDetailScreen extends ConsumerWidget {
             title: AppBarTitle(title: group.name, subtitle: 'groups'.tr()),
             actions: [
               IconButton(
+                onPressed: () => _showExportSheet(context, ref, group.name),
+                icon: const Icon(Icons.download_outlined),
+                tooltip: 'export'.tr(),
+              ),
+              IconButton(
                 onPressed: () => _editGroup(context, ref, group),
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: 'edit'.tr(),
@@ -792,6 +797,59 @@ class GroupDetailScreen extends ConsumerWidget {
           stackTrace: st,
         );
         if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+      }
+    }
+  }
+
+  Future<void> _showExportSheet(
+    BuildContext context,
+    WidgetRef ref,
+    String groupName,
+  ) async {
+    final exportType = await showModalBottomSheet<_ExportType>(
+      context: context,
+      builder: (ctx) => _ExportSheet(groupName: groupName),
+    );
+    if (exportType == null || !context.mounted) return;
+    final service = ref.read(groupExportServiceProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      switch (exportType) {
+        case _ExportType.grades:
+          await service.exportGradesCsv(
+            groupId: groupId,
+            groupName: groupName,
+          );
+        case _ExportType.attendance:
+          await service.exportAttendanceCsv(
+            groupId: groupId,
+            groupName: groupName,
+          );
+        case _ExportType.homeworkMaterial:
+          await service.exportHomeworkMaterialCsv(
+            groupId: groupId,
+            groupName: groupName,
+          );
+        case _ExportType.summary:
+          await service.exportSummaryCsv(
+            groupId: groupId,
+            groupName: groupName,
+          );
+      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('export_success'.tr())),
+      );
+    } catch (e, st) {
+      developer.log(
+        'Export failed',
+        name: 'classi.group_detail',
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('export_failed'.tr())),
+        );
       }
     }
   }
@@ -2342,3 +2400,48 @@ class _SessionRowActions extends StatelessWidget {
 }
 
 enum _SessionAction { edit, delete }
+
+enum _ExportType { grades, attendance, homeworkMaterial, summary }
+
+class _ExportSheet extends StatelessWidget {
+  const _ExportSheet({required this.groupName});
+
+  final String groupName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            'export'.tr(),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.table_chart_outlined),
+          title: Text('export_grades'.tr()),
+          onTap: () => Navigator.pop(context, _ExportType.grades),
+        ),
+        ListTile(
+          leading: const Icon(Icons.how_to_reg_outlined),
+          title: Text('export_attendance'.tr()),
+          onTap: () => Navigator.pop(context, _ExportType.attendance),
+        ),
+        ListTile(
+          leading: const Icon(Icons.checklist_outlined),
+          title: Text('export_homework_material'.tr()),
+          onTap: () => Navigator.pop(context, _ExportType.homeworkMaterial),
+        ),
+        ListTile(
+          leading: const Icon(Icons.summarize_outlined),
+          title: Text('export_summary'.tr()),
+          onTap: () => Navigator.pop(context, _ExportType.summary),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+}
