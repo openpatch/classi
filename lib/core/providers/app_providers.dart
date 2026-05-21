@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/legacy.dart' show ChangeNotifierProvider;
 
 import '../../features/attendance/attendance_repository.dart';
 import '../../features/grades/grade_repository.dart';
+import '../../features/groups/group_export_service.dart';
 import '../../features/groups/group_repository.dart';
 import '../../features/homework/homework_repository.dart';
 import '../../features/lists/list_repository.dart';
@@ -13,6 +14,7 @@ import '../../features/lessons/lesson_repository.dart';
 import '../../features/material_tracking/material_repository.dart';
 import '../../features/notes/note_repository.dart';
 import '../../features/seating_plan/seating_plan_repository.dart';
+import '../../features/sessions/session_repository.dart';
 import '../../features/settings/grade_system_controller.dart';
 import '../../features/settings/student_sort_controller.dart';
 import '../../features/settings/theme_controller.dart';
@@ -180,6 +182,14 @@ final lessonRepositoryProvider = Provider<LessonRepository>(
 
 final seatingPlanRepositoryProvider = Provider<SeatingPlanRepository>(
   (ref) => SeatingPlanRepository(ref.watch(databaseProvider)),
+);
+
+final sessionRepositoryProvider = Provider<SessionRepository>(
+  (ref) => SessionRepository(ref.watch(databaseProvider)),
+);
+
+final groupExportServiceProvider = Provider<GroupExportService>(
+  (ref) => GroupExportService(ref.watch(databaseProvider)),
 );
 
 final groupSeatingPlansProvider = StreamProvider.autoDispose
