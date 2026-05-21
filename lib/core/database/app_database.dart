@@ -149,7 +149,7 @@ class AppDatabase extends _$AppDatabase {
         // Sessions are unique on (group_id, date, category_id), so we group
         // there and pick the first label / category_name / created_at.
         await customStatement('''
-          INSERT OR IGNORE INTO sessions_table
+          INSERT INTO sessions_table
             (group_id, date, label, category_id, category_name, created_at)
           SELECT
             s.group_id,
@@ -161,6 +161,9 @@ class AppDatabase extends _$AppDatabase {
           FROM grade_entries_table ge
           JOIN students_table s ON ge.student_id = s.id
           GROUP BY s.group_id, ge.date, ge.category_id
+          ON CONFLICT(group_id, date, category_id) DO UPDATE SET
+            label = excluded.label,
+            category_name = excluded.category_name
         ''');
       }
     },
