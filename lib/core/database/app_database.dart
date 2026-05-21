@@ -165,6 +165,25 @@ class AppDatabase extends _$AppDatabase {
             label = excluded.label,
             category_name = excluded.category_name
         ''');
+        // Backfill sessions from attendance logs for dates that have no
+        // session yet. Attendance has no label or category, so defaults are
+        // used. ON CONFLICT DO NOTHING preserves sessions already created
+        // from grade entries above.
+        await customStatement('''
+          INSERT INTO sessions_table
+            (group_id, date, label, category_id, category_name, created_at)
+          SELECT
+            s.group_id,
+            al.date,
+            '',
+            'sonstige-mitarbeit',
+            'Sonstige Mitarbeit',
+            MIN(al.created_at)
+          FROM attendance_logs_table al
+          JOIN students_table s ON al.student_id = s.id
+          GROUP BY s.group_id, al.date
+          ON CONFLICT(group_id, date, category_id) DO NOTHING
+        ''');
       }
     },
   );
