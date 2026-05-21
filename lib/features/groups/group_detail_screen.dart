@@ -2206,6 +2206,7 @@ class _SessionsTable extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
+        showCheckboxColumn: false,
         columnSpacing: 16,
         horizontalMargin: 0,
         columns: [
