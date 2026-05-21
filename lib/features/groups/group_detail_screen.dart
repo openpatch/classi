@@ -33,6 +33,8 @@ import '../seating_plan/seating_plan_grid.dart';
 import '../seating_plan/seating_plan_selector_sheet.dart';
 import '../students/student_batch_create_sheet.dart';
 import '../students/student_form.dart';
+import '../sessions/session_form.dart';
+import '../sessions/session_repository.dart';
 import '../students/student_import_parser.dart';
 import '../students/student_sorting.dart';
 import 'group_form.dart';
@@ -93,6 +95,13 @@ final groupListProgressProvider = StreamProvider.autoDispose
           ref.watch(listRepositoryProvider).watchListProgress(groupId: groupId),
     );
 
+final groupSessionSummariesProvider = StreamProvider.autoDispose
+    .family<List<SessionSummary>, int>(
+      (ref, groupId) => ref
+          .watch(sessionRepositoryProvider)
+          .watchGroupSessionSummaries(groupId),
+    );
+
 String _lessonModeLocation({
   required int groupId,
   required DateTime date,
@@ -128,6 +137,9 @@ class GroupDetailScreen extends ConsumerWidget {
     final listsValue = ref.watch(groupListsProvider(groupId));
     final archivedListsValue = ref.watch(archivedGroupListsProvider(groupId));
     final listProgressValue = ref.watch(groupListProgressProvider(groupId));
+    final sessionSummariesValue = ref.watch(
+      groupSessionSummariesProvider(groupId),
+    );
 
     return groupValue.when(
       data: (group) {
@@ -310,6 +322,26 @@ class GroupDetailScreen extends ConsumerWidget {
                     groupId: group.id,
                     groupColor: groupColor,
                     categories: categories,
+                  ),
+                  const SizedBox(height: AppSpacing.large),
+                  _SessionsOverviewCard(
+                    groupId: group.id,
+                    categories: categories,
+                    gradeScaleEntries: gradeScaleEntries,
+                    sessionSummariesValue: sessionSummariesValue,
+                    archived: archived,
+                    onAddSession: archived
+                        ? null
+                        : () =>
+                              _addSession(context, ref, group.id, categories),
+                    onEditSession: archived
+                        ? null
+                        : (summary) =>
+                              _editSession(context, ref, summary.session),
+                    onDeleteSession: archived
+                        ? null
+                        : (summary) =>
+                              _deleteSession(context, ref, summary.session),
                   ),
                   const SizedBox(height: AppSpacing.large),
                   studentsValue.when(
@@ -800,6 +832,108 @@ class GroupDetailScreen extends ConsumerWidget {
     } catch (e, st) {
       developer.log(
         'Failed to edit group',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
+  }
+
+  Future<void> _addSession(
+    BuildContext context,
+    WidgetRef ref,
+    int groupId,
+    List<GradeCategory> categories,
+  ) async {
+    final result = await showSessionFormSheet(
+      context: context,
+      gradeCategories: categories,
+      title: 'add_session'.tr(),
+    );
+    if (result == null) return;
+
+    try {
+      await ref
+          .read(sessionRepositoryProvider)
+          .upsertSession(
+            groupId: groupId,
+            date: result.date,
+            categoryId: result.categoryId,
+            categoryName: result.categoryName,
+            label: result.label,
+            description: result.description,
+          );
+    } catch (e, st) {
+      developer.log(
+        'Failed to add session',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
+  }
+
+  Future<void> _editSession(
+    BuildContext context,
+    WidgetRef ref,
+    Session session,
+  ) async {
+    final result = await showSessionFormSheet(
+      context: context,
+      gradeCategories: const [],
+      initialDate: session.date,
+      initialLabel: session.label,
+      initialDescription: session.description,
+      initialCategoryId: session.categoryId,
+      title: 'edit_session'.tr(),
+    );
+    if (result == null) return;
+
+    try {
+      await ref
+          .read(sessionRepositoryProvider)
+          .updateSession(
+            id: session.id,
+            label: result.label,
+            description: result.description,
+          );
+    } catch (e, st) {
+      developer.log(
+        'Failed to edit session',
+        name: 'classi.group_detail',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    }
+  }
+
+  Future<void> _deleteSession(
+    BuildContext context,
+    WidgetRef ref,
+    Session session,
+  ) async {
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: 'confirm_delete'.tr(
+        namedArgs: {
+          'name': session.label.isEmpty ? session.categoryName : session.label,
+        },
+      ),
+      body: 'confirm_delete_session_body'.tr(),
+    );
+    if (!confirmed) return;
+
+    try {
+      await ref.read(sessionRepositoryProvider).deleteSession(session.id);
+    } catch (e, st) {
+      developer.log(
+        'Failed to delete session',
         name: 'classi.group_detail',
         level: 1000,
         error: e,
@@ -1964,3 +2098,246 @@ class _CategoryAverageChip extends StatelessWidget {
 enum _GroupListAction { edit, archive, unarchive, delete }
 
 enum _GroupNoteAction { edit, toggle, archive, unarchive, delete }
+
+// ---------------------------------------------------------------------------
+// Sessions overview card
+// ---------------------------------------------------------------------------
+
+class _SessionsOverviewCard extends StatelessWidget {
+  const _SessionsOverviewCard({
+    required this.groupId,
+    required this.categories,
+    required this.gradeScaleEntries,
+    required this.sessionSummariesValue,
+    required this.archived,
+    required this.onAddSession,
+    required this.onEditSession,
+    required this.onDeleteSession,
+  });
+
+  final int groupId;
+  final List<GradeCategory> categories;
+  final List<GradeScaleEntry> gradeScaleEntries;
+  final AsyncValue<List<SessionSummary>> sessionSummariesValue;
+  final bool archived;
+  final VoidCallback? onAddSession;
+  final ValueChanged<SessionSummary>? onEditSession;
+  final ValueChanged<SessionSummary>? onDeleteSession;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: appCardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'sessions_overview'.tr(),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                if (onAddSession != null)
+                  FilledButton.tonal(
+                    onPressed: onAddSession,
+                    child: Text('plan_session'.tr()),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.medium),
+            sessionSummariesValue.when(
+              data: (summaries) => summaries.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.large,
+                        ),
+                        child: Text(
+                          'no_sessions'.tr(),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                    )
+                  : _SessionsTable(
+                      groupId: groupId,
+                      summaries: summaries,
+                      categories: categories,
+                      gradeScaleEntries: gradeScaleEntries,
+                      onEdit: onEditSession,
+                      onDelete: onDeleteSession,
+                    ),
+              error: (e, s) => const AppErrorText(),
+              loading: () => const Center(child: CircularProgressIndicator()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionsTable extends StatelessWidget {
+  const _SessionsTable({
+    required this.groupId,
+    required this.summaries,
+    required this.categories,
+    required this.gradeScaleEntries,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final int groupId;
+  final List<SessionSummary> summaries;
+  final List<GradeCategory> categories;
+  final List<GradeScaleEntry> gradeScaleEntries;
+  final ValueChanged<SessionSummary>? onEdit;
+  final ValueChanged<SessionSummary>? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columnSpacing: 16,
+        horizontalMargin: 0,
+        columns: [
+          DataColumn(label: Text('date'.tr())),
+          DataColumn(label: Text('session_label'.tr())),
+          DataColumn(label: Text('grade_category'.tr())),
+          DataColumn(label: Text('attendance'.tr()), numeric: true),
+          DataColumn(label: Text('homework'.tr()), numeric: true),
+          DataColumn(label: Text('material'.tr()), numeric: true),
+          DataColumn(label: Text('grade'.tr()), numeric: true),
+          const DataColumn(label: SizedBox.shrink()),
+        ],
+        rows: [
+          for (final summary in summaries)
+            _buildRow(context, summary),
+        ],
+      ),
+    );
+  }
+
+  DataRow _buildRow(BuildContext context, SessionSummary summary) {
+    final session = summary.session;
+    final locale = context.locale.toLanguageTag();
+
+    return DataRow(
+      onSelectChanged: (_) => context.push(
+        _lessonModeLocation(
+          groupId: groupId,
+          date: session.date,
+          categoryId: session.categoryId,
+        ),
+      ),
+      cells: [
+        DataCell(
+          Text(DateFormat.yMMMd(locale).format(session.date)),
+        ),
+        DataCell(
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (session.label.isNotEmpty)
+                Text(session.label)
+              else
+                Text(
+                  'no_label'.tr(),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              if (session.description != null && session.description!.isNotEmpty)
+                Text(
+                  session.description!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          ),
+        ),
+        DataCell(Text(session.categoryName)),
+        DataCell(_PercentCell(value: summary.attendancePercent)),
+        DataCell(_PercentCell(value: summary.homeworkPercent)),
+        DataCell(_PercentCell(value: summary.materialPercent)),
+        DataCell(
+          summary.gradeMean != null
+              ? Text(formatNumber(summary.gradeMean!))
+              : const Text('–'),
+        ),
+        DataCell(
+          _SessionRowActions(
+            summary: summary,
+            onEdit: onEdit,
+            onDelete: onDelete,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PercentCell extends StatelessWidget {
+  const _PercentCell({required this.value});
+
+  final double? value;
+
+  @override
+  Widget build(BuildContext context) {
+    if (value == null) return const Text('–');
+    return Text('${value!.toStringAsFixed(0)} %');
+  }
+}
+
+class _SessionRowActions extends StatelessWidget {
+  const _SessionRowActions({
+    required this.summary,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final SessionSummary summary;
+  final ValueChanged<SessionSummary>? onEdit;
+  final ValueChanged<SessionSummary>? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_SessionAction>(
+      onSelected: (action) {
+        switch (action) {
+          case _SessionAction.edit:
+            onEdit?.call(summary);
+          case _SessionAction.delete:
+            onDelete?.call(summary);
+        }
+      },
+      itemBuilder: (_) => [
+        if (onEdit != null)
+          PopupMenuItem(
+            value: _SessionAction.edit,
+            child: Text('edit_session'.tr()),
+          ),
+        if (onDelete != null)
+          PopupMenuItem(
+            value: _SessionAction.delete,
+            child: Text('delete_session'.tr()),
+          ),
+      ],
+    );
+  }
+}
+
+enum _SessionAction { edit, delete }
