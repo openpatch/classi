@@ -12,14 +12,13 @@ class LessonRepository {
     return _database
         .customSelect(
           '''
-          SELECT DISTINCT g.date AS entry_date, g.category_id AS category_id
-          FROM grade_entries_table g
-          JOIN students_table s ON s.id = g.student_id
-          WHERE s.group_id = ?
-          ORDER BY g.date DESC, g.category_id ASC
+          SELECT date, category_id
+          FROM sessions_table
+          WHERE group_id = ?
+          ORDER BY date DESC
           ''',
           variables: [Variable.withInt(groupId)],
-          readsFrom: {_database.gradeEntriesTable, _database.studentsTable},
+          readsFrom: {_database.sessionsTable},
         )
         .watch()
         .map((rows) {
@@ -29,7 +28,7 @@ class LessonRepository {
             if (categoryId.isEmpty) {
               continue;
             }
-            final date = normalizeLessonDate(row.read<DateTime>('entry_date'));
+            final date = normalizeLessonDate(row.read<DateTime>('date'));
             categoriesByDate
                 .putIfAbsent(date, () => <String>{})
                 .add(categoryId);
