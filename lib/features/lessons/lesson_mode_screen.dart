@@ -94,6 +94,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
         final gradeCategories = parseGradeCategories(group.gradeCategoriesJson);
         _selectedCategoryId ??= gradeCategories.first.id;
         final selectedCategory = _resolveSelectedCategory(gradeCategories);
+
         final gradeScale = [
           for (final entry in parseGradeScaleEntries(group.gradeScaleJson))
             entry.label,
@@ -116,6 +117,15 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
             actions: [
               IconButton(
                 onPressed: () async {
+                  await ref
+                      .read(sessionRepositoryProvider)
+                      .upsertSession(
+                        groupId: widget.groupId,
+                        date: _selectedDate,
+                        categoryId: selectedCategory.id,
+                        categoryName: selectedCategory.name,
+                        label: _sessionController.text.trim(),
+                      );
                   await ref
                       .read(attendanceRepositoryProvider)
                       .savePresenceForDate(
@@ -404,7 +414,9 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     if (category.id == _selectedCategoryId) {
       return;
     }
-    setState(() => _selectedCategoryId = category.id);
+    setState(() {
+      _selectedCategoryId = category.id;
+    });
     await _restoreSessionLabelForCurrentSelection(
       categoryId: category.id,
       date: _selectedDate,
@@ -424,6 +436,28 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       return;
     }
     final targetDate = normalizeLessonDate(date ?? _selectedDate);
+
+    // First try to restore from an existing session record.
+    final session = await ref
+        .read(sessionRepositoryProvider)
+        .getSession(
+          groupId: widget.groupId,
+          date: targetDate,
+          categoryId: targetCategoryId,
+        );
+    if (!mounted ||
+        _sessionController.text.trim().isNotEmpty ||
+        _selectedCategoryId != targetCategoryId ||
+        _selectedDate != targetDate) {
+      return;
+    }
+    if (session != null && session.label.isNotEmpty) {
+      _sessionController.text = session.label;
+      setState(() {});
+      return;
+    }
+
+    // Fall back to grade entries for backwards compatibility.
     final sessionLabel = await ref
         .read(gradeRepositoryProvider)
         .getPreferredSessionLabel(
@@ -511,7 +545,9 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       return;
     }
 
-    setState(() => _selectedDate = normalizeLessonDate(selected));
+    setState(() {
+      _selectedDate = normalizeLessonDate(selected);
+    });
     await _restoreSessionLabelForCurrentSelection(date: _selectedDate);
   }
 
