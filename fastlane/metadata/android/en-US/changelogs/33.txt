@@ -1,0 +1,26 @@
+Bug Fixes
+
+- Create session on save, fix 1970 date in session list
+- Show dots only for sessions, colored by category
+- Remove isUtc: true to fix off-by-one date in table
+- Upsert sessions from grade entries on conflict
+- Show all notes instead of capping at 5
+
+
+Features
+
+- Migrate sessions from grade entries (v18)
+- Also seed sessions from attendance logs in v18 migration
+- Add restore-from-backup button in backups section
+- Show inline backup list with restore per entry
+- Add search bar to global notes view
+- Add CSV export for grades, attendance, homework and summary
+- Let user choose save location for CSV exports
+
+
+Styling
+
+- Remove category color circles from sessions table
+- Hide checkbox column in sessions table
+
+
