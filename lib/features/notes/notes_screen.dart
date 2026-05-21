@@ -48,6 +48,26 @@ class NotesScreen extends ConsumerStatefulWidget {
 }
 
 class _NotesScreenState extends ConsumerState<NotesScreen> {
+  bool _searching = false;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _startSearch() => setState(() => _searching = true);
+
+  void _stopSearch() {
+    setState(() {
+      _searching = false;
+      _searchQuery = '';
+      _searchController.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupsValue = ref.watch(activeGroupsProvider);
@@ -57,7 +77,29 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('notes'.tr()),
+          title: _searching
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'search_notes'.tr(),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (v) => setState(() => _searchQuery = v),
+                )
+              : Text('notes'.tr()),
+          actions: [
+            if (_searching)
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _stopSearch,
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: _startSearch,
+              ),
+          ],
           bottom: TabBar(
             tabs: [
               Tab(text: 'all'.tr()),
@@ -80,13 +122,26 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             : null,
         body: TabBarView(
           children: [
-            _NotesList(provider: allNotesProvider, emptyKey: 'empty_notes'),
-            _NotesList(provider: todoNotesProvider, emptyKey: 'empty_notes'),
-            _NotesList(provider: doneNotesProvider, emptyKey: 'empty_notes'),
+            _NotesList(
+              provider: allNotesProvider,
+              emptyKey: 'empty_notes',
+              searchQuery: _searchQuery,
+            ),
+            _NotesList(
+              provider: todoNotesProvider,
+              emptyKey: 'empty_notes',
+              searchQuery: _searchQuery,
+            ),
+            _NotesList(
+              provider: doneNotesProvider,
+              emptyKey: 'empty_notes',
+              searchQuery: _searchQuery,
+            ),
             _NotesList(
               provider: archivedNotesProvider,
               emptyKey: 'empty_notes',
               archived: true,
+              searchQuery: _searchQuery,
             ),
           ],
         ),
@@ -125,11 +180,13 @@ class _NotesList extends ConsumerWidget {
     required this.provider,
     required this.emptyKey,
     this.archived = false,
+    this.searchQuery = '',
   });
 
   final StreamProvider<List<TeacherNote>> provider;
   final String emptyKey;
   final bool archived;
+  final String searchQuery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -139,11 +196,23 @@ class _NotesList extends ConsumerWidget {
 
     return ContentConstraints(
       child: notesValue.when(
-      data: (notes) {
+      data: (allNotes) {
+        final notes = searchQuery.isEmpty
+            ? allNotes
+            : allNotes
+                .where(
+                  (n) => n.body.toLowerCase().contains(
+                    searchQuery.toLowerCase(),
+                  ),
+                )
+                .toList(growable: false);
+
         if (notes.isEmpty) {
           return EmptyState(
             icon: Icons.sticky_note_2_outlined,
-            title: emptyKey.tr(),
+            title: searchQuery.isEmpty
+                ? emptyKey.tr()
+                : 'no_notes_found'.tr(),
           );
         }
 
