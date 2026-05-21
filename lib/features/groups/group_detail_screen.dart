@@ -23,6 +23,7 @@ import '../../shared/widgets/surface_list_tile.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/swipe_action_background.dart';
 import '../../shared/theme/app_ui.dart';
+import '../groups/group_export_service.dart';
 import '../lists/list_repository.dart';
 import '../lists/list_editor.dart';
 import '../lessons/lesson_support.dart';
@@ -814,31 +815,49 @@ class GroupDetailScreen extends ConsumerWidget {
     final service = ref.read(groupExportServiceProvider);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      switch (exportType) {
-        case _ExportType.grades:
-          await service.exportGradesCsv(
+      final result = switch (exportType) {
+        _ExportType.grades => await service.exportGradesCsv(
             groupId: groupId,
             groupName: groupName,
-          );
-        case _ExportType.attendance:
-          await service.exportAttendanceCsv(
+          ),
+        _ExportType.attendance => await service.exportAttendanceCsv(
             groupId: groupId,
             groupName: groupName,
-          );
-        case _ExportType.homeworkMaterial:
-          await service.exportHomeworkMaterialCsv(
+          ),
+        _ExportType.homeworkMaterial => await service.exportHomeworkMaterialCsv(
             groupId: groupId,
             groupName: groupName,
-          );
-        case _ExportType.summary:
-          await service.exportSummaryCsv(
+          ),
+        _ExportType.summary => await service.exportSummaryCsv(
             groupId: groupId,
             groupName: groupName,
-          );
-      }
-      messenger.showSnackBar(
-        SnackBar(content: Text('export_success'.tr())),
+          ),
+      };
+      if (!context.mounted) return;
+      final session = ref.read(appSessionProvider);
+      final saved = await shareOrSaveFile(
+        file: result.file,
+        filename: result.filename,
+        mimeType: 'text/csv',
+        subject: result.filename,
+        savePathResolver: () async {
+          session.suspendBackgroundLock();
+          try {
+            return await FilePicker.saveFile(
+              fileName: result.filename,
+              type: FileType.custom,
+              allowedExtensions: ['csv'],
+            );
+          } finally {
+            session.resumeBackgroundLock();
+          }
+        },
       );
+      if (saved && context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('export_success'.tr())),
+        );
+      }
     } catch (e, st) {
       developer.log(
         'Export failed',

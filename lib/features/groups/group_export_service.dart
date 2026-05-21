@@ -23,7 +23,7 @@ class GroupExportService {
   // 1. Grades matrix: students × sessions → grade value
   // ---------------------------------------------------------------------------
 
-  Future<File> exportGradesCsv({
+  Future<({File file, String filename})> exportGradesCsv({
     required int groupId,
     required String groupName,
   }) async {
@@ -116,7 +116,7 @@ class GroupExportService {
       buf.write('\n');
     }
 
-    return _saveAndReturn(
+    return _buildFile(
       content: buf.toString(),
       filename: '${_sanitize(groupName)}_grades.csv',
     );
@@ -126,7 +126,7 @@ class GroupExportService {
   // 2. Attendance sheet: students × session dates
   // ---------------------------------------------------------------------------
 
-  Future<File> exportAttendanceCsv({
+  Future<({File file, String filename})> exportAttendanceCsv({
     required int groupId,
     required String groupName,
   }) async {
@@ -206,7 +206,7 @@ class GroupExportService {
       buf.write(';$absentCount;$excusedCount;$rate\n');
     }
 
-    return _saveAndReturn(
+    return _buildFile(
       content: buf.toString(),
       filename: '${_sanitize(groupName)}_attendance.csv',
     );
@@ -216,7 +216,7 @@ class GroupExportService {
   // 3. Homework & material compliance
   // ---------------------------------------------------------------------------
 
-  Future<File> exportHomeworkMaterialCsv({
+  Future<({File file, String filename})> exportHomeworkMaterialCsv({
     required int groupId,
     required String groupName,
   }) async {
@@ -265,7 +265,7 @@ class GroupExportService {
       dateFormat: dateFormat,
     );
 
-    return _saveAndReturn(
+    return _buildFile(
       content: buf.toString(),
       filename: '${_sanitize(groupName)}_homework_material.csv',
     );
@@ -313,7 +313,7 @@ class GroupExportService {
   // 4. Full student summary (flat)
   // ---------------------------------------------------------------------------
 
-  Future<File> exportSummaryCsv({
+  Future<({File file, String filename})> exportSummaryCsv({
     required int groupId,
     required String groupName,
   }) async {
@@ -426,7 +426,7 @@ class GroupExportService {
       buf.write('\n');
     }
 
-    return _saveAndReturn(
+    return _buildFile(
       content: buf.toString(),
       filename: '${_sanitize(groupName)}_summary.csv',
     );
@@ -436,16 +436,16 @@ class GroupExportService {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  Future<File> _saveAndReturn({
+  Future<({File file, String filename})> _buildFile({
     required String content,
     required String filename,
   }) async {
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$filename');
     // UTF-8 BOM for Excel compatibility.
     final bom = [0xEF, 0xBB, 0xBF];
     await file.writeAsBytes([...bom, ...utf8.encode(content)]);
-    return file;
+    return (file: file, filename: filename);
   }
 
   List<DateTime> _uniqueDates(Iterable<DateTime> raw) {
@@ -500,12 +500,20 @@ class _SessionKey {
   String get id => '${date.toIso8601String()}|$categoryId|$label';
 }
 
-/// Shares [file] on platforms that support a share sheet, otherwise just
-/// keeps the saved file.
-Future<void> shareOrSaveFile({
+/// Delivers [file] to the user.
+///
+/// On Android/iOS shows a share sheet so the user can pick the destination.
+/// On desktop, [savePathResolver] is called to obtain the target path
+/// (e.g. via a FilePicker dialog). If it returns `null` the export is
+/// cancelled and this function returns `false`.
+Future<bool> shareOrSaveFile({
   required File file,
+  required String filename,
   required String mimeType,
   String? subject,
+  /// Called on desktop to resolve where the user wants to save the file.
+  /// Should open a save-file dialog and return the chosen path, or null.
+  Future<String?> Function()? savePathResolver,
 }) async {
   if (Platform.isAndroid || Platform.isIOS) {
     await SharePlus.instance.share(
@@ -514,6 +522,16 @@ Future<void> shareOrSaveFile({
         subject: subject,
       ),
     );
+    return true;
   }
-  // On desktop the file is already saved; nothing more to do.
+
+  // Desktop: ask the caller for a save path.
+  final savePath = savePathResolver != null
+      ? await savePathResolver()
+      : null;
+  if (savePath == null) return false; // user cancelled or no resolver
+
+  final bytes = await file.readAsBytes();
+  await File(savePath).writeAsBytes(bytes);
+  return true;
 }
