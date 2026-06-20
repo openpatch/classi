@@ -596,6 +596,60 @@ void main() {
     expect(averages[studentId], 2.5);
   });
 
+  test('weighted averages first compute category averages', () async {
+    final groupId = await groupRepository.createGroup(
+      name: '5B',
+      gradeScale: defaultGradeScaleEntries,
+      gradeCategories: const [
+        GradeCategory(
+          id: 'participation',
+          name: 'Participation',
+          weight: 1,
+          colorHex: '#FF1E88E5',
+        ),
+        GradeCategory(
+          id: 'exam',
+          name: 'Exam',
+          weight: 3,
+          colorHex: '#FF8E24AA',
+        ),
+      ],
+    );
+    final studentId = await studentRepository.addStudent(
+      groupId: groupId,
+      firstName: 'John',
+      lastName: 'Doe',
+    );
+
+    await gradeRepository.saveEntry(
+      studentId: studentId,
+      date: DateTime(2026, 4, 20),
+      sessionLabel: 'Week 1',
+      value: '2',
+      categoryId: 'participation',
+      categoryName: 'Participation',
+    );
+    await gradeRepository.saveEntry(
+      studentId: studentId,
+      date: DateTime(2026, 4, 21),
+      sessionLabel: 'Week 2',
+      value: '4',
+      categoryId: 'participation',
+      categoryName: 'Participation',
+    );
+    await gradeRepository.saveEntry(
+      studentId: studentId,
+      date: DateTime(2026, 4, 22),
+      sessionLabel: 'Exam 1',
+      value: '2',
+      categoryId: 'exam',
+      categoryName: 'Exam',
+    );
+
+    final averages = await gradeRepository.getGroupAverages(groupId);
+    expect(averages[studentId], 2.25);
+  });
+
   test('extended grade systems use configured numeric values', () async {
     final groupId = await groupRepository.createGroup(
       name: '11A',

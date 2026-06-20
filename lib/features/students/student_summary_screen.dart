@@ -74,23 +74,17 @@ class StudentSummaryScreen extends ConsumerWidget {
                 .where((n) => dateFilter.includes(n.createdAt))
                 .toList();
 
-        // Compute weighted average from filtered grades.
-        final gradeInputs = grades
-            .map((g) {
-              final v = gradeValueToNumber(g.value, gradeScaleEntries);
-              return v == null
-                  ? null
-                  : (value: v, categoryId: g.categoryId);
-            })
-            .nonNulls
+        // Compute category averages first, then calculate weighted average.
+        final categoryAverages = _computeCategoryAverages(
+          grades,
+          gradeScaleEntries,
+        );
+        final gradeInputs = categoryAverages.entries
+            .map((e) => (value: e.value, categoryId: e.key))
             .toList();
         final studentAverage = calculateWeightedAverage(
           gradeInputs,
           categories,
-        );
-        final categoryAverages = _computeCategoryAverages(
-          grades,
-          gradeScaleEntries,
         );
 
         return Scaffold(

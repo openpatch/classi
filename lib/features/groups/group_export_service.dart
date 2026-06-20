@@ -97,7 +97,8 @@ class GroupExportService {
       buf.write(_escapeCsv(name));
 
       final studentGrades = gradeIndex[student.id] ?? {};
-      final gradeInputs = <({double value, String categoryId})>[];
+      final categorySums = <String, double>{};
+      final categoryCounts = <String, int>{};
 
       for (final key in sessionKeys) {
         final value = studentGrades[key.id] ?? '';
@@ -105,9 +106,19 @@ class GroupExportService {
         if (value.isNotEmpty) {
           final num = gradeValueToNumber(value, scaleEntries);
           if (num != null) {
-            gradeInputs.add((value: num, categoryId: key.categoryId));
+            categorySums[key.categoryId] =
+                (categorySums[key.categoryId] ?? 0) + num;
+            categoryCounts[key.categoryId] =
+                (categoryCounts[key.categoryId] ?? 0) + 1;
           }
         }
+      }
+
+      final gradeInputs = <({double value, String categoryId})>[];
+      for (final entry in categorySums.entries) {
+        final categoryId = entry.key;
+        final average = entry.value / categoryCounts[categoryId]!;
+        gradeInputs.add((value: average, categoryId: categoryId));
       }
 
       // Weighted average
@@ -386,22 +397,24 @@ class GroupExportService {
       final material = materialByStudent[student.id] ?? [];
 
       // Per-category averages
-      final allGradeInputs = <({double value, String categoryId})>[];
+      final categoryAverages = <({double value, String categoryId})>[];
       for (final cat in categories) {
         final catGrades =
             grades.where((g) => g.categoryId == cat.id).toList();
-        final inputs = <({double value, String categoryId})>[];
+        final values = <double>[];
         for (final g in catGrades) {
           final num = gradeValueToNumber(g.value, scaleEntries);
-          if (num != null) inputs.add((value: num, categoryId: g.categoryId));
+          if (num != null) values.add(num);
         }
-        allGradeInputs.addAll(inputs);
-        final avg = calculateWeightedAverage(inputs, categories);
+        final avg = values.isEmpty ? null : values.reduce((a, b) => a + b) / values.length;
         buf.write(';${avg != null ? avg.toStringAsFixed(2) : ''}');
+        if (avg != null) {
+          categoryAverages.add((value: avg, categoryId: cat.id));
+        }
       }
 
       // Weighted total average
-      final total = calculateWeightedAverage(allGradeInputs, categories);
+      final total = calculateWeightedAverage(categoryAverages, categories);
       buf.write(';${total != null ? total.toStringAsFixed(2) : ''}');
 
       // Absences

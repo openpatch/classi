@@ -8,6 +8,8 @@ import '../../features/attendance/attendance_repository.dart';
 import '../../features/grades/grade_repository.dart';
 import '../../features/groups/group_export_service.dart';
 import '../../features/groups/group_repository.dart';
+import '../../features/groups/timeframe_grade_repository.dart';
+import '../../features/groups/timeframe_repository.dart';
 import '../../features/homework/homework_repository.dart';
 import '../../features/lists/list_repository.dart';
 import '../../features/lessons/lesson_repository.dart';
@@ -191,6 +193,67 @@ final sessionRepositoryProvider = Provider<SessionRepository>(
 final groupExportServiceProvider = Provider<GroupExportService>(
   (ref) => GroupExportService(ref.watch(databaseProvider)),
 );
+
+final timeframeRepositoryProvider = Provider<TimeframeRepository>(
+  (ref) => TimeframeRepository(ref.watch(databaseProvider)),
+);
+
+final timeframeGradeRepositoryProvider = Provider<TimeframeGradeRepository>(
+  (ref) => TimeframeGradeRepository(ref.watch(databaseProvider)),
+);
+
+final timeframeGradesProvider = StreamProvider.autoDispose
+    .family<List<TimeframeGrade>, int>(
+      (ref, timeframeId) => ref
+          .watch(timeframeGradeRepositoryProvider)
+          .watchGradesForTimeframe(timeframeId),
+    );
+
+final timeframeCategoryAveragesProvider = StreamProvider.autoDispose
+    .family<Map<int, Map<String, double>>, ({int groupId, DateTime startDate, DateTime endDate})>(
+      (ref, params) => ref
+          .watch(gradeRepositoryProvider)
+          .watchGroupCategoryAveragesInDateRange(
+            groupId: params.groupId,
+            startDate: params.startDate,
+            endDate: params.endDate,
+          ),
+    );
+
+typedef _TimeframeParams = ({int groupId, DateTime startDate, DateTime endDate});
+
+final timeframeAttendanceProvider = StreamProvider.autoDispose
+    .family<Map<int, List<AttendanceLog>>, _TimeframeParams>(
+      (ref, params) => ref
+          .watch(attendanceRepositoryProvider)
+          .watchAttendanceForGroupInDateRange(
+            params.groupId,
+            params.startDate,
+            params.endDate,
+          ),
+    );
+
+final timeframeMaterialProvider = StreamProvider.autoDispose
+    .family<Map<int, List<MaterialLog>>, _TimeframeParams>(
+      (ref, params) => ref
+          .watch(materialRepositoryProvider)
+          .watchMaterialForGroupInDateRange(
+            params.groupId,
+            params.startDate,
+            params.endDate,
+          ),
+    );
+
+final timeframeHomeworkProvider = StreamProvider.autoDispose
+    .family<Map<int, List<HomeworkLog>>, _TimeframeParams>(
+      (ref, params) => ref
+          .watch(homeworkRepositoryProvider)
+          .watchHomeworkForGroupInDateRange(
+            params.groupId,
+            params.startDate,
+            params.endDate,
+          ),
+    );
 
 final groupSeatingPlansProvider = StreamProvider.autoDispose
     .family<List<SeatingPlan>, int>(

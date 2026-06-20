@@ -552,10 +552,21 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
             numericGrades.add((grade: grade, value: parsed));
           }
         }
-        final average = calculateWeightedAverage([
-          for (final entry in numericGrades)
-            (value: entry.value, categoryId: entry.grade.categoryId),
-        ], gradeCategories);
+        final categorySums = <String, double>{};
+        final categoryCounts = <String, int>{};
+        for (final entry in numericGrades) {
+          categorySums[entry.grade.categoryId] =
+              (categorySums[entry.grade.categoryId] ?? 0) + entry.value;
+          categoryCounts[entry.grade.categoryId] =
+              (categoryCounts[entry.grade.categoryId] ?? 0) + 1;
+        }
+        final categoryAverages = <({double value, String categoryId})>[];
+        for (final entry in categorySums.entries) {
+          final categoryId = entry.key;
+          final average = entry.value / categoryCounts[categoryId]!;
+          categoryAverages.add((value: average, categoryId: categoryId));
+        }
+        final average = calculateWeightedAverage(categoryAverages, gradeCategories);
 
         return ListView(
           padding: const EdgeInsets.all(16),

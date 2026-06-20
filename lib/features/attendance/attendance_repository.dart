@@ -187,4 +187,49 @@ class AttendanceRepository {
           ..where((table) => table.date.equals(normalizedDate)))
         .go();
   }
+
+  Stream<List<AttendanceLog>> watchAttendanceForStudentInDateRange(
+    int studentId,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    final normalizedStart = DateTime(startDate.year, startDate.month, startDate.day);
+    final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    
+    return (_database.select(_database.attendanceLogsTable)
+          ..where((table) => table.studentId.equals(studentId))
+          ..where((table) => table.date.isBiggerOrEqualValue(normalizedStart) & 
+                     table.date.isSmallerOrEqualValue(normalizedEnd))
+          ..orderBy([(table) => OrderingTerm.asc(table.date)]))
+        .watch();
+  }
+
+  Stream<Map<int, List<AttendanceLog>>> watchAttendanceForGroupInDateRange(
+    int groupId,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    final normalizedStart = DateTime(startDate.year, startDate.month, startDate.day);
+    final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+
+    final query = _database.select(_database.attendanceLogsTable).join([
+      innerJoin(
+        _database.studentsTable,
+        _database.studentsTable.id.equalsExp(_database.attendanceLogsTable.studentId),
+      ),
+    ])
+      ..where(_database.studentsTable.groupId.equals(groupId))
+      ..where(_database.attendanceLogsTable.date.isBiggerOrEqualValue(normalizedStart))
+      ..where(_database.attendanceLogsTable.date.isSmallerOrEqualValue(normalizedEnd))
+      ..orderBy([OrderingTerm.asc(_database.attendanceLogsTable.studentId), OrderingTerm.asc(_database.attendanceLogsTable.date)]);
+
+    return query.watch().map((rows) {
+      final result = <int, List<AttendanceLog>>{};
+      for (final row in rows) {
+        final log = row.readTable(_database.attendanceLogsTable);
+        result.putIfAbsent(log.studentId, () => []).add(log);
+      }
+      return result;
+    });
+  }
 }

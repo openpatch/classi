@@ -15,6 +15,8 @@ import 'tables/seating_plan_positions_table.dart';
 import 'tables/seating_plans_table.dart';
 import 'tables/sessions_table.dart';
 import 'tables/students_table.dart';
+import 'tables/timeframe_grades_table.dart';
+import 'tables/timeframes_table.dart';
 
 part 'app_database.g.dart';
 
@@ -25,6 +27,8 @@ typedef MaterialLog = MaterialLogsTableData;
 typedef HomeworkLog = HomeworkLogsTableData;
 typedef AttendanceLog = AttendanceLogsTableData;
 typedef Session = SessionsTableData;
+typedef Timeframe = TimeframesTableData;
+typedef TimeframeGrade = TimeframeGradesTableData;
 
 @DriftDatabase(
   tables: [
@@ -40,6 +44,8 @@ typedef Session = SessionsTableData;
     SeatingPlansTable,
     SeatingPlanPositionsTable,
     SessionsTable,
+    TimeframesTable,
+    TimeframeGradesTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -61,7 +67,7 @@ class AppDatabase extends _$AppDatabase {
   final String databasePath;
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -184,6 +190,12 @@ class AppDatabase extends _$AppDatabase {
           GROUP BY s.group_id, al.date
           ON CONFLICT(group_id, date, category_id) DO NOTHING
         ''');
+      }
+      if (from < 19) {
+        await migrator.createTable(timeframesTable);
+      }
+      if (from < 21) {
+        await migrator.createTable(timeframeGradesTable);
       }
     },
   );

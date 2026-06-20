@@ -24,6 +24,8 @@ import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/swipe_action_background.dart';
 import '../../shared/theme/app_ui.dart';
 import '../groups/group_export_service.dart';
+import 'timeframe_editor_sheet.dart';
+import 'timeframe_grades_screen.dart';
 import '../lists/list_repository.dart';
 import '../lists/list_editor.dart';
 import '../lessons/lesson_support.dart';
@@ -84,8 +86,7 @@ final groupListsProvider = StreamProvider.autoDispose
       (ref, groupId) => ref.watch(listRepositoryProvider).watchLists(groupId),
     );
 
-final archivedGroupListsProvider = StreamProvider.autoDispose
-    .family<List<Checklist>, int>(
+final archivedGroupListsProvider = StreamProvider.autoDispose .family<List<Checklist>, int>(
       (ref, groupId) =>
           ref.watch(listRepositoryProvider).watchArchivedLists(groupId),
     );
@@ -101,6 +102,58 @@ final groupSessionSummariesProvider = StreamProvider.autoDispose
       (ref, groupId) => ref
           .watch(sessionRepositoryProvider)
           .watchGroupSessionSummaries(groupId),
+    );
+
+final groupTimeframesProvider = StreamProvider.autoDispose
+    .family<List<Timeframe>, int>(
+      (ref, groupId) => ref
+          .watch(timeframeRepositoryProvider)
+          .watchTimeframes(groupId),
+    );
+
+// Providers for timeframe-specific student data
+final studentGradesInTimeframeProvider = StreamProvider.autoDispose
+    .family<List<GradeEntry>, (int, DateTime, DateTime)>(
+      (ref, params) => ref
+          .watch(gradeRepositoryProvider)
+          .watchGradesForStudentInDateRange(
+            params.$1,
+            params.$2,
+            params.$3,
+          ),
+    );
+
+final studentAttendanceInTimeframeProvider = StreamProvider.autoDispose
+    .family<List<AttendanceLog>, (int, DateTime, DateTime)>(
+      (ref, params) => ref
+          .watch(attendanceRepositoryProvider)
+          .watchAttendanceForStudentInDateRange(
+            params.$1,
+            params.$2,
+            params.$3,
+          ),
+    );
+
+final studentMaterialInTimeframeProvider = StreamProvider.autoDispose
+    .family<List<MaterialLog>, (int, DateTime, DateTime)>(
+      (ref, params) => ref
+          .watch(materialRepositoryProvider)
+          .watchMaterialForStudentInDateRange(
+            params.$1,
+            params.$2,
+            params.$3,
+          ),
+    );
+
+final studentHomeworkInTimeframeProvider = StreamProvider.autoDispose
+    .family<List<HomeworkLog>, (int, DateTime, DateTime)>(
+      (ref, params) => ref
+          .watch(homeworkRepositoryProvider)
+          .watchHomeworkForStudentInDateRange(
+            params.$1,
+            params.$2,
+            params.$3,
+          ),
     );
 
 String _lessonModeLocation({
@@ -322,6 +375,12 @@ class GroupDetailScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.large),
+                  _TimeframesCard(
+                    groupId: group.id,
+                    archived: archived,
+                    gradeScaleEntries: gradeScaleEntries,
                   ),
                   const SizedBox(height: AppSpacing.large),
                   _LessonCalendarCard(
@@ -1018,6 +1077,246 @@ class GroupDetailScreen extends ConsumerWidget {
       );
       if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
     }
+  }
+}
+
+class _TimeframesCard extends ConsumerWidget {
+  const _TimeframesCard({
+    required this.groupId,
+    required this.archived,
+    required this.gradeScaleEntries,
+  });
+
+  final int groupId;
+  final bool archived;
+  final List<GradeScaleEntry> gradeScaleEntries;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final timeframesValue = ref.watch(groupTimeframesProvider(groupId));
+
+    return Card(
+      child: Padding(
+        padding: appCardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'timeframes'.tr(),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                if (!archived)
+                  FilledButton.tonal(
+                    onPressed: () => _addTimeframe(context, ref, groupId),
+                    child: Text('add_timeframe'.tr()),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.medium),
+            timeframesValue.when(
+              data: (timeframes) => timeframes.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.large,
+                        ),
+                        child: Text(
+                          'no_timeframes'.tr(),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                    )
+                  : _TimeframesTable(
+                      timeframes: timeframes,
+                      allTimeframes: timeframes,
+                      gradeScaleEntries: gradeScaleEntries,
+                      archived: archived,
+                    ),
+              error: (e, s) => const AppErrorText(),
+              loading: () => const Center(child: CircularProgressIndicator()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addTimeframe(
+    BuildContext context,
+    WidgetRef ref,
+    int groupId,
+  ) async {
+    final result = await showTimeframeEditorSheet(
+      context: context,
+      groupId: groupId,
+      timeframeRepository: ref.read(timeframeRepositoryProvider),
+    );
+    if (result != null) {
+      await ref.read(timeframeRepositoryProvider).saveTimeframe(
+            groupId: groupId,
+            label: result.label,
+            startDate: result.startDate,
+            endDate: result.endDate,
+          );
+    }
+  }
+}
+
+class _TimeframesTable extends ConsumerWidget {
+  const _TimeframesTable({
+    required this.timeframes,
+    required this.allTimeframes,
+    required this.gradeScaleEntries,
+    required this.archived,
+  });
+
+  final List<Timeframe> timeframes;
+  final List<Timeframe> allTimeframes;
+  final List<GradeScaleEntry> gradeScaleEntries;
+  final bool archived;
+
+  String _formatPercent(int count, int total) {
+    if (total == 0) return '–';
+    return '${(count / total * 100).round()}%';
+  }
+
+  String _avgFinalGrade(List<TimeframeGrade> grades) {
+    if (grades.isEmpty) return '–';
+    final values = grades
+        .map((g) => gradeValueToNumber(g.grade, gradeScaleEntries))
+        .whereType<double>()
+        .toList();
+    if (values.isEmpty) return grades.first.grade;
+    final avg = values.reduce((a, b) => a + b) / values.length;
+    return gradeLabelForNumericValue(avg, gradeScaleEntries);
+  }
+
+  List<Timeframe> _findOverlaps(Timeframe target, List<Timeframe> all) {
+    return [
+      for (final t in all)
+        if (t.id != target.id &&
+            t.startDate
+                .isBefore(target.endDate.add(const Duration(days: 1))) &&
+            t.endDate
+                .isAfter(target.startDate.subtract(const Duration(days: 1))))
+          t,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        showCheckboxColumn: false,
+        columnSpacing: 16,
+        horizontalMargin: 0,
+        columns: [
+          DataColumn(label: Text('timeframe_label'.tr())),
+          DataColumn(label: Text('start_date'.tr())),
+          DataColumn(label: Text('end_date'.tr())),
+          DataColumn(label: Text('average'.tr()), numeric: true),
+          DataColumn(label: Text('attendance'.tr()), numeric: true),
+          DataColumn(label: Text('material'.tr()), numeric: true),
+          DataColumn(label: Text('homework'.tr()), numeric: true),
+        ],
+        rows: [
+          for (final timeframe in timeframes)
+            _buildRow(context, ref, timeframe),
+        ],
+      ),
+    );
+  }
+
+  DataRow _buildRow(BuildContext context, WidgetRef ref, Timeframe timeframe) {
+    final params = (
+      groupId: timeframe.groupId,
+      startDate: timeframe.startDate,
+      endDate: timeframe.endDate,
+    );
+    final gradesValue = ref.watch(timeframeGradesProvider(timeframe.id));
+    final attendanceValue = ref.watch(timeframeAttendanceProvider(params));
+    final materialValue = ref.watch(timeframeMaterialProvider(params));
+    final homeworkValue = ref.watch(timeframeHomeworkProvider(params));
+
+    final grades = gradesValue.asData?.value ?? [];
+    final attendanceLogs = attendanceValue.asData?.value ?? {};
+    final materialLogs = materialValue.asData?.value ?? {};
+    final homeworkLogs = homeworkValue.asData?.value ?? {};
+
+    final allAttendance = attendanceLogs.values.expand((l) => l).toList();
+    final allMaterial = materialLogs.values.expand((l) => l).toList();
+    final allHomework = homeworkLogs.values.expand((l) => l).toList();
+
+    final presentCount = allAttendance.where((l) => !l.isAbsent).length;
+    final hadMaterialCount = allMaterial.where((l) => l.hadMaterial).length;
+    final hadHomeworkCount = allHomework.where((l) => l.hadHomework).length;
+
+    final overlaps = _findOverlaps(timeframe, allTimeframes);
+    final hasOverlap = overlaps.isNotEmpty;
+
+    final labelWidget = Row(
+      children: [
+        Expanded(
+          child: Text(
+            timeframe.label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (hasOverlap)
+          Tooltip(
+            message: 'overlaps_with'.tr(namedArgs: {
+              'timeframes': overlaps
+                  .map((t) =>
+                      '${t.label} (${formatShortDate(t.startDate)} – ${formatShortDate(t.endDate)})')
+                  .join(', '),
+            }),
+            child: Icon(
+              Icons.warning_amber_outlined,
+              color: Theme.of(context).colorScheme.error,
+              size: 16,
+            ),
+          ),
+      ],
+    );
+
+    return DataRow(
+      onSelectChanged: (_) => _viewTimeframeGrades(context, timeframe),
+      color: hasOverlap
+          ? WidgetStatePropertyAll(
+              Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.15))
+          : null,
+      cells: [
+        DataCell(labelWidget),
+        DataCell(Text(formatShortDate(timeframe.startDate))),
+        DataCell(Text(formatShortDate(timeframe.endDate))),
+        DataCell(Text(_avgFinalGrade(grades))),
+        DataCell(Text(_formatPercent(presentCount, allAttendance.length))),
+        DataCell(Text(_formatPercent(hadMaterialCount, allMaterial.length))),
+        DataCell(Text(_formatPercent(hadHomeworkCount, allHomework.length))),
+      ],
+    );
+  }
+
+  Future<void> _viewTimeframeGrades(
+    BuildContext context,
+    Timeframe timeframe,
+  ) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => TimeframeGradesScreen(timeframe: timeframe),
+      ),
+    );
   }
 }
 

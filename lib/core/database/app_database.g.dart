@@ -5378,6 +5378,787 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   }
 }
 
+class $TimeframesTableTable extends TimeframesTable
+    with TableInfo<$TimeframesTableTable, TimeframesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TimeframesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES groups_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endDateMeta = const VerificationMeta(
+    'endDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+    'end_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _finalGradeMeta = const VerificationMeta(
+    'finalGrade',
+  );
+  @override
+  late final GeneratedColumn<String> finalGrade = GeneratedColumn<String>(
+    'final_grade',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    groupId,
+    label,
+    startDate,
+    endDate,
+    finalGrade,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'timeframes_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TimeframesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(
+        _endDateMeta,
+        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endDateMeta);
+    }
+    if (data.containsKey('final_grade')) {
+      context.handle(
+        _finalGradeMeta,
+        finalGrade.isAcceptableOrUnknown(data['final_grade']!, _finalGradeMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TimeframesTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TimeframesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}group_id'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      )!,
+      endDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_date'],
+      )!,
+      finalGrade: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}final_grade'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TimeframesTableTable createAlias(String alias) {
+    return $TimeframesTableTable(attachedDatabase, alias);
+  }
+}
+
+class TimeframesTableData extends DataClass
+    implements Insertable<TimeframesTableData> {
+  final int id;
+  final int groupId;
+  final String label;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String? finalGrade;
+  final DateTime createdAt;
+  const TimeframesTableData({
+    required this.id,
+    required this.groupId,
+    required this.label,
+    required this.startDate,
+    required this.endDate,
+    this.finalGrade,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['group_id'] = Variable<int>(groupId);
+    map['label'] = Variable<String>(label);
+    map['start_date'] = Variable<DateTime>(startDate);
+    map['end_date'] = Variable<DateTime>(endDate);
+    if (!nullToAbsent || finalGrade != null) {
+      map['final_grade'] = Variable<String>(finalGrade);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  TimeframesTableCompanion toCompanion(bool nullToAbsent) {
+    return TimeframesTableCompanion(
+      id: Value(id),
+      groupId: Value(groupId),
+      label: Value(label),
+      startDate: Value(startDate),
+      endDate: Value(endDate),
+      finalGrade: finalGrade == null && nullToAbsent
+          ? const Value.absent()
+          : Value(finalGrade),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory TimeframesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TimeframesTableData(
+      id: serializer.fromJson<int>(json['id']),
+      groupId: serializer.fromJson<int>(json['groupId']),
+      label: serializer.fromJson<String>(json['label']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      endDate: serializer.fromJson<DateTime>(json['endDate']),
+      finalGrade: serializer.fromJson<String?>(json['finalGrade']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'groupId': serializer.toJson<int>(groupId),
+      'label': serializer.toJson<String>(label),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'endDate': serializer.toJson<DateTime>(endDate),
+      'finalGrade': serializer.toJson<String?>(finalGrade),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  TimeframesTableData copyWith({
+    int? id,
+    int? groupId,
+    String? label,
+    DateTime? startDate,
+    DateTime? endDate,
+    Value<String?> finalGrade = const Value.absent(),
+    DateTime? createdAt,
+  }) => TimeframesTableData(
+    id: id ?? this.id,
+    groupId: groupId ?? this.groupId,
+    label: label ?? this.label,
+    startDate: startDate ?? this.startDate,
+    endDate: endDate ?? this.endDate,
+    finalGrade: finalGrade.present ? finalGrade.value : this.finalGrade,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  TimeframesTableData copyWithCompanion(TimeframesTableCompanion data) {
+    return TimeframesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      label: data.label.present ? data.label.value : this.label,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      finalGrade: data.finalGrade.present
+          ? data.finalGrade.value
+          : this.finalGrade,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TimeframesTableData(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('label: $label, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('finalGrade: $finalGrade, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    groupId,
+    label,
+    startDate,
+    endDate,
+    finalGrade,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TimeframesTableData &&
+          other.id == this.id &&
+          other.groupId == this.groupId &&
+          other.label == this.label &&
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
+          other.finalGrade == this.finalGrade &&
+          other.createdAt == this.createdAt);
+}
+
+class TimeframesTableCompanion extends UpdateCompanion<TimeframesTableData> {
+  final Value<int> id;
+  final Value<int> groupId;
+  final Value<String> label;
+  final Value<DateTime> startDate;
+  final Value<DateTime> endDate;
+  final Value<String?> finalGrade;
+  final Value<DateTime> createdAt;
+  const TimeframesTableCompanion({
+    this.id = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.label = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.finalGrade = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  TimeframesTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int groupId,
+    required String label,
+    required DateTime startDate,
+    required DateTime endDate,
+    this.finalGrade = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : groupId = Value(groupId),
+       label = Value(label),
+       startDate = Value(startDate),
+       endDate = Value(endDate);
+  static Insertable<TimeframesTableData> custom({
+    Expression<int>? id,
+    Expression<int>? groupId,
+    Expression<String>? label,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
+    Expression<String>? finalGrade,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (groupId != null) 'group_id': groupId,
+      if (label != null) 'label': label,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (finalGrade != null) 'final_grade': finalGrade,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  TimeframesTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? groupId,
+    Value<String>? label,
+    Value<DateTime>? startDate,
+    Value<DateTime>? endDate,
+    Value<String?>? finalGrade,
+    Value<DateTime>? createdAt,
+  }) {
+    return TimeframesTableCompanion(
+      id: id ?? this.id,
+      groupId: groupId ?? this.groupId,
+      label: label ?? this.label,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      finalGrade: finalGrade ?? this.finalGrade,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<int>(groupId.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (finalGrade.present) {
+      map['final_grade'] = Variable<String>(finalGrade.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TimeframesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('label: $label, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('finalGrade: $finalGrade, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TimeframeGradesTableTable extends TimeframeGradesTable
+    with TableInfo<$TimeframeGradesTableTable, TimeframeGradesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TimeframeGradesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _timeframeIdMeta = const VerificationMeta(
+    'timeframeId',
+  );
+  @override
+  late final GeneratedColumn<int> timeframeId = GeneratedColumn<int>(
+    'timeframe_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES timeframes_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _studentIdMeta = const VerificationMeta(
+    'studentId',
+  );
+  @override
+  late final GeneratedColumn<int> studentId = GeneratedColumn<int>(
+    'student_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES students_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _gradeMeta = const VerificationMeta('grade');
+  @override
+  late final GeneratedColumn<String> grade = GeneratedColumn<String>(
+    'grade',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, timeframeId, studentId, grade];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'timeframe_grades_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TimeframeGradesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('timeframe_id')) {
+      context.handle(
+        _timeframeIdMeta,
+        timeframeId.isAcceptableOrUnknown(
+          data['timeframe_id']!,
+          _timeframeIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_timeframeIdMeta);
+    }
+    if (data.containsKey('student_id')) {
+      context.handle(
+        _studentIdMeta,
+        studentId.isAcceptableOrUnknown(data['student_id']!, _studentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_studentIdMeta);
+    }
+    if (data.containsKey('grade')) {
+      context.handle(
+        _gradeMeta,
+        grade.isAcceptableOrUnknown(data['grade']!, _gradeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_gradeMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {timeframeId, studentId},
+  ];
+  @override
+  TimeframeGradesTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TimeframeGradesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      timeframeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timeframe_id'],
+      )!,
+      studentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}student_id'],
+      )!,
+      grade: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}grade'],
+      )!,
+    );
+  }
+
+  @override
+  $TimeframeGradesTableTable createAlias(String alias) {
+    return $TimeframeGradesTableTable(attachedDatabase, alias);
+  }
+}
+
+class TimeframeGradesTableData extends DataClass
+    implements Insertable<TimeframeGradesTableData> {
+  final int id;
+  final int timeframeId;
+  final int studentId;
+  final String grade;
+  const TimeframeGradesTableData({
+    required this.id,
+    required this.timeframeId,
+    required this.studentId,
+    required this.grade,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['timeframe_id'] = Variable<int>(timeframeId);
+    map['student_id'] = Variable<int>(studentId);
+    map['grade'] = Variable<String>(grade);
+    return map;
+  }
+
+  TimeframeGradesTableCompanion toCompanion(bool nullToAbsent) {
+    return TimeframeGradesTableCompanion(
+      id: Value(id),
+      timeframeId: Value(timeframeId),
+      studentId: Value(studentId),
+      grade: Value(grade),
+    );
+  }
+
+  factory TimeframeGradesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TimeframeGradesTableData(
+      id: serializer.fromJson<int>(json['id']),
+      timeframeId: serializer.fromJson<int>(json['timeframeId']),
+      studentId: serializer.fromJson<int>(json['studentId']),
+      grade: serializer.fromJson<String>(json['grade']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'timeframeId': serializer.toJson<int>(timeframeId),
+      'studentId': serializer.toJson<int>(studentId),
+      'grade': serializer.toJson<String>(grade),
+    };
+  }
+
+  TimeframeGradesTableData copyWith({
+    int? id,
+    int? timeframeId,
+    int? studentId,
+    String? grade,
+  }) => TimeframeGradesTableData(
+    id: id ?? this.id,
+    timeframeId: timeframeId ?? this.timeframeId,
+    studentId: studentId ?? this.studentId,
+    grade: grade ?? this.grade,
+  );
+  TimeframeGradesTableData copyWithCompanion(
+    TimeframeGradesTableCompanion data,
+  ) {
+    return TimeframeGradesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      timeframeId: data.timeframeId.present
+          ? data.timeframeId.value
+          : this.timeframeId,
+      studentId: data.studentId.present ? data.studentId.value : this.studentId,
+      grade: data.grade.present ? data.grade.value : this.grade,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TimeframeGradesTableData(')
+          ..write('id: $id, ')
+          ..write('timeframeId: $timeframeId, ')
+          ..write('studentId: $studentId, ')
+          ..write('grade: $grade')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, timeframeId, studentId, grade);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TimeframeGradesTableData &&
+          other.id == this.id &&
+          other.timeframeId == this.timeframeId &&
+          other.studentId == this.studentId &&
+          other.grade == this.grade);
+}
+
+class TimeframeGradesTableCompanion
+    extends UpdateCompanion<TimeframeGradesTableData> {
+  final Value<int> id;
+  final Value<int> timeframeId;
+  final Value<int> studentId;
+  final Value<String> grade;
+  const TimeframeGradesTableCompanion({
+    this.id = const Value.absent(),
+    this.timeframeId = const Value.absent(),
+    this.studentId = const Value.absent(),
+    this.grade = const Value.absent(),
+  });
+  TimeframeGradesTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int timeframeId,
+    required int studentId,
+    required String grade,
+  }) : timeframeId = Value(timeframeId),
+       studentId = Value(studentId),
+       grade = Value(grade);
+  static Insertable<TimeframeGradesTableData> custom({
+    Expression<int>? id,
+    Expression<int>? timeframeId,
+    Expression<int>? studentId,
+    Expression<String>? grade,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (timeframeId != null) 'timeframe_id': timeframeId,
+      if (studentId != null) 'student_id': studentId,
+      if (grade != null) 'grade': grade,
+    });
+  }
+
+  TimeframeGradesTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? timeframeId,
+    Value<int>? studentId,
+    Value<String>? grade,
+  }) {
+    return TimeframeGradesTableCompanion(
+      id: id ?? this.id,
+      timeframeId: timeframeId ?? this.timeframeId,
+      studentId: studentId ?? this.studentId,
+      grade: grade ?? this.grade,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (timeframeId.present) {
+      map['timeframe_id'] = Variable<int>(timeframeId.value);
+    }
+    if (studentId.present) {
+      map['student_id'] = Variable<int>(studentId.value);
+    }
+    if (grade.present) {
+      map['grade'] = Variable<String>(grade.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TimeframeGradesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('timeframeId: $timeframeId, ')
+          ..write('studentId: $studentId, ')
+          ..write('grade: $grade')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5399,6 +6180,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SeatingPlanPositionsTableTable seatingPlanPositionsTable =
       $SeatingPlanPositionsTableTable(this);
   late final $SessionsTableTable sessionsTable = $SessionsTableTable(this);
+  late final $TimeframesTableTable timeframesTable = $TimeframesTableTable(
+    this,
+  );
+  late final $TimeframeGradesTableTable timeframeGradesTable =
+      $TimeframeGradesTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5416,6 +6202,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     seatingPlansTable,
     seatingPlanPositionsTable,
     sessionsTable,
+    timeframesTable,
+    timeframeGradesTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5520,6 +6308,27 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('sessions_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'groups_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('timeframes_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'timeframes_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('timeframe_grades_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'students_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('timeframe_grades_table', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -5646,6 +6455,29 @@ final class $$GroupsTableTableReferences
     ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_sessionsTableRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$TimeframesTableTable, List<TimeframesTableData>>
+  _timeframesTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.timeframesTable,
+    aliasName: $_aliasNameGenerator(
+      db.groupsTable.id,
+      db.timeframesTable.groupId,
+    ),
+  );
+
+  $$TimeframesTableTableProcessedTableManager get timeframesTableRefs {
+    final manager = $$TimeframesTableTableTableManager(
+      $_db,
+      $_db.timeframesTable,
+    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _timeframesTableRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -5812,6 +6644,31 @@ class $$GroupsTableTableFilterComposer
           }) => $$SessionsTableTableFilterComposer(
             $db: $db,
             $table: $db.sessionsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> timeframesTableRefs(
+    Expression<bool> Function($$TimeframesTableTableFilterComposer f) f,
+  ) {
+    final $$TimeframesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.timeframesTable,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TimeframesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.timeframesTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6028,6 +6885,31 @@ class $$GroupsTableTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> timeframesTableRefs<T extends Object>(
+    Expression<T> Function($$TimeframesTableTableAnnotationComposer a) f,
+  ) {
+    final $$TimeframesTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.timeframesTable,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TimeframesTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.timeframesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$GroupsTableTableTableManager
@@ -6049,6 +6931,7 @@ class $$GroupsTableTableTableManager
             bool notesTableRefs,
             bool seatingPlansTableRefs,
             bool sessionsTableRefs,
+            bool timeframesTableRefs,
           })
         > {
   $$GroupsTableTableTableManager(_$AppDatabase db, $GroupsTableTable table)
@@ -6113,6 +6996,7 @@ class $$GroupsTableTableTableManager
                 notesTableRefs = false,
                 seatingPlansTableRefs = false,
                 sessionsTableRefs = false,
+                timeframesTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -6122,6 +7006,7 @@ class $$GroupsTableTableTableManager
                     if (notesTableRefs) db.notesTable,
                     if (seatingPlansTableRefs) db.seatingPlansTable,
                     if (sessionsTableRefs) db.sessionsTable,
+                    if (timeframesTableRefs) db.timeframesTable,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -6231,6 +7116,27 @@ class $$GroupsTableTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (timeframesTableRefs)
+                        await $_getPrefetchedData<
+                          GroupsTableData,
+                          $GroupsTableTable,
+                          TimeframesTableData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$GroupsTableTableReferences
+                              ._timeframesTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$GroupsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).timeframesTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.groupId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -6257,6 +7163,7 @@ typedef $$GroupsTableTableProcessedTableManager =
         bool notesTableRefs,
         bool seatingPlansTableRefs,
         bool sessionsTableRefs,
+        bool timeframesTableRefs,
       })
     >;
 typedef $$StudentsTableTableCreateCompanionBuilder =
@@ -6482,6 +7389,34 @@ final class $$StudentsTableTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _seatingPlanPositionsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $TimeframeGradesTableTable,
+    List<TimeframeGradesTableData>
+  >
+  _timeframeGradesTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.timeframeGradesTable,
+        aliasName: $_aliasNameGenerator(
+          db.studentsTable.id,
+          db.timeframeGradesTable.studentId,
+        ),
+      );
+
+  $$TimeframeGradesTableTableProcessedTableManager
+  get timeframeGradesTableRefs {
+    final manager = $$TimeframeGradesTableTableTableManager(
+      $_db,
+      $_db.timeframeGradesTable,
+    ).filter((f) => f.studentId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _timeframeGradesTableRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -6730,6 +7665,31 @@ class $$StudentsTableTableFilterComposer
                     $removeJoinBuilderFromRootComposer,
               ),
         );
+    return f(composer);
+  }
+
+  Expression<bool> timeframeGradesTableRefs(
+    Expression<bool> Function($$TimeframeGradesTableTableFilterComposer f) f,
+  ) {
+    final $$TimeframeGradesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.timeframeGradesTable,
+      getReferencedColumn: (t) => t.studentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TimeframeGradesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.timeframeGradesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
     return f(composer);
   }
 }
@@ -7039,6 +7999,32 @@ class $$StudentsTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> timeframeGradesTableRefs<T extends Object>(
+    Expression<T> Function($$TimeframeGradesTableTableAnnotationComposer a) f,
+  ) {
+    final $$TimeframeGradesTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.timeframeGradesTable,
+          getReferencedColumn: (t) => t.studentId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TimeframeGradesTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.timeframeGradesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$StudentsTableTableTableManager
@@ -7063,6 +8049,7 @@ class $$StudentsTableTableTableManager
             bool listItemsTableRefs,
             bool notesTableRefs,
             bool seatingPlanPositionsTableRefs,
+            bool timeframeGradesTableRefs,
           })
         > {
   $$StudentsTableTableTableManager(_$AppDatabase db, $StudentsTableTable table)
@@ -7134,6 +8121,7 @@ class $$StudentsTableTableTableManager
                 listItemsTableRefs = false,
                 notesTableRefs = false,
                 seatingPlanPositionsTableRefs = false,
+                timeframeGradesTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -7146,6 +8134,7 @@ class $$StudentsTableTableTableManager
                     if (notesTableRefs) db.notesTable,
                     if (seatingPlanPositionsTableRefs)
                       db.seatingPlanPositionsTable,
+                    if (timeframeGradesTableRefs) db.timeframeGradesTable,
                   ],
                   addJoins:
                       <
@@ -7330,6 +8319,27 @@ class $$StudentsTableTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (timeframeGradesTableRefs)
+                        await $_getPrefetchedData<
+                          StudentsTableData,
+                          $StudentsTableTable,
+                          TimeframeGradesTableData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StudentsTableTableReferences
+                              ._timeframeGradesTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StudentsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).timeframeGradesTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.studentId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -7359,6 +8369,7 @@ typedef $$StudentsTableTableProcessedTableManager =
         bool listItemsTableRefs,
         bool notesTableRefs,
         bool seatingPlanPositionsTableRefs,
+        bool timeframeGradesTableRefs,
       })
     >;
 typedef $$AttendanceLogsTableTableCreateCompanionBuilder =
@@ -11406,6 +12417,885 @@ typedef $$SessionsTableTableProcessedTableManager =
       SessionsTableData,
       PrefetchHooks Function({bool groupId})
     >;
+typedef $$TimeframesTableTableCreateCompanionBuilder =
+    TimeframesTableCompanion Function({
+      Value<int> id,
+      required int groupId,
+      required String label,
+      required DateTime startDate,
+      required DateTime endDate,
+      Value<String?> finalGrade,
+      Value<DateTime> createdAt,
+    });
+typedef $$TimeframesTableTableUpdateCompanionBuilder =
+    TimeframesTableCompanion Function({
+      Value<int> id,
+      Value<int> groupId,
+      Value<String> label,
+      Value<DateTime> startDate,
+      Value<DateTime> endDate,
+      Value<String?> finalGrade,
+      Value<DateTime> createdAt,
+    });
+
+final class $$TimeframesTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $TimeframesTableTable,
+          TimeframesTableData
+        > {
+  $$TimeframesTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $GroupsTableTable _groupIdTable(_$AppDatabase db) =>
+      db.groupsTable.createAlias(
+        $_aliasNameGenerator(db.timeframesTable.groupId, db.groupsTable.id),
+      );
+
+  $$GroupsTableTableProcessedTableManager get groupId {
+    final $_column = $_itemColumn<int>('group_id')!;
+
+    final manager = $$GroupsTableTableTableManager(
+      $_db,
+      $_db.groupsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $TimeframeGradesTableTable,
+    List<TimeframeGradesTableData>
+  >
+  _timeframeGradesTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.timeframeGradesTable,
+        aliasName: $_aliasNameGenerator(
+          db.timeframesTable.id,
+          db.timeframeGradesTable.timeframeId,
+        ),
+      );
+
+  $$TimeframeGradesTableTableProcessedTableManager
+  get timeframeGradesTableRefs {
+    final manager = $$TimeframeGradesTableTableTableManager(
+      $_db,
+      $_db.timeframeGradesTable,
+    ).filter((f) => f.timeframeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _timeframeGradesTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$TimeframesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $TimeframesTableTable> {
+  $$TimeframesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get finalGrade => $composableBuilder(
+    column: $table.finalGrade,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$GroupsTableTableFilterComposer get groupId {
+    final $$GroupsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> timeframeGradesTableRefs(
+    Expression<bool> Function($$TimeframeGradesTableTableFilterComposer f) f,
+  ) {
+    final $$TimeframeGradesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.timeframeGradesTable,
+      getReferencedColumn: (t) => t.timeframeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TimeframeGradesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.timeframeGradesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TimeframesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $TimeframesTableTable> {
+  $$TimeframesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get finalGrade => $composableBuilder(
+    column: $table.finalGrade,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$GroupsTableTableOrderingComposer get groupId {
+    final $$GroupsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TimeframesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TimeframesTableTable> {
+  $$TimeframesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<String> get finalGrade => $composableBuilder(
+    column: $table.finalGrade,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$GroupsTableTableAnnotationComposer get groupId {
+    final $$GroupsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> timeframeGradesTableRefs<T extends Object>(
+    Expression<T> Function($$TimeframeGradesTableTableAnnotationComposer a) f,
+  ) {
+    final $$TimeframeGradesTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.timeframeGradesTable,
+          getReferencedColumn: (t) => t.timeframeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TimeframeGradesTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.timeframeGradesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$TimeframesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TimeframesTableTable,
+          TimeframesTableData,
+          $$TimeframesTableTableFilterComposer,
+          $$TimeframesTableTableOrderingComposer,
+          $$TimeframesTableTableAnnotationComposer,
+          $$TimeframesTableTableCreateCompanionBuilder,
+          $$TimeframesTableTableUpdateCompanionBuilder,
+          (TimeframesTableData, $$TimeframesTableTableReferences),
+          TimeframesTableData,
+          PrefetchHooks Function({bool groupId, bool timeframeGradesTableRefs})
+        > {
+  $$TimeframesTableTableTableManager(
+    _$AppDatabase db,
+    $TimeframesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TimeframesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TimeframesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TimeframesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> groupId = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<DateTime> startDate = const Value.absent(),
+                Value<DateTime> endDate = const Value.absent(),
+                Value<String?> finalGrade = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TimeframesTableCompanion(
+                id: id,
+                groupId: groupId,
+                label: label,
+                startDate: startDate,
+                endDate: endDate,
+                finalGrade: finalGrade,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int groupId,
+                required String label,
+                required DateTime startDate,
+                required DateTime endDate,
+                Value<String?> finalGrade = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TimeframesTableCompanion.insert(
+                id: id,
+                groupId: groupId,
+                label: label,
+                startDate: startDate,
+                endDate: endDate,
+                finalGrade: finalGrade,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TimeframesTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({groupId = false, timeframeGradesTableRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (timeframeGradesTableRefs) db.timeframeGradesTable,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (groupId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.groupId,
+                                    referencedTable:
+                                        $$TimeframesTableTableReferences
+                                            ._groupIdTable(db),
+                                    referencedColumn:
+                                        $$TimeframesTableTableReferences
+                                            ._groupIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (timeframeGradesTableRefs)
+                        await $_getPrefetchedData<
+                          TimeframesTableData,
+                          $TimeframesTableTable,
+                          TimeframeGradesTableData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TimeframesTableTableReferences
+                              ._timeframeGradesTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TimeframesTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).timeframeGradesTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.timeframeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$TimeframesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TimeframesTableTable,
+      TimeframesTableData,
+      $$TimeframesTableTableFilterComposer,
+      $$TimeframesTableTableOrderingComposer,
+      $$TimeframesTableTableAnnotationComposer,
+      $$TimeframesTableTableCreateCompanionBuilder,
+      $$TimeframesTableTableUpdateCompanionBuilder,
+      (TimeframesTableData, $$TimeframesTableTableReferences),
+      TimeframesTableData,
+      PrefetchHooks Function({bool groupId, bool timeframeGradesTableRefs})
+    >;
+typedef $$TimeframeGradesTableTableCreateCompanionBuilder =
+    TimeframeGradesTableCompanion Function({
+      Value<int> id,
+      required int timeframeId,
+      required int studentId,
+      required String grade,
+    });
+typedef $$TimeframeGradesTableTableUpdateCompanionBuilder =
+    TimeframeGradesTableCompanion Function({
+      Value<int> id,
+      Value<int> timeframeId,
+      Value<int> studentId,
+      Value<String> grade,
+    });
+
+final class $$TimeframeGradesTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $TimeframeGradesTableTable,
+          TimeframeGradesTableData
+        > {
+  $$TimeframeGradesTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TimeframesTableTable _timeframeIdTable(_$AppDatabase db) =>
+      db.timeframesTable.createAlias(
+        $_aliasNameGenerator(
+          db.timeframeGradesTable.timeframeId,
+          db.timeframesTable.id,
+        ),
+      );
+
+  $$TimeframesTableTableProcessedTableManager get timeframeId {
+    final $_column = $_itemColumn<int>('timeframe_id')!;
+
+    final manager = $$TimeframesTableTableTableManager(
+      $_db,
+      $_db.timeframesTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_timeframeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $StudentsTableTable _studentIdTable(_$AppDatabase db) =>
+      db.studentsTable.createAlias(
+        $_aliasNameGenerator(
+          db.timeframeGradesTable.studentId,
+          db.studentsTable.id,
+        ),
+      );
+
+  $$StudentsTableTableProcessedTableManager get studentId {
+    final $_column = $_itemColumn<int>('student_id')!;
+
+    final manager = $$StudentsTableTableTableManager(
+      $_db,
+      $_db.studentsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_studentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TimeframeGradesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $TimeframeGradesTableTable> {
+  $$TimeframeGradesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get grade => $composableBuilder(
+    column: $table.grade,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TimeframesTableTableFilterComposer get timeframeId {
+    final $$TimeframesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.timeframeId,
+      referencedTable: $db.timeframesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TimeframesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.timeframesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableTableFilterComposer get studentId {
+    final $$StudentsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TimeframeGradesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $TimeframeGradesTableTable> {
+  $$TimeframeGradesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get grade => $composableBuilder(
+    column: $table.grade,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TimeframesTableTableOrderingComposer get timeframeId {
+    final $$TimeframesTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.timeframeId,
+      referencedTable: $db.timeframesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TimeframesTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.timeframesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableTableOrderingComposer get studentId {
+    final $$StudentsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TimeframeGradesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TimeframeGradesTableTable> {
+  $$TimeframeGradesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get grade =>
+      $composableBuilder(column: $table.grade, builder: (column) => column);
+
+  $$TimeframesTableTableAnnotationComposer get timeframeId {
+    final $$TimeframesTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.timeframeId,
+      referencedTable: $db.timeframesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TimeframesTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.timeframesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableTableAnnotationComposer get studentId {
+    final $$StudentsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TimeframeGradesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TimeframeGradesTableTable,
+          TimeframeGradesTableData,
+          $$TimeframeGradesTableTableFilterComposer,
+          $$TimeframeGradesTableTableOrderingComposer,
+          $$TimeframeGradesTableTableAnnotationComposer,
+          $$TimeframeGradesTableTableCreateCompanionBuilder,
+          $$TimeframeGradesTableTableUpdateCompanionBuilder,
+          (TimeframeGradesTableData, $$TimeframeGradesTableTableReferences),
+          TimeframeGradesTableData,
+          PrefetchHooks Function({bool timeframeId, bool studentId})
+        > {
+  $$TimeframeGradesTableTableTableManager(
+    _$AppDatabase db,
+    $TimeframeGradesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TimeframeGradesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TimeframeGradesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TimeframeGradesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> timeframeId = const Value.absent(),
+                Value<int> studentId = const Value.absent(),
+                Value<String> grade = const Value.absent(),
+              }) => TimeframeGradesTableCompanion(
+                id: id,
+                timeframeId: timeframeId,
+                studentId: studentId,
+                grade: grade,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int timeframeId,
+                required int studentId,
+                required String grade,
+              }) => TimeframeGradesTableCompanion.insert(
+                id: id,
+                timeframeId: timeframeId,
+                studentId: studentId,
+                grade: grade,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TimeframeGradesTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({timeframeId = false, studentId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (timeframeId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.timeframeId,
+                                referencedTable:
+                                    $$TimeframeGradesTableTableReferences
+                                        ._timeframeIdTable(db),
+                                referencedColumn:
+                                    $$TimeframeGradesTableTableReferences
+                                        ._timeframeIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (studentId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.studentId,
+                                referencedTable:
+                                    $$TimeframeGradesTableTableReferences
+                                        ._studentIdTable(db),
+                                referencedColumn:
+                                    $$TimeframeGradesTableTableReferences
+                                        ._studentIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TimeframeGradesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TimeframeGradesTableTable,
+      TimeframeGradesTableData,
+      $$TimeframeGradesTableTableFilterComposer,
+      $$TimeframeGradesTableTableOrderingComposer,
+      $$TimeframeGradesTableTableAnnotationComposer,
+      $$TimeframeGradesTableTableCreateCompanionBuilder,
+      $$TimeframeGradesTableTableUpdateCompanionBuilder,
+      (TimeframeGradesTableData, $$TimeframeGradesTableTableReferences),
+      TimeframeGradesTableData,
+      PrefetchHooks Function({bool timeframeId, bool studentId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11437,4 +13327,8 @@ class $AppDatabaseManager {
       );
   $$SessionsTableTableTableManager get sessionsTable =>
       $$SessionsTableTableTableManager(_db, _db.sessionsTable);
+  $$TimeframesTableTableTableManager get timeframesTable =>
+      $$TimeframesTableTableTableManager(_db, _db.timeframesTable);
+  $$TimeframeGradesTableTableTableManager get timeframeGradesTable =>
+      $$TimeframeGradesTableTableTableManager(_db, _db.timeframeGradesTable);
 }
