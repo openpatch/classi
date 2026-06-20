@@ -14,6 +14,51 @@ class HomeworkRepository {
         .watch();
   }
 
+  Stream<List<HomeworkLog>> watchHomeworkForStudentInDateRange(
+    int studentId,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    final normalizedStart = DateTime(startDate.year, startDate.month, startDate.day);
+    final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    
+    return (_database.select(_database.homeworkLogsTable)
+          ..where((table) => table.studentId.equals(studentId))
+          ..where((table) => table.date.isBiggerOrEqualValue(normalizedStart) & 
+                     table.date.isSmallerOrEqualValue(normalizedEnd))
+          ..orderBy([(table) => OrderingTerm.asc(table.date)]))
+        .watch();
+  }
+
+  Stream<Map<int, List<HomeworkLog>>> watchHomeworkForGroupInDateRange(
+    int groupId,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    final normalizedStart = DateTime(startDate.year, startDate.month, startDate.day);
+    final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+
+    final query = _database.select(_database.homeworkLogsTable).join([
+      innerJoin(
+        _database.studentsTable,
+        _database.studentsTable.id.equalsExp(_database.homeworkLogsTable.studentId),
+      ),
+    ])
+      ..where(_database.studentsTable.groupId.equals(groupId))
+      ..where(_database.homeworkLogsTable.date.isBiggerOrEqualValue(normalizedStart))
+      ..where(_database.homeworkLogsTable.date.isSmallerOrEqualValue(normalizedEnd))
+      ..orderBy([OrderingTerm.asc(_database.homeworkLogsTable.studentId), OrderingTerm.asc(_database.homeworkLogsTable.date)]);
+
+    return query.watch().map((rows) {
+      final result = <int, List<HomeworkLog>>{};
+      for (final row in rows) {
+        final log = row.readTable(_database.homeworkLogsTable);
+        result.putIfAbsent(log.studentId, () => []).add(log);
+      }
+      return result;
+    });
+  }
+
   Stream<Map<int, bool>> watchGroupSelections({
     required int groupId,
     required DateTime date,

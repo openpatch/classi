@@ -412,7 +412,7 @@ class GradeRepository {
     List<GradeCategory> categories,
     List<GradeScaleEntry> gradeScale,
   ) {
-    final perStudent = <int, List<({double value, String categoryId})>>{};
+    final perStudent = <int, Map<String, List<double>>>{};
     for (final row in rows) {
       final numericValue = gradeValueToNumber(
         row.read<String>('value'),
@@ -422,17 +422,28 @@ class GradeRepository {
         continue;
       }
 
-      perStudent.putIfAbsent(row.read<int>('student_id'), () => []).add((
-        value: numericValue,
-        categoryId: row.read<String>('category_id'),
-      ));
+      final studentId = row.read<int>('student_id');
+      final categoryId = row.read<String>('category_id');
+      perStudent.putIfAbsent(studentId, () => {}).putIfAbsent(
+        categoryId,
+        () => [],
+      ).add(numericValue);
     }
 
     final averages = <int, double>{};
-    for (final entry in perStudent.entries) {
-      final average = calculateWeightedAverage(entry.value, categories);
+    for (final studentEntry in perStudent.entries) {
+      final categoryAverages = <({double value, String categoryId})>[];
+      for (final categoryEntry in studentEntry.value.entries) {
+        final values = categoryEntry.value;
+        final categoryAvg = values.reduce((a, b) => a + b) / values.length;
+        categoryAverages.add((
+          value: categoryAvg,
+          categoryId: categoryEntry.key,
+        ));
+      }
+      final average = calculateWeightedAverage(categoryAverages, categories);
       if (average != null) {
-        averages[entry.key] = average;
+        averages[studentEntry.key] = average;
       }
     }
     return averages;
@@ -471,5 +482,86 @@ class GradeRepository {
       }
     }
     return result;
+  }
+
+  Stream<List<GradeEntry>> watchGradesForStudentInDateRange(
+    int studentId,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    final normalizedStart = DateTime(startDate.year, startDate.month, startDate.day);
+    final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    
+    return (_database.select(_database.gradeEntriesTable)
+          ..where((table) => table.studentId.equals(studentId))
+          ..where((table) => table.date.isBiggerOrEqualValue(normalizedStart) & 
+                     table.date.isSmallerOrEqualValue(normalizedEnd))
+          ..orderBy([(table) => OrderingTerm.asc(table.date)]))
+        .watch();
+  }
+
+  /// Streams per-student, per-category grade averages for all students in
+  /// [groupId], filtered to entries within [startDate]–[endDate] inclusive.
+  ///
+  /// Returns `Map<studentId, Map<categoryId, average>>`.
+  Stream<Map<int, Map<String, double>>> watchGroupCategoryAveragesInDateRange({
+    required int groupId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    final normalizedStart = DateTime(startDate.year, startDate.month, startDate.day);
+    final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+
+    return Stream.multi((controller) {
+      var gradeScale = defaultGradeScaleEntries;
+      var hasGroup = false;
+      var hasRows = false;
+      var rows = const <QueryRow>[];
+
+      void emit() {
+        if (!hasGroup || !hasRows) {
+          controller.add(const <int, Map<String, double>>{});
+          return;
+        }
+        controller.add(_categoryAveragesFromRows(rows, gradeScale));
+      }
+
+      final groupSubscription =
+          (_database.select(_database.groupsTable)
+                ..where((t) => t.id.equals(groupId)))
+              .watchSingleOrNull()
+              .listen((group) {
+                hasGroup = group != null;
+                if (group != null) {
+                  gradeScale = parseGradeScaleEntries(group.gradeScaleJson);
+                }
+                emit();
+              }, onError: controller.addError);
+
+      final rowsSubscription = _database.customSelect(
+        '''
+        SELECT g.student_id, g.category_id, g.value
+        FROM grade_entries_table g
+        JOIN students_table s ON s.id = g.student_id
+        WHERE s.group_id = ? AND g.date >= ? AND g.date <= ?
+        ORDER BY g.student_id, g.category_id
+        ''',
+        variables: [
+          Variable.withInt(groupId),
+          Variable.withDateTime(normalizedStart),
+          Variable.withDateTime(normalizedEnd),
+        ],
+        readsFrom: {_database.gradeEntriesTable, _database.studentsTable},
+      ).watch().listen((value) {
+        hasRows = true;
+        rows = value;
+        emit();
+      }, onError: controller.addError);
+
+      controller.onCancel = () async {
+        await groupSubscription.cancel();
+        await rowsSubscription.cancel();
+      };
+    });
   }
 }
