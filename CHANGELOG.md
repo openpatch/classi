@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.0] - 2026-06-22
+
+### Features
+
+- *(timeframes)* Simple implementation of timeframes.
+
+
 ## [1.9.0] - 2026-05-21
 
 ### Bug Fixes
