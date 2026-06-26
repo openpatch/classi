@@ -379,7 +379,7 @@ class _SummaryChip extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
             const SizedBox(width: AppSpacing.small),
-            Text(label),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             if (onTap != null) ...[
               const SizedBox(width: AppSpacing.xSmall),
               Icon(
@@ -418,6 +418,8 @@ class _LessonTableHeaderCell extends StatelessWidget {
         child: Text(
           label.tr(),
           textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(
             context,
           ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
