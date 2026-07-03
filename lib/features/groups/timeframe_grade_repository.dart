@@ -64,6 +64,13 @@ class TimeframeGradeRepository {
         .watch();
   }
 
+  Stream<List<TimeframeGrade>> watchGradesForStudent(int studentId) {
+    return (_database.select(_database.timeframeGradesTable)
+          ..where((t) => t.studentId.equals(studentId))
+          ..orderBy([(t) => OrderingTerm.asc(t.timeframeId)]))
+        .watch();
+  }
+
   Future<Map<int, String>> getGradesMapForTimeframe(int timeframeId) async {
     final grades = await getGradesForTimeframe(timeframeId);
     return {for (final g in grades) g.studentId: g.grade};

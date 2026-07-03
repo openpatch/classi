@@ -86,10 +86,11 @@ class DateRangeFilter {
     this.start,
     this.end,
     QuickFilter? preset,
+    this.timeframeId,
   }) : _preset = preset;
 
   /// No filter — show all data.
-  const DateRangeFilter.all() : start = null, end = null, _preset = null;
+  const DateRangeFilter.all() : start = null, end = null, _preset = null, timeframeId = null;
 
   /// One of the built-in quick filters.
   factory DateRangeFilter.fromPreset(QuickFilter preset) {
@@ -109,6 +110,15 @@ class DateRangeFilter {
     required DateTime end,
   }) => DateRangeFilter._(start: start, end: end);
 
+  /// Filter based on a timeframe's date range.
+  factory DateRangeFilter.fromTimeframe(Timeframe timeframe) {
+    return DateRangeFilter._(
+      start: timeframe.startDate,
+      end: timeframe.endDate,
+      timeframeId: timeframe.id,
+    );
+  }
+
   final DateTime? start;
 
   /// Exclusive upper bound — `null` means "up to now".
@@ -116,8 +126,12 @@ class DateRangeFilter {
 
   final QuickFilter? _preset;
 
+  /// The timeframe ID if this filter was created from a timeframe.
+  final int? timeframeId;
+
   bool get isAll => start == null && end == null;
-  bool get isCustom => _preset == null && !isAll;
+  bool get isCustom => _preset == null && !isAll && timeframeId == null;
+  bool get isTimeframe => timeframeId != null;
   QuickFilter? get activePreset => _preset;
 
   bool includes(DateTime date) {
@@ -130,6 +144,7 @@ class DateRangeFilter {
   /// Human-readable label for the active filter.
   String label(BuildContext context) {
     if (isAll) return 'filter_all'.tr();
+    if (isTimeframe) return 'timeframe'.tr();
     if (_preset != null) {
       return switch (_preset) {
         QuickFilter.oneMonth => 'filter_1_month'.tr(),
@@ -425,6 +440,7 @@ class _DateFilterChips extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(studentDateFilterProvider(studentId));
     final notifier = ref.read(studentDateFilterProvider(studentId).notifier);
+    final timeframesValue = ref.watch(studentTimeframesProvider(studentId));
 
     return SizedBox(
       height: 48,
@@ -454,6 +470,33 @@ class _DateFilterChips extends ConsumerWidget {
                     notifier.state = DateRangeFilter.fromPreset(preset),
               ),
             ),
+          // Timeframes
+          ...timeframesValue.when(
+            data: (timeframes) => [
+              for (final timeframe in timeframes)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Text(timeframe.label),
+                    selected: current.timeframeId == timeframe.id,
+                    onSelected: (_) => notifier.state =
+                        DateRangeFilter.fromTimeframe(timeframe),
+                    tooltip: '${formatShortDate(timeframe.startDate)} – ${formatShortDate(timeframe.endDate)}',
+                  ),
+                ),
+            ],
+            loading: () => [
+              const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ],
+            error: (_, __) => <Widget>[],
+          ),
           // Custom range
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -526,6 +569,10 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final dateFilter = ref.watch(studentDateFilterProvider(widget.studentId));
+    final timeframesValue = ref.watch(studentTimeframesProvider(widget.studentId));
+    final timeframeGradesValue = ref.watch(studentTimeframeGradesProvider(widget.studentId));
+
     return widget.gradesValue.when(
       data: (grades) {
         final gradeScaleEntries = widget.gradeScaleJson == null
@@ -545,6 +592,38 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
           ..sort((left, right) => right.date.compareTo(left.date));
         final chartGrades = [...filteredGrades]
           ..sort((left, right) => left.date.compareTo(right.date));
+
+        // Join timeframes with timeframe grades and filter based on date filter
+        final timeframeGrades = timeframeGradesValue.when(
+          data: (tfGrades) => tfGrades,
+          loading: () => const [],
+          error: (_, __) => const [],
+        );
+        final timeframes = timeframesValue.when(
+          data: (tfs) => tfs,
+          loading: () => const [],
+          error: (_, __) => const [],
+        );
+        
+        final timeframeMap = {for (final t in timeframes) t.id: t};
+        final joinedGrades = timeframeGrades
+            .where((g) => timeframeMap.containsKey(g.timeframeId))
+            .map((g) => (timeframe: timeframeMap[g.timeframeId]!, grade: g.grade))
+            .toList();
+        
+        final filteredTimeframeGrades = dateFilter.isAll
+            ? joinedGrades
+            : joinedGrades.where((tg) {
+                final tf = tg.timeframe;
+                if (dateFilter.isTimeframe) {
+                  return tf.id == dateFilter.timeframeId;
+                }
+                final filterStart = dateFilter.start ?? DateTime(2000);
+                final filterEnd = dateFilter.end ?? DateTime.now();
+                return !(tf.endDate.isBefore(filterStart) || tf.startDate.isAfter(filterEnd));
+              }).toList();
+        
+        // Add timeframe grades to chart data
         final numericGrades = <({GradeEntry grade, double value})>[];
         for (final grade in chartGrades) {
           final parsed = gradeValueToNumber(grade.value, gradeScaleEntries);
@@ -552,6 +631,30 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
             numericGrades.add((grade: grade, value: parsed));
           }
         }
+        
+        // Add timeframe grades as chart data points
+        // Use the end date of the timeframe and a special category
+        for (final tg in filteredTimeframeGrades) {
+          final parsed = gradeValueToNumber(tg.grade, gradeScaleEntries);
+          if (parsed != null) {
+            // Create a synthetic GradeEntry for the timeframe grade
+            // Use the timeframe's end date as the grade date
+            final syntheticGrade = GradeEntriesTableData(
+              id: -tg.timeframe.id, // Use negative ID to avoid conflicts
+              studentId: widget.studentId,
+              date: tg.timeframe.endDate,
+              sessionLabel: 'Timeframe: ${tg.timeframe.label}',
+              value: tg.grade,
+              categoryId: 'timeframe-final',
+              categoryName: 'Timeframe Final',
+              createdAt: tg.timeframe.endDate,
+            );
+            numericGrades.add((grade: syntheticGrade, value: parsed));
+          }
+        }
+        
+        // Sort all grades by date for the chart
+        numericGrades.sort((a, b) => a.grade.date.compareTo(b.grade.date));
         final categorySums = <String, double>{};
         final categoryCounts = <String, int>{};
         for (final entry in numericGrades) {
@@ -616,9 +719,43 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
               ),
             if (numericGrades.isNotEmpty && average != null)
               const SizedBox(height: 16),
-            if (grades.isEmpty)
+            // Timeframe grades section (displayed above grades table)
+            if (filteredTimeframeGrades.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'timeframe_grades'.tr(),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      ...filteredTimeframeGrades.map((tg) =>
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(tg.timeframe.label),
+                          subtitle: Text(
+                            '${formatShortDate(tg.timeframe.startDate)} – ${formatShortDate(tg.timeframe.endDate)}',
+                          ),
+                          trailing: Text(
+                            tg.grade,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          onTap: () => context.push('/groups/${tg.timeframe.groupId}'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (grades.isEmpty && filteredTimeframeGrades.isEmpty)
               EmptyState(icon: Icons.show_chart, title: 'empty_grades'.tr())
-            else if (filteredGrades.isEmpty)
+            else if (filteredGrades.isEmpty && filteredTimeframeGrades.isEmpty)
               EmptyState(
                 icon: Icons.filter_alt_off_outlined,
                 title: 'empty_filtered_grades'.tr(),

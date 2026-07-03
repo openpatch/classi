@@ -161,6 +161,7 @@
   "set_grade": "Note setzen",
   "change_grade": "Note ändern",
   "no_timeframes": "Noch keine Zeiträume. Tippen zum Hinzufügen.",
+  "timeframe_grades": "Zeitraum Noten",
   "delete_timeframe": "Zeitraum löschen",
   "delete_timeframe_confirmation": "Möchtest du diesen Zeitraum wirklich löschen?",
   "overlapping_timeframes": "Überlappende Zeiträume",

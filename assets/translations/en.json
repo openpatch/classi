@@ -161,6 +161,7 @@
   "set_grade": "Set Grade",
   "change_grade": "Change Grade",
   "no_timeframes": "No timeframes yet. Tap to add one.",
+  "timeframe_grades": "Timeframe Grades",
   "delete_timeframe": "Delete Timeframe",
   "delete_timeframe_confirmation": "Are you sure you want to delete this timeframe?",
   "overlapping_timeframes": "Overlapping Timeframes",

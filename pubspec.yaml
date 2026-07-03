@@ -51,7 +51,7 @@ dependencies:
   archive: ^4.0.9
   table_calendar: ^3.2.0
   cryptography: ^2.9.0
-  local_auth: ^2.3.0
+  local_auth: ^3.0.0
   package_info_plus: ^8.3.0
   http: ^1.2.0
   updat: ^1.4.0
