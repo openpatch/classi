@@ -293,7 +293,7 @@ jobs:
     if: >
       github.event.issue.pull_request != null &&
       startsWith(github.event.comment.body, '/build windows')
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - name: Verify commenter has write access
         uses: actions/github-script@v7
