@@ -209,6 +209,28 @@ final timeframeGradesProvider = StreamProvider.autoDispose
           .watchGradesForTimeframe(timeframeId),
     );
 
+// Stream of timeframe grades for a specific student
+final studentTimeframeGradesProvider = StreamProvider.autoDispose
+    .family<List<TimeframeGrade>, int>(
+      (ref, studentId) => ref
+          .watch(timeframeGradeRepositoryProvider)
+          .watchGradesForStudent(studentId),
+    );
+
+// Stream of timeframes for a student's group
+// Note: This needs the student's groupId, which we get via studentRepository
+final studentTimeframesProvider = StreamProvider.autoDispose
+    .family<List<Timeframe>, int>(
+      (ref, studentId) {
+        // Watch the student's group timeframes
+        final studentStream = ref.watch(studentRepositoryProvider).watchStudent(studentId);
+        return studentStream.asyncExpand((student) {
+          if (student == null) return Stream.value([]);
+          return ref.watch(timeframeRepositoryProvider).watchTimeframes(student.groupId);
+        });
+      },
+    );
+
 final timeframeCategoryAveragesProvider = StreamProvider.autoDispose
     .family<Map<int, Map<String, double>>, ({int groupId, DateTime startDate, DateTime endDate})>(
       (ref, params) => ref
