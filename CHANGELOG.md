@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.11.0] - 2026-07-03
+
+### Features
+
+- *(timeframe)* Add timeframe information to student details screen
+
+
 ## [1.10.0] - 2026-06-22
 
 ### Features
