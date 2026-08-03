@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:webdav_client/webdav_client.dart' as webdav;
 
@@ -923,6 +924,7 @@ class AppSessionController extends ChangeNotifier {
   Future<void> _persistOpenDatabaseState({
     required bool markSessionClean,
     bool closeDatabaseAfterSnapshot = true,
+    bool runAutoExport = true,
   }) async {
     if (_database == null || _currentPassphrase == null) {
       developer.log(
@@ -935,7 +937,9 @@ class AppSessionController extends ChangeNotifier {
     await _prepareDatabaseSnapshot(
       closeDatabaseAfterSnapshot: closeDatabaseAfterSnapshot,
     );
-    await _runAutoExportIfConfigured();
+    if (runAutoExport) {
+      await _runAutoExportIfConfigured();
+    }
     await _securityPreferencesService.setSessionDirty(!markSessionClean);
     await _updatePendingAutoImportAvailability();
   }
@@ -1172,7 +1176,22 @@ class AppSessionController extends ChangeNotifier {
     try {
       await _loadSecurityPreferences();
       await _loadBackupPreferences();
-      await _persistOpenDatabaseState(markSessionClean: true);
+
+      // If we're restoring into the same library that's currently open, an
+      // auto-export here would upload the (stale) local state to the exact
+      // remote path we're about to download from, archiving away the newer
+      // backup we're trying to restore before we ever read it. Skip the
+      // auto-export in that case; it's about to be discarded anyway.
+      final currentDatabasePath = await _databasePathService
+          .getCurrentDatabasePath();
+      final isRestoringCurrentLibrary = p.equals(
+        p.normalize(currentDatabasePath),
+        p.normalize(destinationPath),
+      );
+      await _persistOpenDatabaseState(
+        markSessionClean: true,
+        runAutoExport: !isRestoringCurrentLibrary,
+      );
 
       final client = await createWebDavClient();
       if (client == null) throw StateError('WebDAV is not configured.');

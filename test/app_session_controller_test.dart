@@ -314,6 +314,77 @@ void main() {
     },
   );
 
+  test(
+    'restoring into the currently open library does not let a pre-restore '
+    'auto-export clobber the remote backup being restored',
+    () async {
+      final remoteLibraryDirectory = Directory(
+        '${tempDirectory.path}/remote-source.classi',
+      );
+      await remoteLibraryDirectory.create(recursive: true);
+      await File(
+        '${remoteLibraryDirectory.path}/data.db',
+      ).writeAsString('remote-db');
+      await File(
+        '${remoteLibraryDirectory.path}/data.db.security.json',
+      ).writeAsString('remote-security');
+      await File(
+        '${remoteLibraryDirectory.path}/data.db.integrity.json',
+      ).writeAsString('remote-integrity');
+
+      final archiveBytes = await LibraryBackupService().buildBackupArchive(
+        remoteLibraryDirectory.path,
+      );
+      final restoreService = _RestoringSelfLibraryBackupService(archiveBytes);
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _RestoringAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: restoreService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      final currentPath = await controller.currentDatabasePath();
+      final errorCode = await controller.restoreWebDavBackup(
+        remotePath: '/backups/test.classi-backup',
+        destinationPath: currentPath,
+        createNew: false,
+      );
+
+      expect(errorCode, isNull);
+      expect(
+        restoreService.exportCalled,
+        isFalse,
+        reason:
+            'auto-export must not run before restoring into the currently '
+            'open library, or it uploads stale local state over the exact '
+            'remote backup being restored',
+      );
+      expect(
+        await File('$currentPath/data.db').readAsString(),
+        'remote-db',
+        reason:
+            'the restored data must be the remote backup, not a '
+            're-uploaded local copy',
+      );
+    },
+  );
+
   test('auto-export is skipped when WebDAV is not configured', () async {
     await controller.initialize();
     await controller.createDatabase('test');
@@ -515,6 +586,34 @@ class _RestoringLibraryBackupService extends LibraryBackupService {
 
   final Uint8List archiveBytes;
   String? lastRemotePath;
+
+  @override
+  Future<Uint8List> downloadBackupFromWebDav({
+    required webdav.Client client,
+    required String remotePath,
+  }) async {
+    lastRemotePath = remotePath;
+    return archiveBytes;
+  }
+}
+
+class _RestoringSelfLibraryBackupService extends LibraryBackupService {
+  _RestoringSelfLibraryBackupService(this.archiveBytes);
+
+  final Uint8List archiveBytes;
+  bool exportCalled = false;
+  String? lastRemotePath;
+
+  @override
+  Future<DateTime> exportBackupToWebDav({
+    required webdav.Client client,
+    required String sourceDatabasePath,
+    required String serverPath,
+    int maxVersions = 3,
+  }) async {
+    exportCalled = true;
+    return DateTime.now().toUtc();
+  }
 
   @override
   Future<Uint8List> downloadBackupFromWebDav({
