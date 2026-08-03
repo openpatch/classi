@@ -43,6 +43,7 @@
   "back": "Zurück",
   "back_to_unlock": "Zurück zum Entsperren",
   "backup_export_busy": "Ein anderes Gerät synchronisiert dieses Backup gerade. Versuche es gleich noch einmal.",
+  "backup_export_conflict": "Ein anderes Gerät hat diese Bibliothek geändert, seit du zuletzt synchronisiert hast. Deine Änderungen wurden als separates Backup gespeichert – prüfe \"Verfügbare Backups\", um sie zu vergleichen und zusammenzuführen.",
   "backup_export_failed": "Classi konnte das Backup nicht exportieren.",
   "backup_exported": "Backup exportiert.",
   "backup_import_failed": "Classi konnte das Backup nicht importieren.",

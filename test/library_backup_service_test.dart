@@ -84,6 +84,33 @@ void main() {
   );
 
   test(
+    'buildBackupArchive embeds revision and parentRevision in the manifest, '
+    'and restoreBackupFromBytes returns the restored revision',
+    () async {
+      final archiveBytes = await service.buildBackupArchive(
+        sourceLibraryDirectory.path,
+        revision: 'revision-2',
+        parentRevision: 'revision-1',
+      );
+
+      final archive = ZipDecoder().decodeBytes(archiveBytes);
+      final manifestFile = archive.findFile('backup.json')!;
+      final manifestJson =
+          jsonDecode(utf8.decode(manifestFile.content as List<int>))
+              as Map<String, dynamic>;
+
+      expect(manifestJson['revision'], 'revision-2');
+      expect(manifestJson['parentRevision'], 'revision-1');
+
+      final restoredRevision = await service.restoreBackupFromBytes(
+        bytes: archiveBytes,
+        destinationDatabasePath: '${tempDirectory.path}/revision-check.classi',
+      );
+      expect(restoredRevision, 'revision-2');
+    },
+  );
+
+  test(
     'restoreBackupFromBytes restores database artifacts into a package folder',
     () async {
       final archiveBytes = await service.buildBackupArchive(

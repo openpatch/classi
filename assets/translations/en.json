@@ -43,6 +43,7 @@
   "back": "Back",
   "back_to_unlock": "Back to unlock",
   "backup_export_busy": "Another device is syncing this backup right now. Try again in a moment.",
+  "backup_export_conflict": "Another device changed this library since you last synced. Your changes were saved as a separate backup — check \"Available backups\" to review and merge.",
   "backup_export_failed": "Classi could not export the backup.",
   "backup_exported": "Backup exported.",
   "backup_import_failed": "Classi could not import the backup.",

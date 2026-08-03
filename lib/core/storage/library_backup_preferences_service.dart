@@ -17,6 +17,7 @@ class LibraryBackupPreferencesService {
   static const String _pendingImportDismissedAtKey =
       'backup.pending_import_dismissed_at';
   static const String _maxVersionsKey = 'backup.max_versions';
+  static const String _lastKnownRevisionKey = 'backup.last_known_revision';
   static const List<String> _autoExportEnabledPath = [
     'backup',
     'autoExportEnabled',
@@ -38,6 +39,10 @@ class LibraryBackupPreferencesService {
     'pendingImportDismissedAt',
   ];
   static const List<String> _maxVersionsPath = ['backup', 'maxVersions'];
+  static const List<String> _lastKnownRevisionPath = [
+    'backup',
+    'lastKnownRevision',
+  ];
 
   static const int defaultMaxVersions = 3;
 
@@ -132,6 +137,31 @@ class LibraryBackupPreferencesService {
       path: _webDavServerPathPath,
       value: path.trim(),
       removeLegacyKey: _webDavServerPathKey,
+    );
+  }
+
+  /// The revision token of the remote backup this device last synced with
+  /// (via export or import), used to detect whether another device has
+  /// pushed a conflicting change since. `null` before the first sync.
+  Future<String?> lastKnownRevision() async {
+    return _readString(
+      path: _lastKnownRevisionPath,
+      legacyKey: _lastKnownRevisionKey,
+    );
+  }
+
+  Future<void> setLastKnownRevision(String? revision) async {
+    if (revision == null || revision.isEmpty) {
+      await _removePath(
+        path: _lastKnownRevisionPath,
+        removeLegacyKey: _lastKnownRevisionKey,
+      );
+      return;
+    }
+    await _writeString(
+      path: _lastKnownRevisionPath,
+      value: revision,
+      removeLegacyKey: _lastKnownRevisionKey,
     );
   }
 
