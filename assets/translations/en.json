@@ -42,6 +42,7 @@
   "class_average": "Class average",
   "back": "Back",
   "back_to_unlock": "Back to unlock",
+  "backup_export_busy": "Another device is syncing this backup right now. Try again in a moment.",
   "backup_export_failed": "Classi could not export the backup.",
   "backup_exported": "Backup exported.",
   "backup_import_failed": "Classi could not import the backup.",

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -13,6 +14,24 @@ const String classiBackupExtension = '.classi-backup';
 const String _backupManifestFileName = 'backup.json';
 const int _backupFormatVersion = 1;
 const String _canonicalDatabaseFileName = 'data.db';
+const String _syncLockFileName = '.classi-sync.lock';
+const Duration _syncLockLease = Duration(minutes: 2);
+const int _syncLockVerifyJitterMs = 300;
+
+/// Thrown by [LibraryBackupService.exportBackupToWebDav] when another device
+/// currently holds the sync lock for the target folder.
+///
+/// This is expected, transient contention — not a corruption or connection
+/// failure — so callers should surface it as "try again in a moment" rather
+/// than a generic export error.
+class WebDavSyncBusyException implements Exception {
+  const WebDavSyncBusyException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'WebDavSyncBusyException: $message';
+}
 
 class WebDavBackupEntry {
   const WebDavBackupEntry({
@@ -169,7 +188,12 @@ class LibraryBackupService {
   /// The upload goes to a `.tmp` file first, then the existing backup (if any)
   /// is archived as a timestamped copy, and the `.tmp` file is renamed to the
   /// canonical backup name. Older archived versions beyond [maxVersions] are
-  /// pruned.
+  /// pruned. The whole sequence runs under a best-effort sync lock (see
+  /// [_trySyncLockAcquire]) so two devices exporting at the same moment don't
+  /// interleave their archive/rename/prune steps.
+  ///
+  /// Throws [WebDavSyncBusyException] if another device currently holds the
+  /// lock.
   ///
   /// Returns the UTC [DateTime] embedded as `exportedAt` in the manifest.
   Future<DateTime> exportBackupToWebDav({
@@ -180,60 +204,81 @@ class LibraryBackupService {
     String? deviceId,
     String? deviceName,
   }) async {
-    final exportedAt = DateTime.now().toUtc();
-    final bytes = await buildBackupArchive(
-      sourceDatabasePath,
-      exportedAt: exportedAt,
-      deviceId: deviceId,
-      deviceName: deviceName,
-    );
-    final canonicalName = backupFileNameForDatabasePath(sourceDatabasePath);
-    final canonicalPath = _joinServerPath(serverPath, canonicalName);
-    final tmpPath = '$canonicalPath.tmp';
-    developer.log(
-      'exportBackupToWebDav: uploading to $tmpPath (${bytes.length} bytes)',
-      name: 'classi.backup',
-    );
     await client.mkdirAll(serverPath);
-    await client.write(tmpPath, bytes);
-    await _writeMetaSidecar(
-      client: client,
-      backupPath: tmpPath,
-      deviceId: deviceId,
-      deviceName: deviceName,
-      exportedAt: exportedAt,
-    );
 
-    // Archive the current canonical backup before replacing it.
-    await _archiveExistingBackup(
+    final lockOwnerId = deviceId ?? _fallbackSyncLockOwnerId();
+    final lockAcquired = await _trySyncLockAcquire(
       client: client,
       serverPath: serverPath,
-      canonicalName: canonicalName,
-      canonicalPath: canonicalPath,
+      ownerId: lockOwnerId,
     );
+    if (!lockAcquired) {
+      throw const WebDavSyncBusyException(
+        'Another device is syncing this library right now.',
+      );
+    }
 
-    // Atomically promote the tmp file to the canonical name.
-    developer.log(
-      'exportBackupToWebDav: renaming $tmpPath → $canonicalPath',
-      name: 'classi.backup',
-    );
-    await client.rename(tmpPath, canonicalPath, true);
-    await _renameMetaSidecar(
-      client: client,
-      fromBackupPath: tmpPath,
-      toBackupPath: canonicalPath,
-    );
+    try {
+      final exportedAt = DateTime.now().toUtc();
+      final bytes = await buildBackupArchive(
+        sourceDatabasePath,
+        exportedAt: exportedAt,
+        deviceId: deviceId,
+        deviceName: deviceName,
+      );
+      final canonicalName = backupFileNameForDatabasePath(sourceDatabasePath);
+      final canonicalPath = _joinServerPath(serverPath, canonicalName);
+      final tmpPath = '$canonicalPath.tmp';
+      developer.log(
+        'exportBackupToWebDav: uploading to $tmpPath (${bytes.length} bytes)',
+        name: 'classi.backup',
+      );
+      await client.write(tmpPath, bytes);
+      await _writeMetaSidecar(
+        client: client,
+        backupPath: tmpPath,
+        deviceId: deviceId,
+        deviceName: deviceName,
+        exportedAt: exportedAt,
+      );
 
-    // Prune old archived versions.
-    await _pruneArchivedVersions(
-      client: client,
-      serverPath: serverPath,
-      canonicalName: canonicalName,
-      maxVersions: maxVersions,
-    );
+      // Archive the current canonical backup before replacing it.
+      await _archiveExistingBackup(
+        client: client,
+        serverPath: serverPath,
+        canonicalName: canonicalName,
+        canonicalPath: canonicalPath,
+      );
 
-    developer.log('exportBackupToWebDav: done', name: 'classi.backup');
-    return exportedAt;
+      // Atomically promote the tmp file to the canonical name.
+      developer.log(
+        'exportBackupToWebDav: renaming $tmpPath → $canonicalPath',
+        name: 'classi.backup',
+      );
+      await client.rename(tmpPath, canonicalPath, true);
+      await _renameMetaSidecar(
+        client: client,
+        fromBackupPath: tmpPath,
+        toBackupPath: canonicalPath,
+      );
+
+      // Prune old archived versions.
+      await _pruneArchivedVersions(
+        client: client,
+        serverPath: serverPath,
+        canonicalName: canonicalName,
+        maxVersions: maxVersions,
+      );
+
+      developer.log('exportBackupToWebDav: done', name: 'classi.backup');
+      return exportedAt;
+    } finally {
+      await _syncLockRelease(
+        client: client,
+        serverPath: serverPath,
+        ownerId: lockOwnerId,
+      );
+    }
   }
 
   Future<void> _archiveExistingBackup({
@@ -510,6 +555,107 @@ class LibraryBackupService {
     } catch (_) {
       return const WebDavBackupDeviceInfo();
     }
+  }
+
+  // --- Sync lock -------------------------------------------------------
+  //
+  // WebDAV servers vary in their support for the native LOCK/UNLOCK methods
+  // (RFC 4918), so rather than depend on that this uses a plain lock file
+  // any WebDAV server can store: `<serverPath>/.classi-sync.lock`, holding
+  // `{deviceId, acquiredAt}` as JSON.
+  //
+  // Acquisition is "write, then read back and check we're still the
+  // recorded owner" rather than a true atomic compare-and-swap — this is a
+  // best-effort, advisory lock, not a hard guarantee. It's good enough to
+  // catch the common case (two devices syncing within moments of each
+  // other) without depending on WebDAV features not every server offers.
+  // A lease (see [_syncLockLease]) makes a lock left behind by a crashed or
+  // killed app expire automatically rather than wedging the folder forever.
+
+  static String _syncLockPath(String serverPath) =>
+      _joinServerPath(serverPath, _syncLockFileName);
+
+  /// Whether a lock acquired at [acquiredAt] has outlived its lease and
+  /// should be treated as abandoned. Exposed for testing the time math
+  /// without needing a WebDAV round-trip.
+  static bool isSyncLockExpired(DateTime acquiredAt, {DateTime? now}) =>
+      (now ?? DateTime.now().toUtc()).difference(acquiredAt) > _syncLockLease;
+
+  Future<bool> _trySyncLockAcquire({
+    required webdav.Client client,
+    required String serverPath,
+    required String ownerId,
+  }) async {
+    final lockPath = _syncLockPath(serverPath);
+
+    final existing = await _readSyncLock(client: client, lockPath: lockPath);
+    if (existing != null &&
+        existing.deviceId != ownerId &&
+        !isSyncLockExpired(existing.acquiredAt)) {
+      return false;
+    }
+
+    await client.write(
+      lockPath,
+      utf8.encode(
+        jsonEncode({
+          'deviceId': ownerId,
+          'acquiredAt': DateTime.now().toUtc().toIso8601String(),
+        }),
+      ),
+    );
+
+    // Give a concurrent writer a moment to finish its own write, then check
+    // whether we're actually the one left recorded as the owner.
+    await Future<void>.delayed(
+      Duration(milliseconds: Random().nextInt(_syncLockVerifyJitterMs)),
+    );
+    final afterWrite = await _readSyncLock(client: client, lockPath: lockPath);
+    return afterWrite?.deviceId == ownerId;
+  }
+
+  /// Releases the sync lock, but only if [ownerId] still holds it — never
+  /// removes a lock another device has since (legitimately) acquired.
+  Future<void> _syncLockRelease({
+    required webdav.Client client,
+    required String serverPath,
+    required String ownerId,
+  }) async {
+    final lockPath = _syncLockPath(serverPath);
+    final existing = await _readSyncLock(client: client, lockPath: lockPath);
+    if (existing == null || existing.deviceId != ownerId) return;
+
+    try {
+      await client.remove(lockPath);
+    } catch (_) {
+      // Best-effort; the lease will expire it regardless.
+    }
+  }
+
+  Future<({String deviceId, DateTime acquiredAt})?> _readSyncLock({
+    required webdav.Client client,
+    required String lockPath,
+  }) async {
+    try {
+      final bytes = await client.read(lockPath);
+      final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      final deviceId = json['deviceId'] as String?;
+      final acquiredAt = DateTime.tryParse(
+        json['acquiredAt'] as String? ?? '',
+      );
+      if (deviceId == null || acquiredAt == null) return null;
+      return (deviceId: deviceId, acquiredAt: acquiredAt);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _fallbackSyncLockOwnerId() {
+    final random = Random.secure();
+    return List<int>.generate(
+      8,
+      (_) => random.nextInt(256),
+    ).map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
   }
 
   Map<String, String> _artifactEntryNamesFor(String databasePath) {

@@ -109,4 +109,24 @@ void main() {
       );
     },
   );
+
+  test('isSyncLockExpired is false for a freshly acquired lock', () {
+    final now = DateTime.utc(2026, 5, 7, 8, 0);
+    final acquiredAt = now.subtract(const Duration(seconds: 5));
+
+    expect(
+      LibraryBackupService.isSyncLockExpired(acquiredAt, now: now),
+      isFalse,
+    );
+  });
+
+  test('isSyncLockExpired is true once the lease has passed', () {
+    final now = DateTime.utc(2026, 5, 7, 8, 0);
+    final acquiredAt = now.subtract(const Duration(minutes: 3));
+
+    expect(
+      LibraryBackupService.isSyncLockExpired(acquiredAt, now: now),
+      isTrue,
+    );
+  });
 }

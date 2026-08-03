@@ -1062,6 +1062,12 @@ class AppSessionController extends ChangeNotifier {
       );
       developer.log('WebDAV export succeeded', name: 'classi.backup');
       _setBackupMessage('backup_exported');
+    } on WebDavSyncBusyException catch (error) {
+      developer.log(
+        'WebDAV export skipped: ${error.message}',
+        name: 'classi.backup',
+      );
+      _setBackupMessage('backup_export_busy', isError: true);
     } catch (error, stackTrace) {
       _logUnexpectedError(
         operation: 'run auto WebDAV export',
