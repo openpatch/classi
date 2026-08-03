@@ -33,6 +33,30 @@ class WebDavSyncBusyException implements Exception {
   String toString() => 'WebDavSyncBusyException: $message';
 }
 
+/// Thrown by [LibraryBackupService.exportBackupToWebDav] when the remote
+/// backup has moved on to a revision this device never saw — i.e. another
+/// device pushed a change since this device last synced.
+///
+/// The canonical backup is left untouched; this device's changes are
+/// uploaded as a separate `_CONFLICT_` copy instead, so nothing is lost on
+/// either side. The user needs to reconcile the two manually (the conflict
+/// copy shows up alongside the canonical one in the backup list).
+class WebDavSyncConflictException implements Exception {
+  const WebDavSyncConflictException({
+    required this.message,
+    this.conflictingDeviceName,
+  });
+
+  final String message;
+
+  /// The device that produced the remote revision this export conflicts
+  /// with, if known.
+  final String? conflictingDeviceName;
+
+  @override
+  String toString() => 'WebDavSyncConflictException: $message';
+}
+
 class WebDavBackupEntry {
   const WebDavBackupEntry({
     required this.fileName,
@@ -57,12 +81,22 @@ class WebDavBackupEntry {
   final String? deviceName;
 }
 
-/// Device attribution read from a backup's `.meta.json` sidecar.
+/// Metadata read from a backup's `.meta.json` sidecar: which device
+/// produced it and its place in the revision chain (see
+/// [LibraryBackupService.exportBackupToWebDav]'s conflict detection).
 class WebDavBackupDeviceInfo {
-  const WebDavBackupDeviceInfo({this.deviceId, this.deviceName});
+  const WebDavBackupDeviceInfo({
+    this.deviceId,
+    this.deviceName,
+    this.revision,
+  });
 
   final String? deviceId;
   final String? deviceName;
+
+  /// This backup's own revision token, or `null` for backups exported
+  /// before revision tracking existed.
+  final String? revision;
 }
 
 class LibraryBackupService {
@@ -76,6 +110,8 @@ class LibraryBackupService {
     DateTime? exportedAt,
     String? deviceId,
     String? deviceName,
+    String? revision,
+    String? parentRevision,
   }) async {
     final normalizedSourcePath = p.normalize(sourceDatabasePath);
     developer.log(
@@ -92,6 +128,8 @@ class LibraryBackupService {
           'exportedAt': (exportedAt ?? DateTime.now().toUtc()).toIso8601String(),
           if (deviceId != null) 'deviceId': deviceId,
           if (deviceName != null) 'deviceName': deviceName,
+          if (revision != null) 'revision': revision,
+          if (parentRevision != null) 'parentRevision': parentRevision,
         }),
       ),
     );
@@ -122,7 +160,13 @@ class LibraryBackupService {
   }
 
   /// Restores a backup archive from [bytes] into [destinationDatabasePath].
-  Future<void> restoreBackupFromBytes({
+  ///
+  /// Returns the restored backup's `revision` token from its manifest, or
+  /// `null` for a backup exported before revision tracking existed. Callers
+  /// should record this as the new "last known revision" for the library so
+  /// the next export can detect whether the remote moved on in the
+  /// meantime.
+  Future<String?> restoreBackupFromBytes({
     required Uint8List bytes,
     required String destinationDatabasePath,
   }) async {
@@ -180,6 +224,8 @@ class LibraryBackupService {
     if (!restoredDatabase || !restoredSecurityMetadata) {
       throw StateError('Backup archive is incomplete.');
     }
+
+    return manifestJson['revision'] as String?;
   }
 
   /// Builds a backup archive in memory and uploads it atomically to the
@@ -192,8 +238,17 @@ class LibraryBackupService {
   /// [_trySyncLockAcquire]) so two devices exporting at the same moment don't
   /// interleave their archive/rename/prune steps.
   ///
+  /// [parentRevision] should be the revision this device last saw for this
+  /// library (its own last export, or whatever it last restored) — pass
+  /// `null` if this device has never synced this library before. If the
+  /// remote's current revision doesn't match, another device pushed a
+  /// change this device never saw: rather than silently overwriting it,
+  /// this uploads the local changes as a separate `_CONFLICT_` copy and
+  /// throws [WebDavSyncConflictException], leaving the canonical backup
+  /// untouched.
+  ///
   /// Throws [WebDavSyncBusyException] if another device currently holds the
-  /// lock.
+  /// sync lock.
   ///
   /// Returns the UTC [DateTime] embedded as `exportedAt` in the manifest.
   Future<DateTime> exportBackupToWebDav({
@@ -203,6 +258,7 @@ class LibraryBackupService {
     int maxVersions = 3,
     String? deviceId,
     String? deviceName,
+    String? parentRevision,
   }) async {
     await client.mkdirAll(serverPath);
 
@@ -219,15 +275,67 @@ class LibraryBackupService {
     }
 
     try {
+      final canonicalName = backupFileNameForDatabasePath(sourceDatabasePath);
+      final canonicalPath = _joinServerPath(serverPath, canonicalName);
+
+      // Detect whether the remote moved on to a revision we never saw.
+      // A remote with no revision at all (nothing uploaded yet, or an old
+      // backup that predates revision tracking) is not a conflict — there's
+      // nothing to compare against, so fail open rather than block export
+      // forever on a pre-existing legacy backup.
+      final existingRemote = await _readMetaSidecar(
+        client: client,
+        backupPath: canonicalPath,
+      );
+      final remoteRevision = existingRemote.revision;
+      if (remoteRevision != null && remoteRevision != parentRevision) {
+        final exportedAt = DateTime.now().toUtc();
+        final revision = _randomToken();
+        final bytes = await buildBackupArchive(
+          sourceDatabasePath,
+          exportedAt: exportedAt,
+          deviceId: deviceId,
+          deviceName: deviceName,
+          revision: revision,
+          parentRevision: parentRevision,
+        );
+        final stem = p.basenameWithoutExtension(canonicalName);
+        final conflictName =
+            '${stem}_CONFLICT_${_timestampStamp(exportedAt)}$classiBackupExtension';
+        final conflictPath = _joinServerPath(serverPath, conflictName);
+        developer.log(
+          'exportBackupToWebDav: conflict detected, uploading as $conflictName',
+          name: 'classi.backup',
+        );
+        await client.write(conflictPath, bytes);
+        await _writeMetaSidecar(
+          client: client,
+          backupPath: conflictPath,
+          deviceId: deviceId,
+          deviceName: deviceName,
+          exportedAt: exportedAt,
+          revision: revision,
+          parentRevision: parentRevision,
+        );
+        throw WebDavSyncConflictException(
+          message:
+              'Another device changed this library since this device last '
+              'synced. Saved local changes as a separate copy instead of '
+              'overwriting the newer backup.',
+          conflictingDeviceName: existingRemote.deviceName,
+        );
+      }
+
       final exportedAt = DateTime.now().toUtc();
+      final revision = _randomToken();
       final bytes = await buildBackupArchive(
         sourceDatabasePath,
         exportedAt: exportedAt,
         deviceId: deviceId,
         deviceName: deviceName,
+        revision: revision,
+        parentRevision: parentRevision,
       );
-      final canonicalName = backupFileNameForDatabasePath(sourceDatabasePath);
-      final canonicalPath = _joinServerPath(serverPath, canonicalName);
       final tmpPath = '$canonicalPath.tmp';
       developer.log(
         'exportBackupToWebDav: uploading to $tmpPath (${bytes.length} bytes)',
@@ -240,6 +348,8 @@ class LibraryBackupService {
         deviceId: deviceId,
         deviceName: deviceName,
         exportedAt: exportedAt,
+        revision: revision,
+        parentRevision: parentRevision,
       );
 
       // Archive the current canonical backup before replacing it.
@@ -291,7 +401,7 @@ class LibraryBackupService {
       final props = await client.readProps(canonicalPath);
       final mTime = props.mTime;
       if (mTime == null) return;
-      final stamp = mTime.toUtc().toIso8601String().replaceAll(':', '').replaceAll('-', '').split('.').first;
+      final stamp = _timestampStamp(mTime);
       final stem = p.basenameWithoutExtension(canonicalName);
       final archivedName = '${stem}_$stamp$classiBackupExtension';
       final archivedPath = _joinServerPath(serverPath, archivedName);
@@ -498,15 +608,27 @@ class LibraryBackupService {
 
   static String _metaSidecarPath(String backupPath) => '$backupPath.meta.json';
 
-  /// Uploads the device-attribution sidecar for [backupPath]. Best-effort:
-  /// device attribution is metadata for display purposes only, so a failure
-  /// here must never break the backup export itself.
+  /// Formats [dt] as the compact UTC timestamp used in archived/conflict
+  /// backup file names, e.g. `20260507T080000Z`.
+  static String _timestampStamp(DateTime dt) => dt
+      .toUtc()
+      .toIso8601String()
+      .replaceAll(':', '')
+      .replaceAll('-', '')
+      .split('.')
+      .first;
+
+  /// Uploads the attribution/revision sidecar for [backupPath]. Best-effort:
+  /// this metadata is for display and conflict detection, so a failure here
+  /// must never break the backup export itself.
   Future<void> _writeMetaSidecar({
     required webdav.Client client,
     required String backupPath,
     required String? deviceId,
     required String? deviceName,
     required DateTime exportedAt,
+    String? revision,
+    String? parentRevision,
   }) async {
     try {
       final metaBytes = utf8.encode(
@@ -514,6 +636,8 @@ class LibraryBackupService {
           if (deviceId != null) 'deviceId': deviceId,
           if (deviceName != null) 'deviceName': deviceName,
           'exportedAt': exportedAt.toIso8601String(),
+          if (revision != null) 'revision': revision,
+          if (parentRevision != null) 'parentRevision': parentRevision,
         }),
       );
       await client.write(_metaSidecarPath(backupPath), metaBytes);
@@ -551,6 +675,7 @@ class LibraryBackupService {
       return WebDavBackupDeviceInfo(
         deviceId: metaJson['deviceId'] as String?,
         deviceName: metaJson['deviceName'] as String?,
+        revision: metaJson['revision'] as String?,
       );
     } catch (_) {
       return const WebDavBackupDeviceInfo();
@@ -650,7 +775,11 @@ class LibraryBackupService {
     }
   }
 
-  String _fallbackSyncLockOwnerId() {
+  String _fallbackSyncLockOwnerId() => _randomToken();
+
+  /// A short random opaque hex token, used for the sync lock's fallback
+  /// owner id and for revision tokens.
+  String _randomToken() {
     final random = Random.secure();
     return List<int>.generate(
       8,

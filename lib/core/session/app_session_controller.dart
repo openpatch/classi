@@ -94,6 +94,7 @@ class AppSessionController extends ChangeNotifier {
   String? _pendingImportDeviceName;
   DateTime? _lastExportedAt;
   DateTime? _lastImportedAt;
+  String? _lastKnownRevision;
   bool _isExporting = false;
   WebDavSyncStatus _webDavSyncStatus = WebDavSyncStatus.notConfigured;
   Future<void>? _pendingLockCleanup;
@@ -128,6 +129,11 @@ class AppSessionController extends ChangeNotifier {
 
   DateTime? get lastExportedAt => _lastExportedAt;
   DateTime? get lastImportedAt => _lastImportedAt;
+
+  /// The revision token this device last synced (via export or import), or
+  /// `null` before the first sync. Used to detect conflicting changes from
+  /// another device on the next export.
+  String? get lastKnownRevision => _lastKnownRevision;
   bool get isExporting => _isExporting;
   WebDavSyncStatus get webDavSyncStatus => _webDavSyncStatus;
   String? get lastBackupMessageCode => _lastBackupMessageCode;
@@ -919,6 +925,8 @@ class AppSessionController extends ChangeNotifier {
     _webDavMaxVersions = await _libraryBackupPreferencesService.maxVersions();
     _lastExportedAt = await _libraryBackupPreferencesService.lastExportedAt();
     _lastImportedAt = await _libraryBackupPreferencesService.lastImportedAt();
+    _lastKnownRevision = await _libraryBackupPreferencesService
+        .lastKnownRevision();
   }
 
   Future<void> _resolveCurrentDatabaseState() async {
@@ -1042,6 +1050,7 @@ class AppSessionController extends ChangeNotifier {
         maxVersions: _webDavMaxVersions,
         deviceId: await _deviceIdentityService.getOrCreateDeviceId(),
         deviceName: await _deviceIdentityService.deviceName(),
+        parentRevision: _lastKnownRevision,
       );
       _lastExportedAt = exportedAt;
       await _libraryBackupPreferencesService.setLastExportedAt(exportedAt);
@@ -1060,8 +1069,32 @@ class AppSessionController extends ChangeNotifier {
       await _libraryBackupPreferencesService.setPendingImportDismissedAt(
         remoteModifiedAt ?? exportedAt,
       );
+
+      // Record what we just uploaded as the revision this device knows
+      // about, so the next export can tell whether another device has
+      // pushed a change in the meantime.
+      final uploadedInfo = await _libraryBackupService.getRemoteBackupDeviceInfo(
+        client: client,
+        remotePath: LibraryBackupService.remoteBackupPath(
+          _webDavServerPath ?? '/',
+          currentDatabasePath,
+        ),
+      );
+      if (uploadedInfo.revision != null) {
+        _lastKnownRevision = uploadedInfo.revision;
+        await _libraryBackupPreferencesService.setLastKnownRevision(
+          _lastKnownRevision,
+        );
+      }
+
       developer.log('WebDAV export succeeded', name: 'classi.backup');
       _setBackupMessage('backup_exported');
+    } on WebDavSyncConflictException catch (error) {
+      developer.log(
+        'WebDAV export conflict: ${error.message}',
+        name: 'classi.backup',
+      );
+      _setBackupMessage('backup_export_conflict', isError: true);
     } on WebDavSyncBusyException catch (error) {
       developer.log(
         'WebDAV export skipped: ${error.message}',
@@ -1252,15 +1285,23 @@ class AppSessionController extends ChangeNotifier {
         await _databasePathService.setDatabaseFilePath(destinationPath);
         await _refreshDatabasePath();
       }
-      await _libraryBackupService.restoreBackupFromBytes(
-        bytes: bytes,
-        destinationDatabasePath: destinationPath,
-      );
+      final restoredRevision = await _libraryBackupService
+          .restoreBackupFromBytes(
+            bytes: bytes,
+            destinationDatabasePath: destinationPath,
+          );
 
       final importedAt = DateTime.now().toUtc();
       _lastImportedAt = importedAt;
       await _libraryBackupPreferencesService.setLastImportedAt(importedAt);
       await _libraryBackupPreferencesService.setPendingImportDismissedAt(null);
+      // Adopt the imported backup's revision as our own so the next export
+      // is recognized as building on top of what we just restored, rather
+      // than looking like a conflict with it.
+      _lastKnownRevision = restoredRevision;
+      await _libraryBackupPreferencesService.setLastKnownRevision(
+        restoredRevision,
+      );
 
       await _loadSecurityPreferences();
       await _loadBackupPreferences();
