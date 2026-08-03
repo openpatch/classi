@@ -14,6 +14,7 @@ import '../security/security_preferences_service.dart';
 import '../storage/database_path_service.dart';
 import '../storage/library_backup_preferences_service.dart';
 import '../storage/library_backup_service.dart';
+import '../sync/device_identity_service.dart';
 
 enum AppSessionStatus { loading, needsSetup, locked, ready, error }
 
@@ -51,12 +52,14 @@ class AppSessionController extends ChangeNotifier {
     required LibraryBackupPreferencesService libraryBackupPreferencesService,
     required LibraryBackupService libraryBackupService,
     required BiometricService biometricService,
+    DeviceIdentityService? deviceIdentityService,
   }) : _keyService = keyService,
        _databasePathService = databasePathService,
        _securityPreferencesService = securityPreferencesService,
        _libraryBackupPreferencesService = libraryBackupPreferencesService,
        _libraryBackupService = libraryBackupService,
-       _biometricService = biometricService;
+       _biometricService = biometricService,
+       _deviceIdentityService = deviceIdentityService ?? DeviceIdentityService();
 
   final KeyService _keyService;
   final DatabasePathService _databasePathService;
@@ -64,6 +67,7 @@ class AppSessionController extends ChangeNotifier {
   final LibraryBackupPreferencesService _libraryBackupPreferencesService;
   final LibraryBackupService _libraryBackupService;
   final BiometricService _biometricService;
+  final DeviceIdentityService _deviceIdentityService;
 
   AppDatabase? _database;
   String? _databasePath;
@@ -87,6 +91,7 @@ class AppSessionController extends ChangeNotifier {
   int _webDavMaxVersions = LibraryBackupPreferencesService.defaultMaxVersions;
   bool _pendingWebDavImport = false;
   DateTime? _pendingImportRemoteModifiedAt;
+  String? _pendingImportDeviceName;
   DateTime? _lastExportedAt;
   DateTime? _lastImportedAt;
   bool _isExporting = false;
@@ -116,6 +121,10 @@ class AppSessionController extends ChangeNotifier {
   /// The server mTime of the remote backup that triggered the pending import
   /// prompt, or `null` when no import is pending.
   DateTime? get pendingImportRemoteModifiedAt => _pendingImportRemoteModifiedAt;
+
+  /// The device that uploaded the pending remote backup, or `null` when no
+  /// import is pending or the uploading device could not be determined.
+  String? get pendingImportDeviceName => _pendingImportDeviceName;
 
   DateTime? get lastExportedAt => _lastExportedAt;
   DateTime? get lastImportedAt => _lastImportedAt;
@@ -632,6 +641,19 @@ class AppSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The label embedded in backups this device uploads, shown to other
+  /// devices in the restore picker and the pending-import prompt. Falls back
+  /// to a generic platform-based label until the user sets one explicitly.
+  Future<String> deviceName() => _deviceIdentityService.deviceName();
+
+  /// The user-chosen device label, or `null` if the user hasn't set one (in
+  /// which case [deviceName] falls back to a generic platform-based label).
+  Future<String?> storedDeviceName() =>
+      _deviceIdentityService.storedDeviceName();
+
+  Future<void> setDeviceName(String? name) =>
+      _deviceIdentityService.setDeviceName(name);
+
   Future<void> refreshWebDavSyncStatus() async {
     _webDavSyncStatus = WebDavSyncStatus.checking;
     notifyListeners();
@@ -1018,6 +1040,8 @@ class AppSessionController extends ChangeNotifier {
         sourceDatabasePath: currentDatabasePath,
         serverPath: _webDavServerPath ?? '/',
         maxVersions: _webDavMaxVersions,
+        deviceId: await _deviceIdentityService.getOrCreateDeviceId(),
+        deviceName: await _deviceIdentityService.deviceName(),
       );
       _lastExportedAt = exportedAt;
       await _libraryBackupPreferencesService.setLastExportedAt(exportedAt);
@@ -1053,12 +1077,14 @@ class AppSessionController extends ChangeNotifier {
       _webDavSyncStatus = WebDavSyncStatus.notConfigured;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
+      _pendingImportDeviceName = null;
       return;
     }
     if (!_webDavAutoImportEnabled) {
       _webDavSyncStatus = WebDavSyncStatus.disabled;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
+      _pendingImportDeviceName = null;
       return;
     }
 
@@ -1069,6 +1095,7 @@ class AppSessionController extends ChangeNotifier {
       _webDavSyncStatus = WebDavSyncStatus.notConfigured;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
+      _pendingImportDeviceName = null;
       return;
     }
 
@@ -1089,6 +1116,7 @@ class AppSessionController extends ChangeNotifier {
         _webDavSyncStatus = WebDavSyncStatus.current;
         _pendingWebDavImport = false;
         _pendingImportRemoteModifiedAt = null;
+        _pendingImportDeviceName = null;
         return;
       }
 
@@ -1099,6 +1127,7 @@ class AppSessionController extends ChangeNotifier {
         _webDavSyncStatus = WebDavSyncStatus.current;
         _pendingWebDavImport = false;
         _pendingImportRemoteModifiedAt = null;
+        _pendingImportDeviceName = null;
         return;
       }
 
@@ -1142,6 +1171,18 @@ class AppSessionController extends ChangeNotifier {
           ? WebDavSyncStatus.behind
           : WebDavSyncStatus.current;
       _pendingImportRemoteModifiedAt = isNewer ? backupModified : null;
+      _pendingImportDeviceName = null;
+      if (isNewer) {
+        final deviceInfo = await _libraryBackupService
+            .getRemoteBackupDeviceInfo(
+              client: client,
+              remotePath: LibraryBackupService.remoteBackupPath(
+                _webDavServerPath ?? '/',
+                currentDatabasePath,
+              ),
+            );
+        _pendingImportDeviceName = deviceInfo.deviceName;
+      }
     } catch (error, stackTrace) {
       _logUnexpectedError(
         operation: 'check WebDAV backup availability',
@@ -1151,6 +1192,7 @@ class AppSessionController extends ChangeNotifier {
       _webDavSyncStatus = WebDavSyncStatus.offline;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
+      _pendingImportDeviceName = null;
     }
   }
 
