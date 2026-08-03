@@ -23,6 +23,7 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
     }
 
     final remoteModifiedAt = session.pendingImportRemoteModifiedAt;
+    final deviceName = session.pendingImportDeviceName;
     final lastExportedAt = session.lastExportedAt;
     final localeTag = Localizations.localeOf(context).toLanguageTag();
 
@@ -57,13 +58,17 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
             const SizedBox(height: 8),
             if (remoteModifiedAt != null)
               Text(
-                'newer_backup_exported_at'.tr(
-                  namedArgs: {
-                    'datetime': DateFormat.yMd(localeTag)
-                        .add_Hm()
-                        .format(remoteModifiedAt.toLocal()),
-                  },
-                ),
+                (deviceName != null
+                        ? 'newer_backup_exported_from_at'
+                        : 'newer_backup_exported_at')
+                    .tr(
+                      namedArgs: {
+                        if (deviceName != null) 'device': deviceName,
+                        'datetime': DateFormat.yMd(localeTag)
+                            .add_Hm()
+                            .format(remoteModifiedAt.toLocal()),
+                      },
+                    ),
               )
             else
               Text('newer_backup_available_hint'.tr()),
@@ -118,6 +123,7 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
   Future<void> _restoreBackup() async {
     final session = ref.read(appSessionProvider);
     final remoteModifiedAt = session.pendingImportRemoteModifiedAt;
+    final deviceName = session.pendingImportDeviceName;
     final lastExportedAt = session.lastExportedAt;
     final localeTag = Localizations.localeOf(context).toLanguageTag();
 
@@ -134,13 +140,17 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
               const SizedBox(height: 12),
               if (remoteModifiedAt != null)
                 Text(
-                  'newer_backup_exported_at'.tr(
-                    namedArgs: {
-                      'datetime': DateFormat.yMd(localeTag)
-                          .add_Hm()
-                          .format(remoteModifiedAt.toLocal()),
-                    },
-                  ),
+                  (deviceName != null
+                          ? 'newer_backup_exported_from_at'
+                          : 'newer_backup_exported_at')
+                      .tr(
+                        namedArgs: {
+                          if (deviceName != null) 'device': deviceName,
+                          'datetime': DateFormat.yMd(localeTag)
+                              .add_Hm()
+                              .format(remoteModifiedAt.toLocal()),
+                        },
+                      ),
                 ),
               if (lastExportedAt != null)
                 Padding(

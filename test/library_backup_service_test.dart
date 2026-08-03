@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:classi/core/storage/library_backup_service.dart';
@@ -45,6 +47,41 @@ void main() {
 
     expect(archiveBytes, isNotEmpty);
   });
+
+  test('buildBackupArchive embeds device attribution in the manifest', () async {
+    final archiveBytes = await service.buildBackupArchive(
+      sourceLibraryDirectory.path,
+      deviceId: 'device-123',
+      deviceName: 'Kitchen iPad',
+    );
+
+    final archive = ZipDecoder().decodeBytes(archiveBytes);
+    final manifestFile = archive.findFile('backup.json')!;
+    final manifestJson =
+        jsonDecode(utf8.decode(manifestFile.content as List<int>))
+            as Map<String, dynamic>;
+
+    expect(manifestJson['deviceId'], 'device-123');
+    expect(manifestJson['deviceName'], 'Kitchen iPad');
+  });
+
+  test(
+    'buildBackupArchive omits device attribution when not provided',
+    () async {
+      final archiveBytes = await service.buildBackupArchive(
+        sourceLibraryDirectory.path,
+      );
+
+      final archive = ZipDecoder().decodeBytes(archiveBytes);
+      final manifestFile = archive.findFile('backup.json')!;
+      final manifestJson =
+          jsonDecode(utf8.decode(manifestFile.content as List<int>))
+              as Map<String, dynamic>;
+
+      expect(manifestJson.containsKey('deviceId'), isFalse);
+      expect(manifestJson.containsKey('deviceName'), isFalse);
+    },
+  );
 
   test(
     'restoreBackupFromBytes restores database artifacts into a package folder',

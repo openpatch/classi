@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:easy_localization/easy_localization.dart';
@@ -9,6 +10,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/security/security_preferences_service.dart';
 import '../../core/session/app_session_controller.dart';
 import '../../core/storage/library_backup_service.dart';
+import '../../core/sync/device_identity_service.dart';
 import '../../core/update/app_update_controller.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_updater.dart';
@@ -665,6 +667,7 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _serverPathController = TextEditingController();
+  final _deviceNameController = TextEditingController();
 
   bool _testingConnection = false;
   bool? _connectionOk;
@@ -683,6 +686,7 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     if (widget.session.isWebDavConfigured) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadBackups());
     }
+    unawaited(_loadDeviceName());
   }
 
   @override
@@ -691,7 +695,13 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     _usernameController.dispose();
     _passwordController.dispose();
     _serverPathController.dispose();
+    _deviceNameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDeviceName() async {
+    final name = await ref.read(appSessionProvider).storedDeviceName();
+    if (mounted) setState(() => _deviceNameController.text = name ?? '');
   }
 
   Future<void> _saveSettings() async {
@@ -703,6 +713,7 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     }
     final path = _serverPathController.text.trim();
     await session.setWebDavServerPath(path.isEmpty ? '/' : path);
+    await session.setDeviceName(_deviceNameController.text);
     if (mounted) {
       setState(() => _connectionOk = null);
       _loadBackups();
@@ -820,6 +831,19 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
       children: [
         Text('webdav_settings'.tr()),
         const SizedBox(height: 16),
+        TextField(
+          controller: _deviceNameController,
+          decoration: InputDecoration(
+            labelText: 'device_name'.tr(),
+            hintText: DeviceIdentityService.defaultDeviceName(),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'device_name_hint'.tr(),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
         TextField(
           controller: _urlController,
           decoration: InputDecoration(
@@ -1120,7 +1144,7 @@ class _BackupListTile extends StatelessWidget {
     final sizeStr = backup.sizeBytes != null
         ? _formatBytes(backup.sizeBytes!)
         : null;
-    final subtitleParts = [?dateStr, ?sizeStr];
+    final subtitleParts = [?backup.deviceName, ?dateStr, ?sizeStr];
 
     return ListTile(
       contentPadding: EdgeInsets.zero,

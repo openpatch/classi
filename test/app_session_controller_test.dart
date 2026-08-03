@@ -494,6 +494,71 @@ void main() {
       expect(controller.pendingImportRemoteModifiedAt, isNull);
     },
   );
+
+  test('auto-export uploads this device\'s identity with the backup', () async {
+    final exportService = _DeviceCapturingLibraryBackupService();
+    controller.dispose();
+    final databasePathService = _TestDatabasePathService(
+      '${tempDirectory.path}/test.classi',
+    );
+    controller = _WebDavAppSessionController(
+      keyService: keyService,
+      databasePathService: databasePathService,
+      securityPreferencesService: _securityPreferencesServiceFor(
+        databasePathService,
+      ),
+      libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+        databasePathService,
+      ),
+      libraryBackupService: exportService,
+      biometricService: BiometricService(),
+    );
+
+    await controller.initialize();
+    await controller.createDatabase('test');
+    await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+    await controller.setWebDavAutoExportEnabled(true);
+
+    expect(await controller.exportNow(), isNull);
+
+    expect(exportService.lastDeviceId, isNotNull);
+    expect(exportService.lastDeviceId, isNotEmpty);
+    expect(exportService.lastDeviceName, isNotEmpty);
+  });
+
+  test(
+    'a pending auto-import surfaces the uploading device\'s name',
+    () async {
+      final backupService = _PendingImportDeviceLibraryBackupService(
+        remoteModifiedAt: DateTime.now().toUtc().add(const Duration(days: 1)),
+        deviceName: 'Kitchen iPad',
+      );
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: backupService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoImportEnabled(true);
+
+      expect(controller.hasPendingAutoImport, isTrue);
+      expect(controller.pendingImportDeviceName, 'Kitchen iPad');
+    },
+  );
 }
 
 class _TestDatabasePathService extends DatabasePathService {
@@ -549,6 +614,8 @@ class _DelayingLibraryBackupService extends LibraryBackupService {
     required String sourceDatabasePath,
     required String serverPath,
     int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
   }) async {
     if (!started.isCompleted) {
       started.complete();
@@ -610,6 +677,8 @@ class _RestoringSelfLibraryBackupService extends LibraryBackupService {
     required String sourceDatabasePath,
     required String serverPath,
     int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
   }) async {
     exportCalled = true;
     return DateTime.now().toUtc();
@@ -670,6 +739,8 @@ class _ExportingLibraryBackupService extends LibraryBackupService {
     required String sourceDatabasePath,
     required String serverPath,
     int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
   }) async {
     return exportedAt;
   }
@@ -681,5 +752,64 @@ class _ExportingLibraryBackupService extends LibraryBackupService {
     required String backupFileName,
   }) async {
     return remoteModifiedAt;
+  }
+}
+
+class _DeviceCapturingLibraryBackupService extends LibraryBackupService {
+  String? lastDeviceId;
+  String? lastDeviceName;
+
+  @override
+  Future<DateTime> exportBackupToWebDav({
+    required webdav.Client client,
+    required String sourceDatabasePath,
+    required String serverPath,
+    int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
+  }) async {
+    lastDeviceId = deviceId;
+    lastDeviceName = deviceName;
+    return DateTime.now().toUtc();
+  }
+
+  // Avoid a real network round-trip: _runAutoExportIfConfigured calls this
+  // right after exportBackupToWebDav to timestamp the pending-import
+  // dismissal, and the fake client points at a non-existent host.
+  @override
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async => DateTime.now().toUtc();
+}
+
+class _PendingImportDeviceLibraryBackupService extends LibraryBackupService {
+  _PendingImportDeviceLibraryBackupService({
+    required this.remoteModifiedAt,
+    required this.deviceName,
+  });
+
+  final DateTime remoteModifiedAt;
+  final String deviceName;
+
+  @override
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async {
+    return remoteModifiedAt;
+  }
+
+  @override
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) async {
+    return WebDavBackupDeviceInfo(
+      deviceId: 'remote-device',
+      deviceName: deviceName,
+    );
   }
 }

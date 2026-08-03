@@ -21,6 +21,8 @@ class WebDavBackupEntry {
     required this.remotePath,
     this.modifiedAt,
     this.sizeBytes,
+    this.deviceId,
+    this.deviceName,
   });
 
   final String fileName;
@@ -28,6 +30,20 @@ class WebDavBackupEntry {
   final String remotePath;
   final DateTime? modifiedAt;
   final int? sizeBytes;
+
+  /// The device that uploaded this backup, if known. `null` for backups
+  /// exported before device attribution was introduced, or when the sidecar
+  /// metadata file could not be read.
+  final String? deviceId;
+  final String? deviceName;
+}
+
+/// Device attribution read from a backup's `.meta.json` sidecar.
+class WebDavBackupDeviceInfo {
+  const WebDavBackupDeviceInfo({this.deviceId, this.deviceName});
+
+  final String? deviceId;
+  final String? deviceName;
 }
 
 class LibraryBackupService {
@@ -39,6 +55,8 @@ class LibraryBackupService {
   Future<Uint8List> buildBackupArchive(
     String sourceDatabasePath, {
     DateTime? exportedAt,
+    String? deviceId,
+    String? deviceName,
   }) async {
     final normalizedSourcePath = p.normalize(sourceDatabasePath);
     developer.log(
@@ -53,6 +71,8 @@ class LibraryBackupService {
           'formatVersion': _backupFormatVersion,
           'libraryName': _libraryNameForPath(normalizedSourcePath),
           'exportedAt': (exportedAt ?? DateTime.now().toUtc()).toIso8601String(),
+          if (deviceId != null) 'deviceId': deviceId,
+          if (deviceName != null) 'deviceName': deviceName,
         }),
       ),
     );
@@ -157,11 +177,15 @@ class LibraryBackupService {
     required String sourceDatabasePath,
     required String serverPath,
     int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
   }) async {
     final exportedAt = DateTime.now().toUtc();
     final bytes = await buildBackupArchive(
       sourceDatabasePath,
       exportedAt: exportedAt,
+      deviceId: deviceId,
+      deviceName: deviceName,
     );
     final canonicalName = backupFileNameForDatabasePath(sourceDatabasePath);
     final canonicalPath = _joinServerPath(serverPath, canonicalName);
@@ -172,6 +196,13 @@ class LibraryBackupService {
     );
     await client.mkdirAll(serverPath);
     await client.write(tmpPath, bytes);
+    await _writeMetaSidecar(
+      client: client,
+      backupPath: tmpPath,
+      deviceId: deviceId,
+      deviceName: deviceName,
+      exportedAt: exportedAt,
+    );
 
     // Archive the current canonical backup before replacing it.
     await _archiveExistingBackup(
@@ -187,6 +218,11 @@ class LibraryBackupService {
       name: 'classi.backup',
     );
     await client.rename(tmpPath, canonicalPath, true);
+    await _renameMetaSidecar(
+      client: client,
+      fromBackupPath: tmpPath,
+      toBackupPath: canonicalPath,
+    );
 
     // Prune old archived versions.
     await _pruneArchivedVersions(
@@ -219,6 +255,11 @@ class LibraryBackupService {
         name: 'classi.backup',
       );
       await client.rename(canonicalPath, archivedPath, true);
+      await _renameMetaSidecar(
+        client: client,
+        fromBackupPath: canonicalPath,
+        toBackupPath: archivedPath,
+      );
     } catch (_) {
       // No existing file or server does not support rename — proceed.
     }
@@ -266,6 +307,11 @@ class LibraryBackupService {
           try {
             await client.remove(_joinServerPath(serverPath, name));
           } catch (_) {}
+          try {
+            await client.remove(
+              _metaSidecarPath(_joinServerPath(serverPath, name)),
+            );
+          } catch (_) {}
         }
       }
     } catch (_) {
@@ -298,6 +344,14 @@ class LibraryBackupService {
     }
   }
 
+  /// Reads the device attribution sidecar for the backup at [remotePath],
+  /// or an empty [WebDavBackupDeviceInfo] if none exists or it cannot be
+  /// read (e.g. an older backup exported before device attribution existed).
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) => _readMetaSidecar(client: client, backupPath: remotePath);
+
   /// Lists backup archives available on the WebDAV server path.
   ///
   /// Both canonical (`name.classi-backup`) and archived
@@ -308,7 +362,8 @@ class LibraryBackupService {
     required String serverPath,
   }) async {
     final files = await client.readDir(serverPath);
-    final backups = <WebDavBackupEntry>[];
+    final candidates =
+        <({String fileName, DateTime? modifiedAt, int? sizeBytes})>[];
 
     for (final file in files) {
       if (file.isDir == true) {
@@ -320,16 +375,34 @@ class LibraryBackupService {
         continue;
       }
 
-      backups.add(
-        WebDavBackupEntry(
-          fileName: fileName,
-          libraryName: libraryNameForBackupFile(fileName),
-          remotePath: _joinServerPath(serverPath, fileName),
-          modifiedAt: file.mTime,
-          sizeBytes: file.size,
-        ),
-      );
+      candidates.add((
+        fileName: fileName,
+        modifiedAt: file.mTime,
+        sizeBytes: file.size,
+      ));
     }
+
+    final remotePaths = [
+      for (final candidate in candidates)
+        _joinServerPath(serverPath, candidate.fileName),
+    ];
+    final deviceInfos = await Future.wait([
+      for (final remotePath in remotePaths)
+        _readMetaSidecar(client: client, backupPath: remotePath),
+    ]);
+
+    final backups = <WebDavBackupEntry>[
+      for (var index = 0; index < candidates.length; index++)
+        WebDavBackupEntry(
+          fileName: candidates[index].fileName,
+          libraryName: libraryNameForBackupFile(candidates[index].fileName),
+          remotePath: remotePaths[index],
+          modifiedAt: candidates[index].modifiedAt,
+          sizeBytes: candidates[index].sizeBytes,
+          deviceId: deviceInfos[index].deviceId,
+          deviceName: deviceInfos[index].deviceName,
+        ),
+    ];
 
     backups.sort((left, right) {
       final leftModified = left.modifiedAt;
@@ -377,6 +450,67 @@ class LibraryBackupService {
 
   static String _libraryNameForPath(String path) =>
       p.basenameWithoutExtension(p.normalize(path));
+
+  static String _metaSidecarPath(String backupPath) => '$backupPath.meta.json';
+
+  /// Uploads the device-attribution sidecar for [backupPath]. Best-effort:
+  /// device attribution is metadata for display purposes only, so a failure
+  /// here must never break the backup export itself.
+  Future<void> _writeMetaSidecar({
+    required webdav.Client client,
+    required String backupPath,
+    required String? deviceId,
+    required String? deviceName,
+    required DateTime exportedAt,
+  }) async {
+    try {
+      final metaBytes = utf8.encode(
+        jsonEncode({
+          if (deviceId != null) 'deviceId': deviceId,
+          if (deviceName != null) 'deviceName': deviceName,
+          'exportedAt': exportedAt.toIso8601String(),
+        }),
+      );
+      await client.write(_metaSidecarPath(backupPath), metaBytes);
+    } catch (_) {
+      // Best-effort; the backup itself already succeeded.
+    }
+  }
+
+  /// Renames the device-attribution sidecar alongside a backup rename.
+  /// Best-effort: an older backup may not have a sidecar to rename.
+  Future<void> _renameMetaSidecar({
+    required webdav.Client client,
+    required String fromBackupPath,
+    required String toBackupPath,
+  }) async {
+    try {
+      await client.rename(
+        _metaSidecarPath(fromBackupPath),
+        _metaSidecarPath(toBackupPath),
+        true,
+      );
+    } catch (_) {
+      // No sidecar to rename — proceed.
+    }
+  }
+
+  Future<WebDavBackupDeviceInfo> _readMetaSidecar({
+    required webdav.Client client,
+    required String backupPath,
+  }) async {
+    try {
+      final metaBytes = await client.read(_metaSidecarPath(backupPath));
+      final metaJson =
+          jsonDecode(utf8.decode(metaBytes)) as Map<String, dynamic>;
+      return WebDavBackupDeviceInfo(
+        deviceId: metaJson['deviceId'] as String?,
+        deviceName: metaJson['deviceName'] as String?,
+      );
+    } catch (_) {
+      return const WebDavBackupDeviceInfo();
+    }
+  }
 
   Map<String, String> _artifactEntryNamesFor(String databasePath) {
     final databaseFilePath = DatabasePathService.databaseFilePathFor(
