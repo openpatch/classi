@@ -107,7 +107,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/today',
-            builder: (context, state) => const TodayDashboardScreen(),
+            builder: (context, state) => TodayDashboardScreen(
+              initialDate: parseLessonDateOrToday(
+                state.uri.queryParameters['date'],
+              ),
+            ),
           ),
           GoRoute(
             path: '/groups',
