@@ -53,13 +53,15 @@ class AppSessionController extends ChangeNotifier {
     required LibraryBackupService libraryBackupService,
     required BiometricService biometricService,
     DeviceIdentityService? deviceIdentityService,
+    Duration periodicExportInterval = const Duration(minutes: 10),
   }) : _keyService = keyService,
        _databasePathService = databasePathService,
        _securityPreferencesService = securityPreferencesService,
        _libraryBackupPreferencesService = libraryBackupPreferencesService,
        _libraryBackupService = libraryBackupService,
        _biometricService = biometricService,
-       _deviceIdentityService = deviceIdentityService ?? DeviceIdentityService();
+       _deviceIdentityService = deviceIdentityService ?? DeviceIdentityService(),
+       _periodicExportInterval = periodicExportInterval;
 
   final KeyService _keyService;
   final DatabasePathService _databasePathService;
@@ -81,6 +83,20 @@ class AppSessionController extends ChangeNotifier {
   Duration _inactivityTimeout =
       SecurityPreferencesService.defaultInactivityTimeout;
   Timer? _inactivityTimer;
+
+  /// How often to opportunistically re-export while the app is open and
+  /// unlocked, independent of backgrounding.
+  ///
+  /// The background/lock-triggered export (see [handleAppBackgrounded]) is
+  /// not reliable on every platform: on Android the OS can suspend the
+  /// process shortly after it's backgrounded, cutting off the in-flight
+  /// export before it finishes, whereas desktop platforms keep running
+  /// normally when unfocused. This periodic timer runs entirely in the
+  /// foreground, so it works the same way everywhere, and bounds how stale
+  /// the WebDAV backup can get even when a background export never
+  /// completes.
+  final Duration _periodicExportInterval;
+  Timer? _periodicExportTimer;
   String? _currentPassphrase;
   String? _pendingRecoveryKey;
   bool _webDavAutoExportEnabled = false;
@@ -239,6 +255,7 @@ class AppSessionController extends ChangeNotifier {
       }
       _status = AppSessionStatus.ready;
       _resetInactivityTimer();
+      _startPeriodicExportTimerIfNeeded();
       return true;
     } catch (error, stackTrace) {
       await _handleFatalError(
@@ -315,6 +332,7 @@ class AppSessionController extends ChangeNotifier {
     if (_status == AppSessionStatus.ready) {
       await refreshIfChanged();
       _resetInactivityTimer();
+      _startPeriodicExportTimerIfNeeded();
     }
   }
 
@@ -360,6 +378,7 @@ class AppSessionController extends ChangeNotifier {
       return;
     }
     _resetInactivityTimer();
+    _startPeriodicExportTimerIfNeeded();
   }
 
   Future<void> refreshIfChanged() async {
@@ -598,6 +617,11 @@ class AppSessionController extends ChangeNotifier {
   Future<void> setWebDavUrl(String? url) async {
     _webDavUrl = (url == null || url.trim().isEmpty) ? null : url.trim();
     await _libraryBackupPreferencesService.setWebDavUrl(_webDavUrl);
+    if (_webDavUrl == null) {
+      _cancelPeriodicExportTimer();
+    } else {
+      _startPeriodicExportTimerIfNeeded();
+    }
     notifyListeners();
   }
 
@@ -631,6 +655,11 @@ class AppSessionController extends ChangeNotifier {
   Future<void> setWebDavAutoExportEnabled(bool value) async {
     _webDavAutoExportEnabled = value;
     await _libraryBackupPreferencesService.setAutoExportEnabled(value);
+    if (value) {
+      _startPeriodicExportTimerIfNeeded();
+    } else {
+      _cancelPeriodicExportTimer();
+    }
     notifyListeners();
   }
 
@@ -828,6 +857,7 @@ class AppSessionController extends ChangeNotifier {
       _pendingRecoveryKey = null;
       _status = AppSessionStatus.ready;
       _resetInactivityTimer();
+      _startPeriodicExportTimerIfNeeded();
       return true;
     } catch (error, stackTrace) {
       await _handleFatalError(
@@ -867,6 +897,7 @@ class AppSessionController extends ChangeNotifier {
 
   AppDatabase? _detachDatabase() {
     _cancelInactivityTimer();
+    _cancelPeriodicExportTimer();
     final database = _database;
     _database = null;
     _currentPassphrase = null;
@@ -1388,6 +1419,30 @@ class AppSessionController extends ChangeNotifier {
     _inactivityTimer = null;
   }
 
+  /// Starts the periodic foreground export timer if it isn't already
+  /// running and the session is currently eligible (ready, WebDAV
+  /// configured, auto-export enabled). Safe to call speculatively —
+  /// idempotent and a no-op when not eligible.
+  void _startPeriodicExportTimerIfNeeded() {
+    if (_periodicExportTimer != null) return;
+    if (_status != AppSessionStatus.ready) return;
+    if (!_webDavAutoExportEnabled || !isWebDavConfigured) return;
+
+    _periodicExportTimer = Timer.periodic(_periodicExportInterval, (_) {
+      unawaited(_runPeriodicExportTick());
+    });
+  }
+
+  void _cancelPeriodicExportTimer() {
+    _periodicExportTimer?.cancel();
+    _periodicExportTimer = null;
+  }
+
+  Future<void> _runPeriodicExportTick() async {
+    if (_status != AppSessionStatus.ready || _isExporting || _isBusy) return;
+    await _flushAndAutoExport();
+  }
+
   void _setBackupMessage(String code, {bool isError = false}) {
     _lastBackupMessageCode = code;
     _lastBackupMessageIsError = isError;
@@ -1396,6 +1451,7 @@ class AppSessionController extends ChangeNotifier {
   @override
   void dispose() {
     _cancelInactivityTimer();
+    _cancelPeriodicExportTimer();
     unawaited(_closeDatabase());
     super.dispose();
   }

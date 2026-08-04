@@ -135,6 +135,7 @@
   "export_library": "Backup exportieren",
   "export_library_hint": "Erstellt eine portable Backup-Datei für Sync oder Transfer.",
   "export_now": "Jetzt exportieren",
+  "exporting_backup": "Backup wird exportiert…",
   "first_name": "Vorname",
   "generic_error": "Etwas ist schiefgelaufen.",
   "generic_error_hint": "Bitte versuche es erneut.",

@@ -135,6 +135,7 @@
   "export_library": "Export backup",
   "export_library_hint": "Create a portable backup file for sync or transfer.",
   "export_now": "Export now",
+  "exporting_backup": "Exporting backup…",
   "first_name": "First name",
   "generic_error": "Something went wrong.",
   "generic_error_hint": "Please try again.",
