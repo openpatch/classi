@@ -608,6 +608,90 @@ void main() {
   );
 
   test(
+    'a periodic timer re-exports while the app stays open, independent of '
+    'backgrounding',
+    () async {
+      final exportService = _DeviceCapturingLibraryBackupService();
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+        periodicExportInterval: const Duration(milliseconds: 20),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      expect(exportService.exportCount, 0);
+
+      // Give the periodic timer a chance to fire at least once, without
+      // backgrounding or locking the app.
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+
+      expect(
+        exportService.exportCount,
+        greaterThan(0),
+        reason:
+            'the periodic timer should trigger an export on its own, not '
+            'just on background/lock',
+      );
+    },
+  );
+
+  test(
+    'the periodic export timer stops once auto-export is disabled',
+    () async {
+      final exportService = _DeviceCapturingLibraryBackupService();
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+        periodicExportInterval: const Duration(milliseconds: 20),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+      await controller.setWebDavAutoExportEnabled(false);
+
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+
+      expect(
+        exportService.exportCount,
+        0,
+        reason: 'disabling auto-export must stop the periodic timer too',
+      );
+    },
+  );
+
+  test(
     'each export is based on the revision this device last saw',
     () async {
       final exportService = _DeviceCapturingLibraryBackupService();
@@ -864,6 +948,7 @@ class _WebDavAppSessionController extends AppSessionController {
     required super.libraryBackupPreferencesService,
     required super.libraryBackupService,
     required super.biometricService,
+    super.periodicExportInterval,
   });
 
   @override
@@ -915,6 +1000,7 @@ class _DeviceCapturingLibraryBackupService extends LibraryBackupService {
   String? lastDeviceId;
   String? lastDeviceName;
   String? lastParentRevision;
+  int exportCount = 0;
 
   @override
   Future<DateTime> exportBackupToWebDav({
@@ -929,6 +1015,7 @@ class _DeviceCapturingLibraryBackupService extends LibraryBackupService {
     lastDeviceId = deviceId;
     lastDeviceName = deviceName;
     lastParentRevision = parentRevision;
+    exportCount++;
     return DateTime.now().toUtc();
   }
 
