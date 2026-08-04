@@ -17,6 +17,7 @@ import '../../features/setup/setup_screen.dart';
 import '../../features/setup/unlock_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../features/students/student_summary_screen.dart';
+import '../../features/today/today_dashboard_screen.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/startup_screen.dart';
 
@@ -75,7 +76,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 return from;
               }
             }
-            return '/groups';
+            return '/today';
           }
           return null;
         case AppSessionStatus.error:
@@ -104,6 +105,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => AppScaffold(child: child),
         routes: [
+          GoRoute(
+            path: '/today',
+            builder: (context, state) => const TodayDashboardScreen(),
+          ),
           GoRoute(
             path: '/groups',
             builder: (context, state) => const GroupsScreen(),
