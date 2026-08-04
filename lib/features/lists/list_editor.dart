@@ -84,16 +84,25 @@ class _ListEditorDialogState extends State<_ListEditorDialog> {
           if (widget.allowGroupSelection)
             DropdownButtonFormField<int?>(
               initialValue: _selectedGroupId,
+              isExpanded: true,
               decoration: InputDecoration(labelText: 'list_scope'.tr()),
               items: [
                 DropdownMenuItem<int?>(
                   value: null,
-                  child: Text('global_list'.tr()),
+                  child: Text(
+                    'global_list'.tr(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 for (final group in widget.groups)
                   DropdownMenuItem<int?>(
                     value: group.id,
-                    child: Text(group.name),
+                    child: Text(
+                      group.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
               ],
               onChanged: (value) => setState(() {

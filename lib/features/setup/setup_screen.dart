@@ -647,6 +647,7 @@ class _LockingStep extends StatelessWidget {
         const SizedBox(height: 12),
         DropdownButtonFormField<Duration>(
           initialValue: inactivityTimeout,
+          isExpanded: true,
           decoration: InputDecoration(labelText: 'inactivity_timeout'.tr()),
           items: [
             for (final entry in timeoutOptions.entries)
@@ -656,6 +657,8 @@ class _LockingStep extends StatelessWidget {
                   'minutes_count'.tr(
                     namedArgs: {'count': entry.key.toString()},
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
           ],

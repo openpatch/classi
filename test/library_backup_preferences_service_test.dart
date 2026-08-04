@@ -55,6 +55,18 @@ void main() {
     expect(await service.webDavServerPath(), '/classi-backups/');
   });
 
+  test('stores and clears the last known sync revision', () async {
+    final service = _serviceFor(projectPath);
+
+    expect(await service.lastKnownRevision(), isNull);
+
+    await service.setLastKnownRevision('device-a-1');
+    expect(await service.lastKnownRevision(), 'device-a-1');
+
+    await service.setLastKnownRevision(null);
+    expect(await service.lastKnownRevision(), isNull);
+  });
+
   test('backup preferences do not leak across projects', () async {
     final firstProject = _serviceFor(projectPath);
     await firstProject.setAutoExportEnabled(true);
