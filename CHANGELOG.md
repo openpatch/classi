@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.0] - 2026-08-04
+
+### Bug Fixes
+
+- Don't let pre-restore auto-export clobber the WebDAV backup being restored
+- Make page width consistent across screens and remove horizontal table scrolling
+- Prevent dropdown overflow with long labels
+- Silence unnecessary_underscores lint in student_detail_screen
+
+
+### Features
+
+- Attach device identity to WebDAV backups
+- Add a best-effort WebDAV sync lock around export
+- Detect conflicting WebDAV backups instead of silently overwriting
+- Add a foreground safety-net export timer and a visual backup status button
+
+
+### Miscellaneous Tasks
+
+- Remove dead code and fix broken lesson repository test
+
+
+### Styling
+
+- Use null-aware collection elements (dart fix)
+
+
 ## [1.11.0] - 2026-07-03
 
 ### Features
