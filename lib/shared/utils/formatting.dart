@@ -301,20 +301,28 @@ bool isGeneratedStudentDisplayName({
   String? callName,
 }) {
   final trimmedValue = value.trim();
-  return trimmedValue ==
+  // Match against the call name *and* the plain first name: a label stored
+  // before a call name was set (e.g. a checklist populated from the group)
+  // must still count as auto-generated afterwards, so it re-renders with the
+  // new name instead of freezing as a custom label. The set collapses to one
+  // candidate when no call name is set.
+  final candidateFirstNames = {
+    effectiveFirstName(firstName: firstName, callName: callName),
+    firstName,
+  };
+  for (final candidateFirstName in candidateFirstNames) {
+    for (final sortField in StudentSortField.values) {
+      if (trimmedValue ==
           studentDisplayName(
-            firstName: firstName,
+            firstName: candidateFirstName,
             lastName: lastName,
-            callName: callName,
-            sortField: StudentSortField.firstName,
-          ) ||
-      trimmedValue ==
-          studentDisplayName(
-            firstName: firstName,
-            lastName: lastName,
-            callName: callName,
-            sortField: StudentSortField.lastName,
-          );
+            sortField: sortField,
+          )) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 String studentInitials({required String firstName, required String lastName}) {
