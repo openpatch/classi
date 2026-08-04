@@ -12,20 +12,46 @@ import '../../shared/widgets/empty_state.dart';
 import '../lessons/lesson_support.dart';
 import 'today_repository.dart';
 
-/// Landing screen after unlock: every active group's status for today in one
-/// place, with a single tap into that group's lesson for today. Replaces
-/// having to open each group individually to see whether today's lesson has
-/// already been logged.
-class TodayDashboardScreen extends ConsumerWidget {
+/// Landing screen after unlock: every active group's status for a chosen
+/// date in one place, with a single tap into that group's lesson for that
+/// date. Defaults to today; a date picker lets a teacher browse into the
+/// past (e.g. to catch up on missed entries), with a quick way back to
+/// today. Replaces having to open each group individually to see whether a
+/// day's lesson has already been logged.
+class TodayDashboardScreen extends ConsumerStatefulWidget {
   const TodayDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TodayDashboardScreen> createState() =>
+      _TodayDashboardScreenState();
+}
+
+class _TodayDashboardScreenState extends ConsumerState<TodayDashboardScreen> {
+  late DateTime _selectedDate = normalizeLessonDate(DateTime.now());
+
+  @override
+  Widget build(BuildContext context) {
     final today = normalizeLessonDate(DateTime.now());
-    final overviewValue = ref.watch(todayOverviewProvider(today));
+    final isToday = _selectedDate == today;
+    final overviewValue = ref.watch(todayOverviewProvider(_selectedDate));
 
     return Scaffold(
-      appBar: AppBar(title: Text('today'.tr())),
+      appBar: AppBar(
+        title: Text('today'.tr()),
+        actions: [
+          if (!isToday)
+            IconButton(
+              onPressed: _goToToday,
+              icon: const Icon(Icons.today_outlined),
+              tooltip: 'today'.tr(),
+            ),
+          IconButton(
+            onPressed: _pickDate,
+            icon: const Icon(Icons.calendar_today_outlined),
+            tooltip: 'date'.tr(),
+          ),
+        ],
+      ),
       body: ContentConstraints(
         child: overviewValue.when(
           data: (overviews) {
@@ -39,18 +65,42 @@ class TodayDashboardScreen extends ConsumerWidget {
             return ListView(
               padding: appScreenPadding,
               children: [
-                Text(
-                  MaterialLocalizations.of(context).formatFullDate(today),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                InkWell(
+                  onTap: _pickDate,
+                  borderRadius: BorderRadius.circular(AppRadii.large),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.small,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: AppSpacing.small),
+                        Text(
+                          MaterialLocalizations.of(
+                            context,
+                          ).formatFullDate(_selectedDate),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.large),
                 for (final overview in overviews) ...[
                   _TodayGroupCard(
                     overview: overview,
-                    onOpenLesson: () =>
-                        _openLesson(context, overview.group.id, today),
+                    onOpenLesson: () => _openLesson(overview.group.id),
                   ),
                   const SizedBox(height: AppSpacing.medium),
                 ],
@@ -64,11 +114,29 @@ class TodayDashboardScreen extends ConsumerWidget {
     );
   }
 
-  void _openLesson(BuildContext context, int groupId, DateTime date) {
+  Future<void> _pickDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (selected == null) {
+      return;
+    }
+
+    setState(() => _selectedDate = normalizeLessonDate(selected));
+  }
+
+  void _goToToday() {
+    setState(() => _selectedDate = normalizeLessonDate(DateTime.now()));
+  }
+
+  void _openLesson(int groupId) {
     context.push(
       Uri(
         path: '/groups/$groupId/lesson',
-        queryParameters: {'date': encodeLessonDate(date)},
+        queryParameters: {'date': encodeLessonDate(_selectedDate)},
       ).toString(),
     );
   }
