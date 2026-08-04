@@ -116,7 +116,7 @@ void main() {
     );
     expect(
       isGeneratedStudentDisplayName(
-        value: 'Mustermann, Alexander',
+        value: 'Presentation topic',
         firstName: 'Alexander',
         lastName: 'Mustermann',
         callName: 'Alex',
@@ -124,4 +124,29 @@ void main() {
       isFalse,
     );
   });
+
+  test(
+    'a label generated before a call name was set is still recognized',
+    () {
+      // A checklist populated from the group stores the name as its label.
+      // Setting a call name afterwards must not turn that stored label into
+      // an untracked custom one — otherwise it freezes at the old name and
+      // the item redundantly grows a linked-student chip.
+      for (final storedLabel in const [
+        'Mustermann, Alexander',
+        'Alexander Mustermann',
+      ]) {
+        expect(
+          isGeneratedStudentDisplayName(
+            value: storedLabel,
+            firstName: 'Alexander',
+            lastName: 'Mustermann',
+            callName: 'Alex',
+          ),
+          isTrue,
+          reason: '$storedLabel should still count as auto-generated',
+        );
+      }
+    },
+  );
 }
