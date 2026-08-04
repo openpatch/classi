@@ -58,6 +58,7 @@ class StudentRepository {
     required int groupId,
     required String firstName,
     required String lastName,
+    String? callName,
     String? originNote,
     String? avatarJson,
   }) {
@@ -68,6 +69,9 @@ class StudentRepository {
             firstName: firstName.trim(),
             lastName: lastName.trim(),
             groupId: groupId,
+            callName: Value(
+              callName?.trim().isEmpty ?? true ? null : callName!.trim(),
+            ),
             originNote: Value(
               originNote?.trim().isEmpty ?? true ? null : originNote!.trim(),
             ),
@@ -98,6 +102,7 @@ class StudentRepository {
     required int id,
     required String firstName,
     required String lastName,
+    String? callName,
     String? originNote,
     String? avatarJson,
   }) {
@@ -107,6 +112,9 @@ class StudentRepository {
       StudentsTableCompanion(
         firstName: Value(firstName.trim()),
         lastName: Value(lastName.trim()),
+        callName: Value(
+          callName?.trim().isEmpty ?? true ? null : callName!.trim(),
+        ),
         originNote: Value(
           originNote?.trim().isEmpty ?? true ? null : originNote!.trim(),
         ),
@@ -137,6 +145,11 @@ class StudentRepository {
       firstName: student.firstName.trim(),
       lastName: student.lastName.trim(),
       groupId: groupId,
+      callName: Value(
+        student.callName?.trim().isEmpty ?? true
+            ? null
+            : student.callName!.trim(),
+      ),
       originNote: Value(
         student.originNote?.trim().isEmpty ?? true
             ? null

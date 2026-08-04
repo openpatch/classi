@@ -350,6 +350,7 @@ class _ChecklistItemTile extends ConsumerWidget {
         : studentDisplayName(
             firstName: singleLinkedStudent.firstName,
             lastName: singleLinkedStudent.lastName,
+            callName: singleLinkedStudent.callName,
             sortField: sortField,
           );
     final displayLabel =
@@ -358,6 +359,7 @@ class _ChecklistItemTile extends ConsumerWidget {
               value: item.label,
               firstName: singleLinkedStudent.firstName,
               lastName: singleLinkedStudent.lastName,
+              callName: singleLinkedStudent.callName,
             )
         ? singleLinkedStudentName!
         : item.label;

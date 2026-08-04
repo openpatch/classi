@@ -388,5 +388,7 @@
   "keep_this_device_version": "Keep this device's version",
   "use_server_version": "Use the server version",
   "conflict_resolved": "Conflict resolved.",
-  "unknown_device": "Unknown device"
+  "unknown_device": "Unknown device",
+  "call_name": "Call name",
+  "call_name_hint": "If different from the first name"
 }

@@ -16,6 +16,7 @@ Future<StudentFormResult?> showStudentFormSheet({
   required BuildContext context,
   String? initialFirstName,
   String? initialLastName,
+  String? initialCallName,
   String? initialOriginNote,
   String? initialAvatarJson,
   String? title,
@@ -29,6 +30,7 @@ Future<StudentFormResult?> showStudentFormSheet({
     builder: (context) => _StudentFormSheet(
       initialFirstName: initialFirstName,
       initialLastName: initialLastName,
+      initialCallName: initialCallName,
       initialOriginNote: initialOriginNote,
       initialAvatarJson: initialAvatarJson,
       title: title,
@@ -41,6 +43,7 @@ class _StudentFormSheet extends ConsumerStatefulWidget {
   const _StudentFormSheet({
     this.initialFirstName,
     this.initialLastName,
+    this.initialCallName,
     this.initialOriginNote,
     this.initialAvatarJson,
     this.title,
@@ -49,6 +52,7 @@ class _StudentFormSheet extends ConsumerStatefulWidget {
 
   final String? initialFirstName;
   final String? initialLastName;
+  final String? initialCallName;
   final String? initialOriginNote;
   final String? initialAvatarJson;
   final String? title;
@@ -62,6 +66,7 @@ class _StudentFormSheetState extends ConsumerState<_StudentFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
+  late final TextEditingController _callNameController;
   late final TextEditingController _originNoteController;
   late String? _avatarJson;
 
@@ -70,20 +75,24 @@ class _StudentFormSheetState extends ConsumerState<_StudentFormSheet> {
     super.initState();
     _firstNameController = TextEditingController(text: widget.initialFirstName);
     _lastNameController = TextEditingController(text: widget.initialLastName);
+    _callNameController = TextEditingController(text: widget.initialCallName);
     _originNoteController = TextEditingController(
       text: widget.initialOriginNote,
     );
     _avatarJson = widget.initialAvatarJson;
     _firstNameController.addListener(_handleNameChanged);
     _lastNameController.addListener(_handleNameChanged);
+    _callNameController.addListener(_handleNameChanged);
   }
 
   @override
   void dispose() {
     _firstNameController.removeListener(_handleNameChanged);
     _lastNameController.removeListener(_handleNameChanged);
+    _callNameController.removeListener(_handleNameChanged);
     _firstNameController.dispose();
     _lastNameController.dispose();
+    _callNameController.dispose();
     _originNoteController.dispose();
     super.dispose();
   }
@@ -122,6 +131,7 @@ class _StudentFormSheetState extends ConsumerState<_StudentFormSheet> {
                       lastName: _previewStudent.lastName.isEmpty
                           ? '...'
                           : _previewStudent.lastName,
+                      callName: _previewStudent.callName,
                       originNote: _previewStudent.originNote,
                       sortField: sortField,
                     ),
@@ -156,6 +166,14 @@ class _StudentFormSheetState extends ConsumerState<_StudentFormSheet> {
                             value == null || value.trim().isEmpty
                             ? 'last_name'.tr()
                             : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _callNameController,
+                        decoration: InputDecoration(
+                          labelText: 'call_name'.tr(),
+                          hintText: 'call_name_hint'.tr(),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -202,6 +220,9 @@ class _StudentFormSheetState extends ConsumerState<_StudentFormSheet> {
     firstName: _firstNameController.text.trim(),
     lastName: _lastNameController.text.trim(),
     groupId: 0,
+    callName: _callNameController.text.trim().isEmpty
+        ? null
+        : _callNameController.text.trim(),
     originNote: _originNoteController.text.trim().isEmpty
         ? null
         : _originNoteController.text.trim(),
@@ -231,6 +252,9 @@ class _StudentFormSheetState extends ConsumerState<_StudentFormSheet> {
     Navigator.of(context).pop((
       firstName: _firstNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
+      callName: _callNameController.text.trim().isEmpty
+          ? null
+          : _callNameController.text.trim(),
       originNote: _originNoteController.text.trim().isEmpty
           ? null
           : _originNoteController.text.trim(),
@@ -246,6 +270,7 @@ class _StudentFormSheetState extends ConsumerState<_StudentFormSheet> {
           'name': studentDisplayName(
             firstName: _firstNameController.text.trim(),
             lastName: _lastNameController.text.trim(),
+            callName: _callNameController.text.trim(),
           ),
         },
       ),

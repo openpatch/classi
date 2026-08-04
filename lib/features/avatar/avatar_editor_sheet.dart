@@ -96,6 +96,7 @@ class _AvatarEditorSheetState extends ConsumerState<_AvatarEditorSheet> {
                       studentDisplayName(
                         firstName: widget.student.firstName,
                         lastName: widget.student.lastName,
+                        callName: widget.student.callName,
                         sortField: sortField,
                       ),
                       style: Theme.of(context).textTheme.titleLarge,

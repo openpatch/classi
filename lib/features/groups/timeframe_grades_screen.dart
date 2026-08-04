@@ -380,6 +380,7 @@ class _TimeframeStudentRow extends ConsumerWidget {
                         studentDisplayName(
                           firstName: student.firstName,
                           lastName: student.lastName,
+                          callName: student.callName,
                           sortField: sortField,
                         ),
                         maxLines: 2,
@@ -494,6 +495,7 @@ class _TimeframeStudentRow extends ConsumerWidget {
           studentDisplayName(
             firstName: student.firstName,
             lastName: student.lastName,
+            callName: student.callName,
           ),
         ),
         content: ConstrainedBox(
