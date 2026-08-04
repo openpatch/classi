@@ -126,10 +126,10 @@ class LibraryBackupService {
           'formatVersion': _backupFormatVersion,
           'libraryName': _libraryNameForPath(normalizedSourcePath),
           'exportedAt': (exportedAt ?? DateTime.now().toUtc()).toIso8601String(),
-          if (deviceId != null) 'deviceId': deviceId,
-          if (deviceName != null) 'deviceName': deviceName,
-          if (revision != null) 'revision': revision,
-          if (parentRevision != null) 'parentRevision': parentRevision,
+          'deviceId': ?deviceId,
+          'deviceName': ?deviceName,
+          'revision': ?revision,
+          'parentRevision': ?parentRevision,
         }),
       ),
     );
@@ -633,11 +633,11 @@ class LibraryBackupService {
     try {
       final metaBytes = utf8.encode(
         jsonEncode({
-          if (deviceId != null) 'deviceId': deviceId,
-          if (deviceName != null) 'deviceName': deviceName,
+          'deviceId': ?deviceId,
+          'deviceName': ?deviceName,
           'exportedAt': exportedAt.toIso8601String(),
-          if (revision != null) 'revision': revision,
-          if (parentRevision != null) 'parentRevision': parentRevision,
+          'revision': ?revision,
+          'parentRevision': ?parentRevision,
         }),
       );
       await client.write(_metaSidecarPath(backupPath), metaBytes);
