@@ -1214,30 +1214,19 @@ class _TimeframesTable extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        showCheckboxColumn: false,
-        columnSpacing: 16,
-        horizontalMargin: 0,
-        columns: [
-          DataColumn(label: Text('timeframe_label'.tr())),
-          DataColumn(label: Text('start_date'.tr())),
-          DataColumn(label: Text('end_date'.tr())),
-          DataColumn(label: Text('average'.tr()), numeric: true),
-          DataColumn(label: Text('attendance'.tr()), numeric: true),
-          DataColumn(label: Text('material'.tr()), numeric: true),
-          DataColumn(label: Text('homework'.tr()), numeric: true),
+    return Column(
+      children: [
+        const _TimeframesTableHeader(),
+        const Divider(height: 1),
+        for (var i = 0; i < timeframes.length; i++) ...[
+          _buildRow(context, ref, timeframes[i]),
+          if (i < timeframes.length - 1) const Divider(height: 1),
         ],
-        rows: [
-          for (final timeframe in timeframes)
-            _buildRow(context, ref, timeframe),
-        ],
-      ),
+      ],
     );
   }
 
-  DataRow _buildRow(BuildContext context, WidgetRef ref, Timeframe timeframe) {
+  Widget _buildRow(BuildContext context, WidgetRef ref, Timeframe timeframe) {
     final params = (
       groupId: timeframe.groupId,
       startDate: timeframe.startDate,
@@ -1264,47 +1253,102 @@ class _TimeframesTable extends ConsumerWidget {
     final overlaps = _findOverlaps(timeframe, allTimeframes);
     final hasOverlap = overlaps.isNotEmpty;
 
-    final labelWidget = Row(
-      children: [
-        Expanded(
-          child: Text(
-            timeframe.label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        if (hasOverlap)
-          Tooltip(
-            message: 'overlaps_with'.tr(namedArgs: {
-              'timeframes': overlaps
-                  .map((t) =>
-                      '${t.label} (${formatShortDate(t.startDate)} – ${formatShortDate(t.endDate)})')
-                  .join(', '),
-            }),
-            child: Icon(
-              Icons.warning_amber_outlined,
-              color: Theme.of(context).colorScheme.error,
-              size: 16,
+    return InkWell(
+      onTap: () => _viewTimeframeGrades(context, timeframe),
+      child: Container(
+        color: hasOverlap
+            ? Theme.of(
+                context,
+              ).colorScheme.errorContainer.withValues(alpha: 0.15)
+            : null,
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.small),
+        child: Row(
+          children: [
+            _TimeframesTableCell(
+              flex: 3,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      timeframe.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (hasOverlap)
+                    Tooltip(
+                      message: 'overlaps_with'.tr(namedArgs: {
+                        'timeframes': overlaps
+                            .map((t) =>
+                                '${t.label} (${formatShortDate(t.startDate)} – ${formatShortDate(t.endDate)})')
+                            .join(', '),
+                      }),
+                      child: Icon(
+                        Icons.warning_amber_outlined,
+                        color: Theme.of(context).colorScheme.error,
+                        size: 16,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-      ],
-    );
-
-    return DataRow(
-      onSelectChanged: (_) => _viewTimeframeGrades(context, timeframe),
-      color: hasOverlap
-          ? WidgetStatePropertyAll(
-              Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.15))
-          : null,
-      cells: [
-        DataCell(labelWidget),
-        DataCell(Text(formatShortDate(timeframe.startDate))),
-        DataCell(Text(formatShortDate(timeframe.endDate))),
-        DataCell(Text(_avgFinalGrade(grades))),
-        DataCell(Text(_formatPercent(presentCount, allAttendance.length))),
-        DataCell(Text(_formatPercent(hadMaterialCount, allMaterial.length))),
-        DataCell(Text(_formatPercent(hadHomeworkCount, allHomework.length))),
-      ],
+            _TimeframesTableCell(
+              flex: 2,
+              child: Text(
+                formatShortDate(timeframe.startDate),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            _TimeframesTableCell(
+              flex: 2,
+              child: Text(
+                formatShortDate(timeframe.endDate),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            _TimeframesTableCell(
+              flex: 1,
+              child: Text(
+                _avgFinalGrade(grades),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            _TimeframesTableCell(
+              flex: 1,
+              child: Text(
+                _formatPercent(presentCount, allAttendance.length),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            _TimeframesTableCell(
+              flex: 1,
+              child: Text(
+                _formatPercent(hadMaterialCount, allMaterial.length),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            _TimeframesTableCell(
+              flex: 1,
+              child: Text(
+                _formatPercent(hadHomeworkCount, allHomework.length),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1315,6 +1359,66 @@ class _TimeframesTable extends ConsumerWidget {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => TimeframeGradesScreen(timeframe: timeframe),
+      ),
+    );
+  }
+}
+
+/// Header row for [_TimeframesTable]. A plain [Row] of [Expanded] cells
+/// instead of [DataTable] so it never needs to scroll horizontally: cells
+/// share the available width and truncate with an ellipsis rather than
+/// wrapping or forcing the table wider than its container.
+class _TimeframesTableHeader extends StatelessWidget {
+  const _TimeframesTableHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(
+      context,
+    ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700);
+    Widget cell(String key, int flex, {TextAlign align = TextAlign.center}) {
+      return _TimeframesTableCell(
+        flex: flex,
+        child: Text(
+          key.tr(),
+          style: style,
+          textAlign: align,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.small),
+      child: Row(
+        children: [
+          cell('timeframe_label', 3, align: TextAlign.start),
+          cell('start_date', 2),
+          cell('end_date', 2),
+          cell('average', 1),
+          cell('attendance', 1),
+          cell('material', 1),
+          cell('homework', 1),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimeframesTableCell extends StatelessWidget {
+  const _TimeframesTableCell({required this.flex, required this.child});
+
+  final int flex;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      flex: flex,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: child,
       ),
     );
   }
@@ -2579,90 +2683,180 @@ class _SessionsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        showCheckboxColumn: false,
-        columnSpacing: 16,
-        horizontalMargin: 0,
-        columns: [
-          DataColumn(label: Text('date'.tr())),
-          DataColumn(label: Text('session_label'.tr())),
-          DataColumn(label: Text('grade_category'.tr())),
-          DataColumn(label: Text('attendance'.tr()), numeric: true),
-          DataColumn(label: Text('homework'.tr()), numeric: true),
-          DataColumn(label: Text('material'.tr()), numeric: true),
-          DataColumn(label: Text('grade'.tr()), numeric: true),
-          const DataColumn(label: SizedBox.shrink()),
+    return Column(
+      children: [
+        const _SessionsTableHeader(),
+        const Divider(height: 1),
+        for (var i = 0; i < summaries.length; i++) ...[
+          _buildRow(context, summaries[i]),
+          if (i < summaries.length - 1) const Divider(height: 1),
         ],
-        rows: [
-          for (final summary in summaries)
-            _buildRow(context, summary),
-        ],
-      ),
+      ],
     );
   }
 
-  DataRow _buildRow(BuildContext context, SessionSummary summary) {
+  Widget _buildRow(BuildContext context, SessionSummary summary) {
     final session = summary.session;
     final locale = context.locale.toLanguageTag();
 
-    return DataRow(
-      onSelectChanged: (_) => context.push(
+    return InkWell(
+      onTap: () => context.push(
         _lessonModeLocation(
           groupId: groupId,
           date: session.date,
           categoryId: session.categoryId,
         ),
       ),
-      cells: [
-        DataCell(
-          Text(DateFormat.yMMMd(locale).format(session.date)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.small),
+        child: Row(
+          children: [
+            _SessionsTableCell(
+              flex: 2,
+              child: Text(
+                DateFormat.yMMMd(locale).format(session.date),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            _SessionsTableCell(
+              flex: 3,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (session.label.isNotEmpty)
+                    Text(
+                      session.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    Text(
+                      'no_label'.tr(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  if (session.description != null &&
+                      session.description!.isNotEmpty)
+                    Text(
+                      session.description!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            _SessionsTableCell(
+              flex: 2,
+              child: Text(
+                session.categoryName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            _SessionsTableCell(
+              flex: 1,
+              child: _PercentCell(value: summary.attendancePercent),
+            ),
+            _SessionsTableCell(
+              flex: 1,
+              child: _PercentCell(value: summary.homeworkPercent),
+            ),
+            _SessionsTableCell(
+              flex: 1,
+              child: _PercentCell(value: summary.materialPercent),
+            ),
+            _SessionsTableCell(
+              flex: 1,
+              child: summary.gradeMean != null
+                  ? Text(
+                      formatNumber(summary.gradeMean!),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  : const Text('–', textAlign: TextAlign.center),
+            ),
+            SizedBox(
+              width: 40,
+              child: _SessionRowActions(
+                summary: summary,
+                onEdit: onEdit,
+                onDelete: onDelete,
+              ),
+            ),
+          ],
         ),
-        DataCell(
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (session.label.isNotEmpty)
-                Text(session.label)
-              else
-                Text(
-                  'no_label'.tr(),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              if (session.description != null && session.description!.isNotEmpty)
-                Text(
-                  session.description!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-            ],
-          ),
+      ),
+    );
+  }
+}
+
+/// Header row for [_SessionsTable]. A plain [Row] of [Expanded] cells
+/// instead of [DataTable] so it never needs to scroll horizontally: cells
+/// share the available width and truncate with an ellipsis rather than
+/// wrapping or forcing the table wider than its container.
+class _SessionsTableHeader extends StatelessWidget {
+  const _SessionsTableHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(
+      context,
+    ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700);
+    Widget cell(String key, int flex, {TextAlign align = TextAlign.center}) {
+      return _SessionsTableCell(
+        flex: flex,
+        child: Text(
+          key.tr(),
+          style: style,
+          textAlign: align,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-        DataCell(Text(session.categoryName)),
-        DataCell(_PercentCell(value: summary.attendancePercent)),
-        DataCell(_PercentCell(value: summary.homeworkPercent)),
-        DataCell(_PercentCell(value: summary.materialPercent)),
-        DataCell(
-          summary.gradeMean != null
-              ? Text(formatNumber(summary.gradeMean!))
-              : const Text('–'),
-        ),
-        DataCell(
-          _SessionRowActions(
-            summary: summary,
-            onEdit: onEdit,
-            onDelete: onDelete,
-          ),
-        ),
-      ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.small),
+      child: Row(
+        children: [
+          cell('date', 2, align: TextAlign.start),
+          cell('session_label', 3, align: TextAlign.start),
+          cell('grade_category', 2, align: TextAlign.start),
+          cell('attendance', 1),
+          cell('homework', 1),
+          cell('material', 1),
+          cell('grade', 1),
+          const SizedBox(width: 40),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionsTableCell extends StatelessWidget {
+  const _SessionsTableCell({required this.flex, required this.child});
+
+  final int flex;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      flex: flex,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: child,
+      ),
     );
   }
 }

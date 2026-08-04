@@ -77,6 +77,7 @@ class AppSessionController extends ChangeNotifier {
   AppSessionErrorCode? _errorCode;
   DateTime? _openedAt;
   bool _isBusy = false;
+  bool _disposed = false;
   bool _lockOnBackground = true;
   int _backgroundLockSuspendCount = 0;
   bool _biometricEnabled = false;
@@ -1043,6 +1044,7 @@ class AppSessionController extends ChangeNotifier {
       );
       return;
     }
+    if (_disposed) return;
 
     _isExporting = true;
     notifyListeners();
@@ -1051,7 +1053,7 @@ class AppSessionController extends ChangeNotifier {
       await _updatePendingAutoImportAvailability();
     } finally {
       _isExporting = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
@@ -1450,6 +1452,7 @@ class AppSessionController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _cancelInactivityTimer();
     _cancelPeriodicExportTimer();
     unawaited(_closeDatabase());

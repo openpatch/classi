@@ -11,6 +11,7 @@ import '../../shared/utils/formatting.dart';
 import '../../shared/utils/grade_categories.dart';
 import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/student_avatar.dart';
 
 /// A read-only overview of a student's performance for parent meetings.
@@ -39,10 +40,10 @@ class StudentSummaryScreen extends ConsumerWidget {
         final dateFilter = ref.watch(studentDateFilterProvider(studentId));
 
         final group = groupValue.value;
-        final groupColor =
-            group == null ? null : colorFromHex(group.colorHex);
-        final groupForeground =
-            groupColor == null ? null : onColorForBackground(groupColor);
+        final groupColor = group == null ? null : colorFromHex(group.colorHex);
+        final groupForeground = groupColor == null
+            ? null
+            : onColorForBackground(groupColor);
         final gradeScaleEntries = parseGradeScaleEntries(
           group?.gradeScaleJson ?? '',
         );
@@ -59,9 +60,7 @@ class StudentSummaryScreen extends ConsumerWidget {
             : allGrades.where((g) => dateFilter.includes(g.date)).toList();
         final attendance = dateFilter.isAll
             ? allAttendance
-            : allAttendance
-                .where((a) => dateFilter.includes(a.date))
-                .toList();
+            : allAttendance.where((a) => dateFilter.includes(a.date)).toList();
         final homework = dateFilter.isAll
             ? allHomework
             : allHomework.where((h) => dateFilter.includes(h.date)).toList();
@@ -70,9 +69,7 @@ class StudentSummaryScreen extends ConsumerWidget {
             : allMaterial.where((m) => dateFilter.includes(m.date)).toList();
         final notes = dateFilter.isAll
             ? allNotes
-            : allNotes
-                .where((n) => dateFilter.includes(n.createdAt))
-                .toList();
+            : allNotes.where((n) => dateFilter.includes(n.createdAt)).toList();
 
         // Compute category averages first, then calculate weighted average.
         final categoryAverages = _computeCategoryAverages(
@@ -101,35 +98,34 @@ class StudentSummaryScreen extends ConsumerWidget {
               ),
             ),
           ),
-          body: ListView(
-            padding: appScreenPadding,
-            children: [
-              _SummaryHeader(
-                student: student,
-                group: group,
-                dateFilter: dateFilter,
-              ),
-              const SizedBox(height: AppSpacing.large),
-              _SummaryAttendanceCard(attendance: attendance),
-              const SizedBox(height: AppSpacing.large),
-              _SummaryGradesCard(
-                studentAverage: studentAverage,
-                categoryAverages: categoryAverages,
-                categories: categories,
-                gradeScaleEntries: gradeScaleEntries,
-                totalGrades: grades.length,
-              ),
-              const SizedBox(height: AppSpacing.large),
-              _SummaryWorkHabitsCard(
-                homework: homework,
-                material: material,
-              ),
-              if (notes.isNotEmpty) ...[
+          body: ContentConstraints(
+            child: ListView(
+              padding: appScreenPadding,
+              children: [
+                _SummaryHeader(
+                  student: student,
+                  group: group,
+                  dateFilter: dateFilter,
+                ),
                 const SizedBox(height: AppSpacing.large),
-                _SummaryNotesCard(notes: notes),
+                _SummaryAttendanceCard(attendance: attendance),
+                const SizedBox(height: AppSpacing.large),
+                _SummaryGradesCard(
+                  studentAverage: studentAverage,
+                  categoryAverages: categoryAverages,
+                  categories: categories,
+                  gradeScaleEntries: gradeScaleEntries,
+                  totalGrades: grades.length,
+                ),
+                const SizedBox(height: AppSpacing.large),
+                _SummaryWorkHabitsCard(homework: homework, material: material),
+                if (notes.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.large),
+                  _SummaryNotesCard(notes: notes),
+                ],
+                const SizedBox(height: AppSpacing.xxLarge),
               ],
-              const SizedBox(height: AppSpacing.xxLarge),
-            ],
+            ),
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
@@ -145,12 +141,14 @@ class StudentSummaryScreen extends ConsumerWidget {
                 ),
               );
               if (body == null || body.trim().isEmpty) return;
-              await ref.read(noteRepositoryProvider).saveNote(
-                body: body.trim(),
-                groupId: student.groupId,
-                studentIds: [studentId],
-                isTodo: false,
-              );
+              await ref
+                  .read(noteRepositoryProvider)
+                  .saveNote(
+                    body: body.trim(),
+                    groupId: student.groupId,
+                    studentIds: [studentId],
+                    isTodo: false,
+                  );
             },
             icon: const Icon(Icons.note_add_outlined),
             label: Text('add_note'.tr()),
@@ -176,10 +174,7 @@ class StudentSummaryScreen extends ConsumerWidget {
       sums[g.categoryId] = (sums[g.categoryId] ?? 0) + v;
       counts[g.categoryId] = (counts[g.categoryId] ?? 0) + 1;
     }
-    return {
-      for (final e in sums.entries)
-        e.key: e.value / counts[e.key]!,
-    };
+    return {for (final e in sums.entries) e.key: e.value / counts[e.key]!};
   }
 }
 
@@ -200,8 +195,9 @@ class _SummaryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateFormat.yMMMMd(context.locale.toLanguageTag())
-        .format(DateTime.now());
+    final today = DateFormat.yMMMMd(
+      context.locale.toLanguageTag(),
+    ).format(DateTime.now());
     return Row(
       children: [
         StudentAvatar(student: student, size: 56),
@@ -216,6 +212,8 @@ class _SummaryHeader extends StatelessWidget {
                   lastName: student.lastName,
                 ),
                 style: Theme.of(context).textTheme.titleLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               if (group != null)
                 Text(
@@ -223,6 +221,8 @@ class _SummaryHeader extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               Text(
                 today,
@@ -377,10 +377,7 @@ class _SummaryGradesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'grades'.tr(),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('grades'.tr(), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.medium),
             if (studentAverage == null || totalGrades == 0)
               Text(
@@ -488,8 +485,7 @@ class _SummaryWorkHabitsCard extends StatelessWidget {
 
     final matTotal = material.length;
     final matDone = material.where((m) => m.hadMaterial).length;
-    final matPercent =
-        matTotal > 0 ? (matDone / matTotal * 100).round() : null;
+    final matPercent = matTotal > 0 ? (matDone / matTotal * 100).round() : null;
 
     if (hwTotal == 0 && matTotal == 0) return const SizedBox.shrink();
 
@@ -608,10 +604,7 @@ class _SummaryNotesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'notes'.tr(),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('notes'.tr(), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.small),
             for (final note in recent) ...[
               const Divider(),
@@ -634,9 +627,7 @@ class _SummaryNotesCard extends StatelessWidget {
                     Text(
                       dateFormat.format(note.createdAt),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -744,10 +735,7 @@ class _StatChip extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _QuickNoteDialog extends StatelessWidget {
-  const _QuickNoteDialog({
-    required this.studentName,
-    required this.controller,
-  });
+  const _QuickNoteDialog({required this.studentName, required this.controller});
 
   final String studentName;
   final TextEditingController controller;
