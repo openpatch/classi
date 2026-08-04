@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers/app_providers.dart';
 import '../../shared/theme/app_ui.dart';
-import '../../shared/utils/formatting.dart';
+import '../../shared/utils/grade_categories.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
@@ -208,7 +208,9 @@ class _TodayStatChip extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: AppSpacing.small),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Flexible(
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
       ),

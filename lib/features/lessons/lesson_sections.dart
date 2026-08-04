@@ -379,7 +379,9 @@ class _SummaryChip extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
             const SizedBox(width: AppSpacing.small),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Flexible(
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
             if (onTap != null) ...[
               const SizedBox(width: AppSpacing.xSmall),
               Icon(
