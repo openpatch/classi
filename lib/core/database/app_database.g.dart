@@ -520,6 +520,17 @@ class $StudentsTableTable extends StudentsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _callNameMeta = const VerificationMeta(
+    'callName',
+  );
+  @override
+  late final GeneratedColumn<String> callName = GeneratedColumn<String>(
+    'call_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _groupIdMeta = const VerificationMeta(
     'groupId',
   );
@@ -584,6 +595,7 @@ class $StudentsTableTable extends StudentsTable
     id,
     firstName,
     lastName,
+    callName,
     groupId,
     originNote,
     createdAt,
@@ -620,6 +632,12 @@ class $StudentsTableTable extends StudentsTable
       );
     } else if (isInserting) {
       context.missing(_lastNameMeta);
+    }
+    if (data.containsKey('call_name')) {
+      context.handle(
+        _callNameMeta,
+        callName.isAcceptableOrUnknown(data['call_name']!, _callNameMeta),
+      );
     }
     if (data.containsKey('group_id')) {
       context.handle(
@@ -674,6 +692,10 @@ class $StudentsTableTable extends StudentsTable
         DriftSqlType.string,
         data['${effectivePrefix}last_name'],
       )!,
+      callName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}call_name'],
+      ),
       groupId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}group_id'],
@@ -708,6 +730,11 @@ class StudentsTableData extends DataClass
   final int id;
   final String firstName;
   final String lastName;
+
+  /// Informal name a teacher actually calls the student by (German
+  /// "Rufname"), shown instead of [firstName] wherever the surname is
+  /// still displayed alongside it. `null` means "same as firstName".
+  final String? callName;
   final int groupId;
   final String? originNote;
   final DateTime createdAt;
@@ -717,6 +744,7 @@ class StudentsTableData extends DataClass
     required this.id,
     required this.firstName,
     required this.lastName,
+    this.callName,
     required this.groupId,
     this.originNote,
     required this.createdAt,
@@ -729,6 +757,9 @@ class StudentsTableData extends DataClass
     map['id'] = Variable<int>(id);
     map['first_name'] = Variable<String>(firstName);
     map['last_name'] = Variable<String>(lastName);
+    if (!nullToAbsent || callName != null) {
+      map['call_name'] = Variable<String>(callName);
+    }
     map['group_id'] = Variable<int>(groupId);
     if (!nullToAbsent || originNote != null) {
       map['origin_note'] = Variable<String>(originNote);
@@ -748,6 +779,9 @@ class StudentsTableData extends DataClass
       id: Value(id),
       firstName: Value(firstName),
       lastName: Value(lastName),
+      callName: callName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(callName),
       groupId: Value(groupId),
       originNote: originNote == null && nullToAbsent
           ? const Value.absent()
@@ -771,6 +805,7 @@ class StudentsTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       firstName: serializer.fromJson<String>(json['firstName']),
       lastName: serializer.fromJson<String>(json['lastName']),
+      callName: serializer.fromJson<String?>(json['callName']),
       groupId: serializer.fromJson<int>(json['groupId']),
       originNote: serializer.fromJson<String?>(json['originNote']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -785,6 +820,7 @@ class StudentsTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'firstName': serializer.toJson<String>(firstName),
       'lastName': serializer.toJson<String>(lastName),
+      'callName': serializer.toJson<String?>(callName),
       'groupId': serializer.toJson<int>(groupId),
       'originNote': serializer.toJson<String?>(originNote),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -797,6 +833,7 @@ class StudentsTableData extends DataClass
     int? id,
     String? firstName,
     String? lastName,
+    Value<String?> callName = const Value.absent(),
     int? groupId,
     Value<String?> originNote = const Value.absent(),
     DateTime? createdAt,
@@ -806,6 +843,7 @@ class StudentsTableData extends DataClass
     id: id ?? this.id,
     firstName: firstName ?? this.firstName,
     lastName: lastName ?? this.lastName,
+    callName: callName.present ? callName.value : this.callName,
     groupId: groupId ?? this.groupId,
     originNote: originNote.present ? originNote.value : this.originNote,
     createdAt: createdAt ?? this.createdAt,
@@ -817,6 +855,7 @@ class StudentsTableData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       firstName: data.firstName.present ? data.firstName.value : this.firstName,
       lastName: data.lastName.present ? data.lastName.value : this.lastName,
+      callName: data.callName.present ? data.callName.value : this.callName,
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       originNote: data.originNote.present
           ? data.originNote.value
@@ -835,6 +874,7 @@ class StudentsTableData extends DataClass
           ..write('id: $id, ')
           ..write('firstName: $firstName, ')
           ..write('lastName: $lastName, ')
+          ..write('callName: $callName, ')
           ..write('groupId: $groupId, ')
           ..write('originNote: $originNote, ')
           ..write('createdAt: $createdAt, ')
@@ -849,6 +889,7 @@ class StudentsTableData extends DataClass
     id,
     firstName,
     lastName,
+    callName,
     groupId,
     originNote,
     createdAt,
@@ -862,6 +903,7 @@ class StudentsTableData extends DataClass
           other.id == this.id &&
           other.firstName == this.firstName &&
           other.lastName == this.lastName &&
+          other.callName == this.callName &&
           other.groupId == this.groupId &&
           other.originNote == this.originNote &&
           other.createdAt == this.createdAt &&
@@ -873,6 +915,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
   final Value<int> id;
   final Value<String> firstName;
   final Value<String> lastName;
+  final Value<String?> callName;
   final Value<int> groupId;
   final Value<String?> originNote;
   final Value<DateTime> createdAt;
@@ -882,6 +925,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     this.id = const Value.absent(),
     this.firstName = const Value.absent(),
     this.lastName = const Value.absent(),
+    this.callName = const Value.absent(),
     this.groupId = const Value.absent(),
     this.originNote = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -892,6 +936,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     this.id = const Value.absent(),
     required String firstName,
     required String lastName,
+    this.callName = const Value.absent(),
     required int groupId,
     this.originNote = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -904,6 +949,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     Expression<int>? id,
     Expression<String>? firstName,
     Expression<String>? lastName,
+    Expression<String>? callName,
     Expression<int>? groupId,
     Expression<String>? originNote,
     Expression<DateTime>? createdAt,
@@ -914,6 +960,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
       if (id != null) 'id': id,
       if (firstName != null) 'first_name': firstName,
       if (lastName != null) 'last_name': lastName,
+      if (callName != null) 'call_name': callName,
       if (groupId != null) 'group_id': groupId,
       if (originNote != null) 'origin_note': originNote,
       if (createdAt != null) 'created_at': createdAt,
@@ -926,6 +973,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     Value<int>? id,
     Value<String>? firstName,
     Value<String>? lastName,
+    Value<String?>? callName,
     Value<int>? groupId,
     Value<String?>? originNote,
     Value<DateTime>? createdAt,
@@ -936,6 +984,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
       id: id ?? this.id,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
+      callName: callName ?? this.callName,
       groupId: groupId ?? this.groupId,
       originNote: originNote ?? this.originNote,
       createdAt: createdAt ?? this.createdAt,
@@ -955,6 +1004,9 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     }
     if (lastName.present) {
       map['last_name'] = Variable<String>(lastName.value);
+    }
+    if (callName.present) {
+      map['call_name'] = Variable<String>(callName.value);
     }
     if (groupId.present) {
       map['group_id'] = Variable<int>(groupId.value);
@@ -980,6 +1032,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
           ..write('id: $id, ')
           ..write('firstName: $firstName, ')
           ..write('lastName: $lastName, ')
+          ..write('callName: $callName, ')
           ..write('groupId: $groupId, ')
           ..write('originNote: $originNote, ')
           ..write('createdAt: $createdAt, ')
@@ -7171,6 +7224,7 @@ typedef $$StudentsTableTableCreateCompanionBuilder =
       Value<int> id,
       required String firstName,
       required String lastName,
+      Value<String?> callName,
       required int groupId,
       Value<String?> originNote,
       Value<DateTime> createdAt,
@@ -7182,6 +7236,7 @@ typedef $$StudentsTableTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> firstName,
       Value<String> lastName,
+      Value<String?> callName,
       Value<int> groupId,
       Value<String?> originNote,
       Value<DateTime> createdAt,
@@ -7445,6 +7500,11 @@ class $$StudentsTableTableFilterComposer
 
   ColumnFilters<String> get lastName => $composableBuilder(
     column: $table.lastName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get callName => $composableBuilder(
+    column: $table.callName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7718,6 +7778,11 @@ class $$StudentsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get callName => $composableBuilder(
+    column: $table.callName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get originNote => $composableBuilder(
     column: $table.originNote,
     builder: (column) => ColumnOrderings(column),
@@ -7779,6 +7844,9 @@ class $$StudentsTableTableAnnotationComposer
 
   GeneratedColumn<String> get lastName =>
       $composableBuilder(column: $table.lastName, builder: (column) => column);
+
+  GeneratedColumn<String> get callName =>
+      $composableBuilder(column: $table.callName, builder: (column) => column);
 
   GeneratedColumn<String> get originNote => $composableBuilder(
     column: $table.originNote,
@@ -8068,6 +8136,7 @@ class $$StudentsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> firstName = const Value.absent(),
                 Value<String> lastName = const Value.absent(),
+                Value<String?> callName = const Value.absent(),
                 Value<int> groupId = const Value.absent(),
                 Value<String?> originNote = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -8077,6 +8146,7 @@ class $$StudentsTableTableTableManager
                 id: id,
                 firstName: firstName,
                 lastName: lastName,
+                callName: callName,
                 groupId: groupId,
                 originNote: originNote,
                 createdAt: createdAt,
@@ -8088,6 +8158,7 @@ class $$StudentsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 required String firstName,
                 required String lastName,
+                Value<String?> callName = const Value.absent(),
                 required int groupId,
                 Value<String?> originNote = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -8097,6 +8168,7 @@ class $$StudentsTableTableTableManager
                 id: id,
                 firstName: firstName,
                 lastName: lastName,
+                callName: callName,
                 groupId: groupId,
                 originNote: originNote,
                 createdAt: createdAt,

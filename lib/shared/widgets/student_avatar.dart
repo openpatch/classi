@@ -67,6 +67,7 @@ class StudentAvatar extends ConsumerWidget {
                 semanticsLabel: studentDisplayName(
                   firstName: student.firstName,
                   lastName: student.lastName,
+                  callName: student.callName,
                   sortField: sortField,
                 ),
               ),

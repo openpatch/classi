@@ -137,6 +137,7 @@ class _ListItemEditorSheetState extends ConsumerState<_ListItemEditorSheet> {
                                     studentDisplayName(
                                       firstName: student.firstName,
                                       lastName: student.lastName,
+                                      callName: student.callName,
                                       sortField: sortField,
                                     ),
                                   ),

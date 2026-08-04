@@ -78,12 +78,14 @@ void main() {
         (
           firstName: 'Ada',
           lastName: 'Lovelace',
+          callName: null,
           originNote: null,
           avatarJson: null,
         ),
         (
           firstName: 'Alan',
           lastName: 'Turing',
+          callName: null,
           originNote: 'Imported',
           avatarJson: null,
         ),

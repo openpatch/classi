@@ -490,6 +490,7 @@ class _StudentActionSheetState extends ConsumerState<_StudentActionSheet> {
                   studentDisplayName(
                     firstName: widget.student.firstName,
                     lastName: widget.student.lastName,
+                    callName: widget.student.callName,
                     sortField: sortField,
                   ),
                   style: Theme.of(context).textTheme.titleLarge,

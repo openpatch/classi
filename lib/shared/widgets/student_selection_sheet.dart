@@ -136,6 +136,7 @@ class _StudentSelectionSheetState
                           studentDisplayName(
                             firstName: student.firstName,
                             lastName: student.lastName,
+                            callName: student.callName,
                             sortField: sortField,
                           ),
                         ),
@@ -198,6 +199,7 @@ class _StudentSelectionSheetState
                                       studentDisplayName(
                                         firstName: student.firstName,
                                         lastName: student.lastName,
+                                        callName: student.callName,
                                         sortField: sortField,
                                       ),
                                     ),

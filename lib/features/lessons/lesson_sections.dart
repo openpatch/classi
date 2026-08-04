@@ -302,7 +302,7 @@ class LessonStudentNotesSheet extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '${studentDisplayName(firstName: student.firstName, lastName: student.lastName, sortField: sortField)} · ${'notes'.tr()}',
+                    '${studentDisplayName(firstName: student.firstName, lastName: student.lastName, callName: student.callName, sortField: sortField)} · ${'notes'.tr()}',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -601,6 +601,7 @@ class _LessonNameCell extends ConsumerWidget {
                 studentDisplayName(
                   firstName: student.firstName,
                   lastName: student.lastName,
+                  callName: student.callName,
                   sortField: sortField,
                 ),
                 maxLines: 2,
