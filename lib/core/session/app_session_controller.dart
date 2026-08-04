@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:webdav_client/webdav_client.dart' as webdav;
 
@@ -13,6 +14,7 @@ import '../security/security_preferences_service.dart';
 import '../storage/database_path_service.dart';
 import '../storage/library_backup_preferences_service.dart';
 import '../storage/library_backup_service.dart';
+import '../sync/device_identity_service.dart';
 
 enum AppSessionStatus { loading, needsSetup, locked, ready, error }
 
@@ -50,12 +52,16 @@ class AppSessionController extends ChangeNotifier {
     required LibraryBackupPreferencesService libraryBackupPreferencesService,
     required LibraryBackupService libraryBackupService,
     required BiometricService biometricService,
+    DeviceIdentityService? deviceIdentityService,
+    Duration periodicExportInterval = const Duration(minutes: 10),
   }) : _keyService = keyService,
        _databasePathService = databasePathService,
        _securityPreferencesService = securityPreferencesService,
        _libraryBackupPreferencesService = libraryBackupPreferencesService,
        _libraryBackupService = libraryBackupService,
-       _biometricService = biometricService;
+       _biometricService = biometricService,
+       _deviceIdentityService = deviceIdentityService ?? DeviceIdentityService(),
+       _periodicExportInterval = periodicExportInterval;
 
   final KeyService _keyService;
   final DatabasePathService _databasePathService;
@@ -63,6 +69,7 @@ class AppSessionController extends ChangeNotifier {
   final LibraryBackupPreferencesService _libraryBackupPreferencesService;
   final LibraryBackupService _libraryBackupService;
   final BiometricService _biometricService;
+  final DeviceIdentityService _deviceIdentityService;
 
   AppDatabase? _database;
   String? _databasePath;
@@ -70,12 +77,27 @@ class AppSessionController extends ChangeNotifier {
   AppSessionErrorCode? _errorCode;
   DateTime? _openedAt;
   bool _isBusy = false;
+  bool _disposed = false;
   bool _lockOnBackground = true;
   int _backgroundLockSuspendCount = 0;
   bool _biometricEnabled = false;
   Duration _inactivityTimeout =
       SecurityPreferencesService.defaultInactivityTimeout;
   Timer? _inactivityTimer;
+
+  /// How often to opportunistically re-export while the app is open and
+  /// unlocked, independent of backgrounding.
+  ///
+  /// The background/lock-triggered export (see [handleAppBackgrounded]) is
+  /// not reliable on every platform: on Android the OS can suspend the
+  /// process shortly after it's backgrounded, cutting off the in-flight
+  /// export before it finishes, whereas desktop platforms keep running
+  /// normally when unfocused. This periodic timer runs entirely in the
+  /// foreground, so it works the same way everywhere, and bounds how stale
+  /// the WebDAV backup can get even when a background export never
+  /// completes.
+  final Duration _periodicExportInterval;
+  Timer? _periodicExportTimer;
   String? _currentPassphrase;
   String? _pendingRecoveryKey;
   bool _webDavAutoExportEnabled = false;
@@ -86,8 +108,10 @@ class AppSessionController extends ChangeNotifier {
   int _webDavMaxVersions = LibraryBackupPreferencesService.defaultMaxVersions;
   bool _pendingWebDavImport = false;
   DateTime? _pendingImportRemoteModifiedAt;
+  String? _pendingImportDeviceName;
   DateTime? _lastExportedAt;
   DateTime? _lastImportedAt;
+  String? _lastKnownRevision;
   bool _isExporting = false;
   WebDavSyncStatus _webDavSyncStatus = WebDavSyncStatus.notConfigured;
   Future<void>? _pendingLockCleanup;
@@ -116,8 +140,17 @@ class AppSessionController extends ChangeNotifier {
   /// prompt, or `null` when no import is pending.
   DateTime? get pendingImportRemoteModifiedAt => _pendingImportRemoteModifiedAt;
 
+  /// The device that uploaded the pending remote backup, or `null` when no
+  /// import is pending or the uploading device could not be determined.
+  String? get pendingImportDeviceName => _pendingImportDeviceName;
+
   DateTime? get lastExportedAt => _lastExportedAt;
   DateTime? get lastImportedAt => _lastImportedAt;
+
+  /// The revision token this device last synced (via export or import), or
+  /// `null` before the first sync. Used to detect conflicting changes from
+  /// another device on the next export.
+  String? get lastKnownRevision => _lastKnownRevision;
   bool get isExporting => _isExporting;
   WebDavSyncStatus get webDavSyncStatus => _webDavSyncStatus;
   String? get lastBackupMessageCode => _lastBackupMessageCode;
@@ -223,6 +256,7 @@ class AppSessionController extends ChangeNotifier {
       }
       _status = AppSessionStatus.ready;
       _resetInactivityTimer();
+      _startPeriodicExportTimerIfNeeded();
       return true;
     } catch (error, stackTrace) {
       await _handleFatalError(
@@ -299,6 +333,7 @@ class AppSessionController extends ChangeNotifier {
     if (_status == AppSessionStatus.ready) {
       await refreshIfChanged();
       _resetInactivityTimer();
+      _startPeriodicExportTimerIfNeeded();
     }
   }
 
@@ -344,6 +379,7 @@ class AppSessionController extends ChangeNotifier {
       return;
     }
     _resetInactivityTimer();
+    _startPeriodicExportTimerIfNeeded();
   }
 
   Future<void> refreshIfChanged() async {
@@ -582,6 +618,11 @@ class AppSessionController extends ChangeNotifier {
   Future<void> setWebDavUrl(String? url) async {
     _webDavUrl = (url == null || url.trim().isEmpty) ? null : url.trim();
     await _libraryBackupPreferencesService.setWebDavUrl(_webDavUrl);
+    if (_webDavUrl == null) {
+      _cancelPeriodicExportTimer();
+    } else {
+      _startPeriodicExportTimerIfNeeded();
+    }
     notifyListeners();
   }
 
@@ -615,6 +656,11 @@ class AppSessionController extends ChangeNotifier {
   Future<void> setWebDavAutoExportEnabled(bool value) async {
     _webDavAutoExportEnabled = value;
     await _libraryBackupPreferencesService.setAutoExportEnabled(value);
+    if (value) {
+      _startPeriodicExportTimerIfNeeded();
+    } else {
+      _cancelPeriodicExportTimer();
+    }
     notifyListeners();
   }
 
@@ -630,6 +676,19 @@ class AppSessionController extends ChangeNotifier {
     await _libraryBackupPreferencesService.setMaxVersions(value);
     notifyListeners();
   }
+
+  /// The label embedded in backups this device uploads, shown to other
+  /// devices in the restore picker and the pending-import prompt. Falls back
+  /// to a generic platform-based label until the user sets one explicitly.
+  Future<String> deviceName() => _deviceIdentityService.deviceName();
+
+  /// The user-chosen device label, or `null` if the user hasn't set one (in
+  /// which case [deviceName] falls back to a generic platform-based label).
+  Future<String?> storedDeviceName() =>
+      _deviceIdentityService.storedDeviceName();
+
+  Future<void> setDeviceName(String? name) =>
+      _deviceIdentityService.setDeviceName(name);
 
   Future<void> refreshWebDavSyncStatus() async {
     _webDavSyncStatus = WebDavSyncStatus.checking;
@@ -799,6 +858,7 @@ class AppSessionController extends ChangeNotifier {
       _pendingRecoveryKey = null;
       _status = AppSessionStatus.ready;
       _resetInactivityTimer();
+      _startPeriodicExportTimerIfNeeded();
       return true;
     } catch (error, stackTrace) {
       await _handleFatalError(
@@ -838,6 +898,7 @@ class AppSessionController extends ChangeNotifier {
 
   AppDatabase? _detachDatabase() {
     _cancelInactivityTimer();
+    _cancelPeriodicExportTimer();
     final database = _database;
     _database = null;
     _currentPassphrase = null;
@@ -896,6 +957,8 @@ class AppSessionController extends ChangeNotifier {
     _webDavMaxVersions = await _libraryBackupPreferencesService.maxVersions();
     _lastExportedAt = await _libraryBackupPreferencesService.lastExportedAt();
     _lastImportedAt = await _libraryBackupPreferencesService.lastImportedAt();
+    _lastKnownRevision = await _libraryBackupPreferencesService
+        .lastKnownRevision();
   }
 
   Future<void> _resolveCurrentDatabaseState() async {
@@ -923,6 +986,7 @@ class AppSessionController extends ChangeNotifier {
   Future<void> _persistOpenDatabaseState({
     required bool markSessionClean,
     bool closeDatabaseAfterSnapshot = true,
+    bool runAutoExport = true,
   }) async {
     if (_database == null || _currentPassphrase == null) {
       developer.log(
@@ -935,7 +999,9 @@ class AppSessionController extends ChangeNotifier {
     await _prepareDatabaseSnapshot(
       closeDatabaseAfterSnapshot: closeDatabaseAfterSnapshot,
     );
-    await _runAutoExportIfConfigured();
+    if (runAutoExport) {
+      await _runAutoExportIfConfigured();
+    }
     await _securityPreferencesService.setSessionDirty(!markSessionClean);
     await _updatePendingAutoImportAvailability();
   }
@@ -978,6 +1044,7 @@ class AppSessionController extends ChangeNotifier {
       );
       return;
     }
+    if (_disposed) return;
 
     _isExporting = true;
     notifyListeners();
@@ -986,7 +1053,7 @@ class AppSessionController extends ChangeNotifier {
       await _updatePendingAutoImportAvailability();
     } finally {
       _isExporting = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
@@ -1014,6 +1081,9 @@ class AppSessionController extends ChangeNotifier {
         sourceDatabasePath: currentDatabasePath,
         serverPath: _webDavServerPath ?? '/',
         maxVersions: _webDavMaxVersions,
+        deviceId: await _deviceIdentityService.getOrCreateDeviceId(),
+        deviceName: await _deviceIdentityService.deviceName(),
+        parentRevision: _lastKnownRevision,
       );
       _lastExportedAt = exportedAt;
       await _libraryBackupPreferencesService.setLastExportedAt(exportedAt);
@@ -1032,8 +1102,38 @@ class AppSessionController extends ChangeNotifier {
       await _libraryBackupPreferencesService.setPendingImportDismissedAt(
         remoteModifiedAt ?? exportedAt,
       );
+
+      // Record what we just uploaded as the revision this device knows
+      // about, so the next export can tell whether another device has
+      // pushed a change in the meantime.
+      final uploadedInfo = await _libraryBackupService.getRemoteBackupDeviceInfo(
+        client: client,
+        remotePath: LibraryBackupService.remoteBackupPath(
+          _webDavServerPath ?? '/',
+          currentDatabasePath,
+        ),
+      );
+      if (uploadedInfo.revision != null) {
+        _lastKnownRevision = uploadedInfo.revision;
+        await _libraryBackupPreferencesService.setLastKnownRevision(
+          _lastKnownRevision,
+        );
+      }
+
       developer.log('WebDAV export succeeded', name: 'classi.backup');
       _setBackupMessage('backup_exported');
+    } on WebDavSyncConflictException catch (error) {
+      developer.log(
+        'WebDAV export conflict: ${error.message}',
+        name: 'classi.backup',
+      );
+      _setBackupMessage('backup_export_conflict', isError: true);
+    } on WebDavSyncBusyException catch (error) {
+      developer.log(
+        'WebDAV export skipped: ${error.message}',
+        name: 'classi.backup',
+      );
+      _setBackupMessage('backup_export_busy', isError: true);
     } catch (error, stackTrace) {
       _logUnexpectedError(
         operation: 'run auto WebDAV export',
@@ -1049,12 +1149,14 @@ class AppSessionController extends ChangeNotifier {
       _webDavSyncStatus = WebDavSyncStatus.notConfigured;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
+      _pendingImportDeviceName = null;
       return;
     }
     if (!_webDavAutoImportEnabled) {
       _webDavSyncStatus = WebDavSyncStatus.disabled;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
+      _pendingImportDeviceName = null;
       return;
     }
 
@@ -1065,6 +1167,7 @@ class AppSessionController extends ChangeNotifier {
       _webDavSyncStatus = WebDavSyncStatus.notConfigured;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
+      _pendingImportDeviceName = null;
       return;
     }
 
@@ -1085,6 +1188,7 @@ class AppSessionController extends ChangeNotifier {
         _webDavSyncStatus = WebDavSyncStatus.current;
         _pendingWebDavImport = false;
         _pendingImportRemoteModifiedAt = null;
+        _pendingImportDeviceName = null;
         return;
       }
 
@@ -1095,6 +1199,7 @@ class AppSessionController extends ChangeNotifier {
         _webDavSyncStatus = WebDavSyncStatus.current;
         _pendingWebDavImport = false;
         _pendingImportRemoteModifiedAt = null;
+        _pendingImportDeviceName = null;
         return;
       }
 
@@ -1138,6 +1243,18 @@ class AppSessionController extends ChangeNotifier {
           ? WebDavSyncStatus.behind
           : WebDavSyncStatus.current;
       _pendingImportRemoteModifiedAt = isNewer ? backupModified : null;
+      _pendingImportDeviceName = null;
+      if (isNewer) {
+        final deviceInfo = await _libraryBackupService
+            .getRemoteBackupDeviceInfo(
+              client: client,
+              remotePath: LibraryBackupService.remoteBackupPath(
+                _webDavServerPath ?? '/',
+                currentDatabasePath,
+              ),
+            );
+        _pendingImportDeviceName = deviceInfo.deviceName;
+      }
     } catch (error, stackTrace) {
       _logUnexpectedError(
         operation: 'check WebDAV backup availability',
@@ -1147,6 +1264,7 @@ class AppSessionController extends ChangeNotifier {
       _webDavSyncStatus = WebDavSyncStatus.offline;
       _pendingWebDavImport = false;
       _pendingImportRemoteModifiedAt = null;
+      _pendingImportDeviceName = null;
     }
   }
 
@@ -1172,7 +1290,22 @@ class AppSessionController extends ChangeNotifier {
     try {
       await _loadSecurityPreferences();
       await _loadBackupPreferences();
-      await _persistOpenDatabaseState(markSessionClean: true);
+
+      // If we're restoring into the same library that's currently open, an
+      // auto-export here would upload the (stale) local state to the exact
+      // remote path we're about to download from, archiving away the newer
+      // backup we're trying to restore before we ever read it. Skip the
+      // auto-export in that case; it's about to be discarded anyway.
+      final currentDatabasePath = await _databasePathService
+          .getCurrentDatabasePath();
+      final isRestoringCurrentLibrary = p.equals(
+        p.normalize(currentDatabasePath),
+        p.normalize(destinationPath),
+      );
+      await _persistOpenDatabaseState(
+        markSessionClean: true,
+        runAutoExport: !isRestoringCurrentLibrary,
+      );
 
       final client = await createWebDavClient();
       if (client == null) throw StateError('WebDAV is not configured.');
@@ -1185,15 +1318,23 @@ class AppSessionController extends ChangeNotifier {
         await _databasePathService.setDatabaseFilePath(destinationPath);
         await _refreshDatabasePath();
       }
-      await _libraryBackupService.restoreBackupFromBytes(
-        bytes: bytes,
-        destinationDatabasePath: destinationPath,
-      );
+      final restoredRevision = await _libraryBackupService
+          .restoreBackupFromBytes(
+            bytes: bytes,
+            destinationDatabasePath: destinationPath,
+          );
 
       final importedAt = DateTime.now().toUtc();
       _lastImportedAt = importedAt;
       await _libraryBackupPreferencesService.setLastImportedAt(importedAt);
       await _libraryBackupPreferencesService.setPendingImportDismissedAt(null);
+      // Adopt the imported backup's revision as our own so the next export
+      // is recognized as building on top of what we just restored, rather
+      // than looking like a conflict with it.
+      _lastKnownRevision = restoredRevision;
+      await _libraryBackupPreferencesService.setLastKnownRevision(
+        restoredRevision,
+      );
 
       await _loadSecurityPreferences();
       await _loadBackupPreferences();
@@ -1280,6 +1421,30 @@ class AppSessionController extends ChangeNotifier {
     _inactivityTimer = null;
   }
 
+  /// Starts the periodic foreground export timer if it isn't already
+  /// running and the session is currently eligible (ready, WebDAV
+  /// configured, auto-export enabled). Safe to call speculatively —
+  /// idempotent and a no-op when not eligible.
+  void _startPeriodicExportTimerIfNeeded() {
+    if (_periodicExportTimer != null) return;
+    if (_status != AppSessionStatus.ready) return;
+    if (!_webDavAutoExportEnabled || !isWebDavConfigured) return;
+
+    _periodicExportTimer = Timer.periodic(_periodicExportInterval, (_) {
+      unawaited(_runPeriodicExportTick());
+    });
+  }
+
+  void _cancelPeriodicExportTimer() {
+    _periodicExportTimer?.cancel();
+    _periodicExportTimer = null;
+  }
+
+  Future<void> _runPeriodicExportTick() async {
+    if (_status != AppSessionStatus.ready || _isExporting || _isBusy) return;
+    await _flushAndAutoExport();
+  }
+
   void _setBackupMessage(String code, {bool isError = false}) {
     _lastBackupMessageCode = code;
     _lastBackupMessageIsError = isError;
@@ -1287,7 +1452,9 @@ class AppSessionController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _cancelInactivityTimer();
+    _cancelPeriodicExportTimer();
     unawaited(_closeDatabase());
     super.dispose();
   }

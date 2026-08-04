@@ -127,6 +127,7 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _selectedGradeSystemId,
+                isExpanded: true,
                 decoration: InputDecoration(
                   labelText: 'grade_scale'.tr(),
                   helperText: 'grade_scale_hint'.tr(),

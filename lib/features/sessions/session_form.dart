@@ -133,6 +133,7 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
               if (widget.gradeCategories.isNotEmpty)
                 DropdownButtonFormField<String>(
                   initialValue: _selectedCategoryId,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'grade_category'.tr(),
                   ),
@@ -147,7 +148,13 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
                               backgroundColor: colorForCategory(category),
                             ),
                             const SizedBox(width: 8),
-                            Text(category.name),
+                            Expanded(
+                              child: Text(
+                                category.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),

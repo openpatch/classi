@@ -368,6 +368,11 @@ class _WebDavRestoreCredentials {
 String _backupSubtitle(BuildContext context, WebDavBackupEntry backup) {
   final parts = <String>[backup.fileName];
 
+  final deviceName = backup.deviceName;
+  if (deviceName != null && deviceName.isNotEmpty) {
+    parts.add(deviceName);
+  }
+
   final modifiedAt = backup.modifiedAt;
   if (modifiedAt != null) {
     final localeTag = context.locale.toLanguageTag();

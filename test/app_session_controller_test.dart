@@ -314,6 +314,124 @@ void main() {
     },
   );
 
+  test(
+    'restoring a backup adopts its revision as the local sync baseline',
+    () async {
+      final sourceLibraryDirectory = Directory(
+        '${tempDirectory.path}/revision-source.classi',
+      );
+      await sourceLibraryDirectory.create(recursive: true);
+      await File('${sourceLibraryDirectory.path}/data.db').writeAsString('db');
+      await File(
+        '${sourceLibraryDirectory.path}/data.db.security.json',
+      ).writeAsString('security');
+
+      final archiveBytes = await LibraryBackupService().buildBackupArchive(
+        sourceLibraryDirectory.path,
+        revision: 'remote-revision-42',
+      );
+      final restoreService = _RestoringLibraryBackupService(archiveBytes);
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/blank2.classi',
+      );
+      controller = _RestoringAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: restoreService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+
+      final destinationPath = '${tempDirectory.path}/revision-restored.classi';
+      final errorCode = await controller.restoreWebDavBackup(
+        remotePath: '/backups/remote.classi-backup',
+        destinationPath: destinationPath,
+      );
+
+      expect(errorCode, isNull);
+      expect(controller.lastKnownRevision, 'remote-revision-42');
+    },
+  );
+
+  test(
+    'restoring into the currently open library does not let a pre-restore '
+    'auto-export clobber the remote backup being restored',
+    () async {
+      final remoteLibraryDirectory = Directory(
+        '${tempDirectory.path}/remote-source.classi',
+      );
+      await remoteLibraryDirectory.create(recursive: true);
+      await File(
+        '${remoteLibraryDirectory.path}/data.db',
+      ).writeAsString('remote-db');
+      await File(
+        '${remoteLibraryDirectory.path}/data.db.security.json',
+      ).writeAsString('remote-security');
+      await File(
+        '${remoteLibraryDirectory.path}/data.db.integrity.json',
+      ).writeAsString('remote-integrity');
+
+      final archiveBytes = await LibraryBackupService().buildBackupArchive(
+        remoteLibraryDirectory.path,
+      );
+      final restoreService = _RestoringSelfLibraryBackupService(archiveBytes);
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _RestoringAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: restoreService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      final currentPath = await controller.currentDatabasePath();
+      final errorCode = await controller.restoreWebDavBackup(
+        remotePath: '/backups/test.classi-backup',
+        destinationPath: currentPath,
+        createNew: false,
+      );
+
+      expect(errorCode, isNull);
+      expect(
+        restoreService.exportCalled,
+        isFalse,
+        reason:
+            'auto-export must not run before restoring into the currently '
+            'open library, or it uploads stale local state over the exact '
+            'remote backup being restored',
+      );
+      expect(
+        await File('$currentPath/data.db').readAsString(),
+        'remote-db',
+        reason:
+            'the restored data must be the remote backup, not a '
+            're-uploaded local copy',
+      );
+    },
+  );
+
   test('auto-export is skipped when WebDAV is not configured', () async {
     await controller.initialize();
     await controller.createDatabase('test');
@@ -423,6 +541,238 @@ void main() {
       expect(controller.pendingImportRemoteModifiedAt, isNull);
     },
   );
+
+  test('auto-export uploads this device\'s identity with the backup', () async {
+    final exportService = _DeviceCapturingLibraryBackupService();
+    controller.dispose();
+    final databasePathService = _TestDatabasePathService(
+      '${tempDirectory.path}/test.classi',
+    );
+    controller = _WebDavAppSessionController(
+      keyService: keyService,
+      databasePathService: databasePathService,
+      securityPreferencesService: _securityPreferencesServiceFor(
+        databasePathService,
+      ),
+      libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+        databasePathService,
+      ),
+      libraryBackupService: exportService,
+      biometricService: BiometricService(),
+    );
+
+    await controller.initialize();
+    await controller.createDatabase('test');
+    await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+    await controller.setWebDavAutoExportEnabled(true);
+
+    expect(await controller.exportNow(), isNull);
+
+    expect(exportService.lastDeviceId, isNotNull);
+    expect(exportService.lastDeviceId, isNotEmpty);
+    expect(exportService.lastDeviceName, isNotEmpty);
+  });
+
+  test(
+    'a pending auto-import surfaces the uploading device\'s name',
+    () async {
+      final backupService = _PendingImportDeviceLibraryBackupService(
+        remoteModifiedAt: DateTime.now().toUtc().add(const Duration(days: 1)),
+        deviceName: 'Kitchen iPad',
+      );
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: backupService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoImportEnabled(true);
+
+      expect(controller.hasPendingAutoImport, isTrue);
+      expect(controller.pendingImportDeviceName, 'Kitchen iPad');
+    },
+  );
+
+  test(
+    'a periodic timer re-exports while the app stays open, independent of '
+    'backgrounding',
+    () async {
+      final exportService = _DeviceCapturingLibraryBackupService();
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+        periodicExportInterval: const Duration(milliseconds: 20),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      expect(exportService.exportCount, 0);
+
+      // Give the periodic timer a chance to fire at least once, without
+      // backgrounding or locking the app.
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+
+      expect(
+        exportService.exportCount,
+        greaterThan(0),
+        reason:
+            'the periodic timer should trigger an export on its own, not '
+            'just on background/lock',
+      );
+    },
+  );
+
+  test(
+    'the periodic export timer stops once auto-export is disabled',
+    () async {
+      final exportService = _DeviceCapturingLibraryBackupService();
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+        periodicExportInterval: const Duration(milliseconds: 20),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+      await controller.setWebDavAutoExportEnabled(false);
+
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+
+      expect(
+        exportService.exportCount,
+        0,
+        reason: 'disabling auto-export must stop the periodic timer too',
+      );
+    },
+  );
+
+  test(
+    'each export is based on the revision this device last saw',
+    () async {
+      final exportService = _DeviceCapturingLibraryBackupService();
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      expect(await controller.exportNow(), isNull);
+      expect(
+        exportService.lastParentRevision,
+        isNull,
+        reason: 'first export for this device has nothing to build on',
+      );
+
+      expect(await controller.exportNow(), isNull);
+      expect(
+        exportService.lastParentRevision,
+        'revision-1',
+        reason:
+            'the second export should be based on the revision recorded '
+            'after the first export succeeded',
+      );
+    },
+  );
+
+  test(
+    'a sync conflict is surfaced distinctly and does not update the local '
+    'export bookkeeping',
+    () async {
+      final conflictService = _ConflictingLibraryBackupService();
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: conflictService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      final errorCode = await controller.exportNow();
+
+      // exportNow() only returns non-null for a pre-flight check (e.g. not
+      // configured); a failure during the export itself surfaces through
+      // lastBackupMessageCode instead.
+      expect(errorCode, isNull);
+      expect(controller.lastBackupMessageCode, 'backup_export_conflict');
+      expect(controller.lastBackupMessageIsError, isTrue);
+      expect(controller.lastExportedAt, isNull);
+    },
+  );
 }
 
 class _TestDatabasePathService extends DatabasePathService {
@@ -478,6 +828,9 @@ class _DelayingLibraryBackupService extends LibraryBackupService {
     required String sourceDatabasePath,
     required String serverPath,
     int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
+    String? parentRevision,
   }) async {
     if (!started.isCompleted) {
       started.complete();
@@ -485,6 +838,21 @@ class _DelayingLibraryBackupService extends LibraryBackupService {
     await finish.future;
     return DateTime.now().toUtc();
   }
+
+  // Avoid real network round-trips for the post-export bookkeeping calls;
+  // the fake client points at a non-existent host.
+  @override
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async => DateTime.now().toUtc();
+
+  @override
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) async => const WebDavBackupDeviceInfo(revision: 'revision-1');
 }
 
 class _CloseDelayingAppSessionController extends AppSessionController {
@@ -526,6 +894,37 @@ class _RestoringLibraryBackupService extends LibraryBackupService {
   }
 }
 
+class _RestoringSelfLibraryBackupService extends LibraryBackupService {
+  _RestoringSelfLibraryBackupService(this.archiveBytes);
+
+  final Uint8List archiveBytes;
+  bool exportCalled = false;
+  String? lastRemotePath;
+
+  @override
+  Future<DateTime> exportBackupToWebDav({
+    required webdav.Client client,
+    required String sourceDatabasePath,
+    required String serverPath,
+    int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
+    String? parentRevision,
+  }) async {
+    exportCalled = true;
+    return DateTime.now().toUtc();
+  }
+
+  @override
+  Future<Uint8List> downloadBackupFromWebDav({
+    required webdav.Client client,
+    required String remotePath,
+  }) async {
+    lastRemotePath = remotePath;
+    return archiveBytes;
+  }
+}
+
 class _RestoringAppSessionController extends AppSessionController {
   _RestoringAppSessionController({
     required super.keyService,
@@ -549,6 +948,7 @@ class _WebDavAppSessionController extends AppSessionController {
     required super.libraryBackupPreferencesService,
     required super.libraryBackupService,
     required super.biometricService,
+    super.periodicExportInterval,
   });
 
   @override
@@ -571,6 +971,9 @@ class _ExportingLibraryBackupService extends LibraryBackupService {
     required String sourceDatabasePath,
     required String serverPath,
     int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
+    String? parentRevision,
   }) async {
     return exportedAt;
   }
@@ -582,5 +985,103 @@ class _ExportingLibraryBackupService extends LibraryBackupService {
     required String backupFileName,
   }) async {
     return remoteModifiedAt;
+  }
+
+  // Avoid a real network round-trip for the post-export revision lookup;
+  // the fake client points at a non-existent host.
+  @override
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) async => const WebDavBackupDeviceInfo(revision: 'revision-1');
+}
+
+class _DeviceCapturingLibraryBackupService extends LibraryBackupService {
+  String? lastDeviceId;
+  String? lastDeviceName;
+  String? lastParentRevision;
+  int exportCount = 0;
+
+  @override
+  Future<DateTime> exportBackupToWebDav({
+    required webdav.Client client,
+    required String sourceDatabasePath,
+    required String serverPath,
+    int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
+    String? parentRevision,
+  }) async {
+    lastDeviceId = deviceId;
+    lastDeviceName = deviceName;
+    lastParentRevision = parentRevision;
+    exportCount++;
+    return DateTime.now().toUtc();
+  }
+
+  // Avoid a real network round-trip: _runAutoExportIfConfigured calls these
+  // right after exportBackupToWebDav (to timestamp the pending-import
+  // dismissal, and to record the newly uploaded revision), and the fake
+  // client points at a non-existent host.
+  @override
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async => DateTime.now().toUtc();
+
+  @override
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) async =>
+      WebDavBackupDeviceInfo(deviceId: lastDeviceId, revision: 'revision-1');
+}
+
+class _PendingImportDeviceLibraryBackupService extends LibraryBackupService {
+  _PendingImportDeviceLibraryBackupService({
+    required this.remoteModifiedAt,
+    required this.deviceName,
+  });
+
+  final DateTime remoteModifiedAt;
+  final String deviceName;
+
+  @override
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async {
+    return remoteModifiedAt;
+  }
+
+  @override
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) async {
+    return WebDavBackupDeviceInfo(
+      deviceId: 'remote-device',
+      deviceName: deviceName,
+    );
+  }
+}
+
+class _ConflictingLibraryBackupService extends LibraryBackupService {
+  @override
+  Future<DateTime> exportBackupToWebDav({
+    required webdav.Client client,
+    required String sourceDatabasePath,
+    required String serverPath,
+    int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
+    String? parentRevision,
+  }) async {
+    throw const WebDavSyncConflictException(
+      message: 'Another device changed this library.',
+      conflictingDeviceName: 'Other Device',
+    );
   }
 }

@@ -6,6 +6,7 @@ import 'package:classi/features/homework/homework_repository.dart';
 import 'package:classi/features/lessons/lesson_repository.dart';
 import 'package:classi/features/material_tracking/material_repository.dart';
 import 'package:classi/features/notes/note_repository.dart';
+import 'package:classi/features/sessions/session_repository.dart';
 import 'package:classi/features/students/student_repository.dart';
 import 'package:classi/shared/utils/formatting.dart';
 import 'package:drift/native.dart';
@@ -21,6 +22,7 @@ void main() {
   late AttendanceRepository attendanceRepository;
   late NoteRepository noteRepository;
   late LessonRepository lessonRepository;
+  late SessionRepository sessionRepository;
 
   setUp(() {
     database = AppDatabase.test(NativeDatabase.memory());
@@ -32,6 +34,7 @@ void main() {
     attendanceRepository = AttendanceRepository(database);
     noteRepository = NoteRepository(database);
     lessonRepository = LessonRepository(database);
+    sessionRepository = SessionRepository(database);
   });
 
   tearDown(() async {
@@ -64,6 +67,27 @@ void main() {
         studentId: studentId,
         date: DateTime(2026, 5, 7),
         hadMaterial: true,
+      );
+      await sessionRepository.upsertSession(
+        groupId: groupId,
+        date: DateTime(2026, 5, 8),
+        categoryId: 'oral',
+        categoryName: 'Oral',
+        label: 'Mitarbeit',
+      );
+      await sessionRepository.upsertSession(
+        groupId: groupId,
+        date: DateTime(2026, 5, 8),
+        categoryId: 'quiz',
+        categoryName: 'Quiz',
+        label: 'Quiz',
+      );
+      await sessionRepository.upsertSession(
+        groupId: groupId,
+        date: DateTime(2026, 5, 9),
+        categoryId: 'oral',
+        categoryName: 'Oral',
+        label: 'Mitarbeit',
       );
       await gradeRepository.saveEntry(
         studentId: studentId,

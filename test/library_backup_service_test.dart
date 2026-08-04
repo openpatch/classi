@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:classi/core/storage/library_backup_service.dart';
@@ -46,6 +48,68 @@ void main() {
     expect(archiveBytes, isNotEmpty);
   });
 
+  test('buildBackupArchive embeds device attribution in the manifest', () async {
+    final archiveBytes = await service.buildBackupArchive(
+      sourceLibraryDirectory.path,
+      deviceId: 'device-123',
+      deviceName: 'Kitchen iPad',
+    );
+
+    final archive = ZipDecoder().decodeBytes(archiveBytes);
+    final manifestFile = archive.findFile('backup.json')!;
+    final manifestJson =
+        jsonDecode(utf8.decode(manifestFile.content as List<int>))
+            as Map<String, dynamic>;
+
+    expect(manifestJson['deviceId'], 'device-123');
+    expect(manifestJson['deviceName'], 'Kitchen iPad');
+  });
+
+  test(
+    'buildBackupArchive omits device attribution when not provided',
+    () async {
+      final archiveBytes = await service.buildBackupArchive(
+        sourceLibraryDirectory.path,
+      );
+
+      final archive = ZipDecoder().decodeBytes(archiveBytes);
+      final manifestFile = archive.findFile('backup.json')!;
+      final manifestJson =
+          jsonDecode(utf8.decode(manifestFile.content as List<int>))
+              as Map<String, dynamic>;
+
+      expect(manifestJson.containsKey('deviceId'), isFalse);
+      expect(manifestJson.containsKey('deviceName'), isFalse);
+    },
+  );
+
+  test(
+    'buildBackupArchive embeds revision and parentRevision in the manifest, '
+    'and restoreBackupFromBytes returns the restored revision',
+    () async {
+      final archiveBytes = await service.buildBackupArchive(
+        sourceLibraryDirectory.path,
+        revision: 'revision-2',
+        parentRevision: 'revision-1',
+      );
+
+      final archive = ZipDecoder().decodeBytes(archiveBytes);
+      final manifestFile = archive.findFile('backup.json')!;
+      final manifestJson =
+          jsonDecode(utf8.decode(manifestFile.content as List<int>))
+              as Map<String, dynamic>;
+
+      expect(manifestJson['revision'], 'revision-2');
+      expect(manifestJson['parentRevision'], 'revision-1');
+
+      final restoredRevision = await service.restoreBackupFromBytes(
+        bytes: archiveBytes,
+        destinationDatabasePath: '${tempDirectory.path}/revision-check.classi',
+      );
+      expect(restoredRevision, 'revision-2');
+    },
+  );
+
   test(
     'restoreBackupFromBytes restores database artifacts into a package folder',
     () async {
@@ -72,4 +136,24 @@ void main() {
       );
     },
   );
+
+  test('isSyncLockExpired is false for a freshly acquired lock', () {
+    final now = DateTime.utc(2026, 5, 7, 8, 0);
+    final acquiredAt = now.subtract(const Duration(seconds: 5));
+
+    expect(
+      LibraryBackupService.isSyncLockExpired(acquiredAt, now: now),
+      isFalse,
+    );
+  });
+
+  test('isSyncLockExpired is true once the lease has passed', () {
+    final now = DateTime.utc(2026, 5, 7, 8, 0);
+    final acquiredAt = now.subtract(const Duration(minutes: 3));
+
+    expect(
+      LibraryBackupService.isSyncLockExpired(acquiredAt, now: now),
+      isTrue,
+    );
+  });
 }
