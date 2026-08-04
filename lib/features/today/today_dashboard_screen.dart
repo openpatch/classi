@@ -19,7 +19,12 @@ import 'today_repository.dart';
 /// today. Replaces having to open each group individually to see whether a
 /// day's lesson has already been logged.
 class TodayDashboardScreen extends ConsumerStatefulWidget {
-  const TodayDashboardScreen({super.key});
+  const TodayDashboardScreen({this.initialDate, super.key});
+
+  /// The date to show initially. Defaults to today when omitted; browsing
+  /// to a different date afterwards is local screen state, not reflected
+  /// back into the route (matching Lesson Mode's own date picker).
+  final DateTime? initialDate;
 
   @override
   ConsumerState<TodayDashboardScreen> createState() =>
@@ -27,7 +32,9 @@ class TodayDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _TodayDashboardScreenState extends ConsumerState<TodayDashboardScreen> {
-  late DateTime _selectedDate = normalizeLessonDate(DateTime.now());
+  late DateTime _selectedDate = normalizeLessonDate(
+    widget.initialDate ?? DateTime.now(),
+  );
 
   @override
   Widget build(BuildContext context) {
