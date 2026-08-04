@@ -23,6 +23,7 @@ import '../../shared/theme/app_ui.dart';
 import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/swipe_action_background.dart';
@@ -64,9 +65,8 @@ final studentListItemsProvider = StreamProvider.autoDispose
 
 final studentAttendanceProvider = StreamProvider.autoDispose
     .family<List<AttendanceLog>, int>(
-      (ref, studentId) => ref
-          .watch(attendanceRepositoryProvider)
-          .watchStudentLogs(studentId),
+      (ref, studentId) =>
+          ref.watch(attendanceRepositoryProvider).watchStudentLogs(studentId),
     );
 
 final availableGroupsProvider = FutureProvider.autoDispose<List<Group>>(
@@ -90,7 +90,11 @@ class DateRangeFilter {
   }) : _preset = preset;
 
   /// No filter — show all data.
-  const DateRangeFilter.all() : start = null, end = null, _preset = null, timeframeId = null;
+  const DateRangeFilter.all()
+    : start = null,
+      end = null,
+      _preset = null,
+      timeframeId = null;
 
   /// One of the built-in quick filters.
   factory DateRangeFilter.fromPreset(QuickFilter preset) {
@@ -163,10 +167,8 @@ class DateRangeFilter {
 
 enum QuickFilter { oneMonth, threeMonths, sixMonths, thisYear }
 
-final studentDateFilterProvider =
-    StateProvider.autoDispose.family<DateRangeFilter, int>(
-      (ref, _) => const DateRangeFilter.all(),
-    );
+final studentDateFilterProvider = StateProvider.autoDispose
+    .family<DateRangeFilter, int>((ref, _) => const DateRangeFilter.all());
 
 class StudentDetailScreen extends ConsumerWidget {
   const StudentDetailScreen({required this.studentId, super.key});
@@ -190,9 +192,7 @@ class StudentDetailScreen extends ConsumerWidget {
         final homeworkValue = ref.watch(studentHomeworkProvider(studentId));
         final notesValue = ref.watch(studentNotesProvider(studentId));
         final listItemsValue = ref.watch(studentListItemsProvider(studentId));
-        final attendanceValue = ref.watch(
-          studentAttendanceProvider(studentId),
-        );
+        final attendanceValue = ref.watch(studentAttendanceProvider(studentId));
         final groupsValue = ref.watch(availableGroupsProvider);
         final allStudentsValue = ref.watch(availableStudentsProvider);
         final group = groupValue.value;
@@ -202,29 +202,27 @@ class StudentDetailScreen extends ConsumerWidget {
             : onColorForBackground(groupColor);
         final attendanceLogs = attendanceValue.value ?? const <AttendanceLog>[];
         final totalLogs = attendanceLogs.length;
-        final presentCount =
-            attendanceLogs.where((l) => !l.isAbsent).length;
-        final attendancePercent =
-            totalLogs > 0 ? (presentCount / totalLogs * 100).round() : null;
+        final presentCount = attendanceLogs.where((l) => !l.isAbsent).length;
+        final attendancePercent = totalLogs > 0
+            ? (presentCount / totalLogs * 100).round()
+            : null;
         final attendanceSubtitle = attendancePercent != null
             ? '$attendancePercent% ${'present'.tr()}'
             : null;
-        final groupAveragesMap = ref.watch(
-          groupAveragesProvider(student.groupId),
-        ).value;
+        final groupAveragesMap = ref
+            .watch(groupAveragesProvider(student.groupId))
+            .value;
         final classAverage =
             groupAveragesMap != null && groupAveragesMap.isNotEmpty
-                ? groupAveragesMap.values.reduce((a, b) => a + b) /
-                    groupAveragesMap.length
-                : null;
+            ? groupAveragesMap.values.reduce((a, b) => a + b) /
+                  groupAveragesMap.length
+            : null;
         final appBarSubtitle = [
           group?.name,
           attendanceSubtitle,
         ].nonNulls.join(' · ');
 
-        final dateFilter = ref.watch(
-          studentDateFilterProvider(studentId),
-        );
+        final dateFilter = ref.watch(studentDateFilterProvider(studentId));
 
         final filteredGradesValue = gradesValue.whenData(
           (list) => list.where((g) => dateFilter.includes(g.date)).toList(),
@@ -239,7 +237,8 @@ class StudentDetailScreen extends ConsumerWidget {
           (list) => list.where((a) => dateFilter.includes(a.date)).toList(),
         );
         final filteredNotesValue = notesValue.whenData(
-          (list) => list.where((n) => dateFilter.includes(n.createdAt)).toList(),
+          (list) =>
+              list.where((n) => dateFilter.includes(n.createdAt)).toList(),
         );
 
         return DefaultTabController(
@@ -276,9 +275,8 @@ class StudentDetailScreen extends ConsumerWidget {
               ),
               actions: [
                 IconButton(
-                  onPressed: () => context.push(
-                    '/students/${student.id}/summary',
-                  ),
+                  onPressed: () =>
+                      context.push('/students/${student.id}/summary'),
                   icon: const Icon(Icons.summarize_outlined),
                   tooltip: 'parent_summary'.tr(),
                 ),
@@ -303,39 +301,41 @@ class StudentDetailScreen extends ConsumerWidget {
               children: [
                 _DateFilterChips(studentId: studentId),
                 Expanded(
-                  child: TabBarView(
-                    children: [
-                      _AttendanceTab(
-                        studentId: student.id,
-                        attendanceValue: filteredAttendanceValue,
-                      ),
-                      _GradesTab(
-                        studentId: student.id,
-                        gradesValue: filteredGradesValue,
-                        gradeScaleJson: groupValue.value?.gradeScaleJson,
-                        gradeCategoriesJson:
-                            groupValue.value?.gradeCategoriesJson,
-                        classAverage: classAverage,
-                      ),
-                      _MaterialTab(
-                        studentId: student.id,
-                        materialValue: filteredMaterialValue,
-                      ),
-                      _HomeworkTab(
-                        studentId: student.id,
-                        homeworkValue: filteredHomeworkValue,
-                      ),
-                      _StudentNotesTab(
-                        studentId: student.id,
-                        notesValue: filteredNotesValue,
-                        groups: groupsValue.value ?? const [],
-                        students: allStudentsValue.value ?? const [],
-                      ),
-                      _ListsTab(
-                        studentId: student.id,
-                        listItemsValue: listItemsValue,
-                      ),
-                    ],
+                  child: ContentConstraints(
+                    child: TabBarView(
+                      children: [
+                        _AttendanceTab(
+                          studentId: student.id,
+                          attendanceValue: filteredAttendanceValue,
+                        ),
+                        _GradesTab(
+                          studentId: student.id,
+                          gradesValue: filteredGradesValue,
+                          gradeScaleJson: groupValue.value?.gradeScaleJson,
+                          gradeCategoriesJson:
+                              groupValue.value?.gradeCategoriesJson,
+                          classAverage: classAverage,
+                        ),
+                        _MaterialTab(
+                          studentId: student.id,
+                          materialValue: filteredMaterialValue,
+                        ),
+                        _HomeworkTab(
+                          studentId: student.id,
+                          homeworkValue: filteredHomeworkValue,
+                        ),
+                        _StudentNotesTab(
+                          studentId: student.id,
+                          notesValue: filteredNotesValue,
+                          groups: groupsValue.value ?? const [],
+                          students: allStudentsValue.value ?? const [],
+                        ),
+                        _ListsTab(
+                          studentId: student.id,
+                          listItemsValue: listItemsValue,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -462,9 +462,7 @@ class _DateFilterChips extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterChip(
-                label: Text(
-                  DateRangeFilter.fromPreset(preset).label(context),
-                ),
+                label: Text(DateRangeFilter.fromPreset(preset).label(context)),
                 selected: current.activePreset == preset,
                 onSelected: (_) =>
                     notifier.state = DateRangeFilter.fromPreset(preset),
@@ -481,7 +479,8 @@ class _DateFilterChips extends ConsumerWidget {
                     selected: current.timeframeId == timeframe.id,
                     onSelected: (_) => notifier.state =
                         DateRangeFilter.fromTimeframe(timeframe),
-                    tooltip: '${formatShortDate(timeframe.startDate)} – ${formatShortDate(timeframe.endDate)}',
+                    tooltip:
+                        '${formatShortDate(timeframe.startDate)} – ${formatShortDate(timeframe.endDate)}',
                   ),
                 ),
             ],
@@ -531,10 +530,7 @@ class _DateFilterChips extends ConsumerWidget {
       firstDate: DateTime(2000),
       lastDate: DateTime(now.year + 1),
       initialDateRange: current.start != null
-          ? DateTimeRange(
-              start: current.start!,
-              end: current.end ?? now,
-            )
+          ? DateTimeRange(start: current.start!, end: current.end ?? now)
           : null,
     );
     if (picked == null) return;
@@ -570,8 +566,12 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
   @override
   Widget build(BuildContext context) {
     final dateFilter = ref.watch(studentDateFilterProvider(widget.studentId));
-    final timeframesValue = ref.watch(studentTimeframesProvider(widget.studentId));
-    final timeframeGradesValue = ref.watch(studentTimeframeGradesProvider(widget.studentId));
+    final timeframesValue = ref.watch(
+      studentTimeframesProvider(widget.studentId),
+    );
+    final timeframeGradesValue = ref.watch(
+      studentTimeframeGradesProvider(widget.studentId),
+    );
 
     return widget.gradesValue.when(
       data: (grades) {
@@ -604,13 +604,15 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
           loading: () => const [],
           error: (_, __) => const [],
         );
-        
+
         final timeframeMap = {for (final t in timeframes) t.id: t};
         final joinedGrades = timeframeGrades
             .where((g) => timeframeMap.containsKey(g.timeframeId))
-            .map((g) => (timeframe: timeframeMap[g.timeframeId]!, grade: g.grade))
+            .map(
+              (g) => (timeframe: timeframeMap[g.timeframeId]!, grade: g.grade),
+            )
             .toList();
-        
+
         final filteredTimeframeGrades = dateFilter.isAll
             ? joinedGrades
             : joinedGrades.where((tg) {
@@ -620,9 +622,10 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
                 }
                 final filterStart = dateFilter.start ?? DateTime(2000);
                 final filterEnd = dateFilter.end ?? DateTime.now();
-                return !(tf.endDate.isBefore(filterStart) || tf.startDate.isAfter(filterEnd));
+                return !(tf.endDate.isBefore(filterStart) ||
+                    tf.startDate.isAfter(filterEnd));
               }).toList();
-        
+
         // Add timeframe grades to chart data
         final numericGrades = <({GradeEntry grade, double value})>[];
         for (final grade in chartGrades) {
@@ -631,7 +634,7 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
             numericGrades.add((grade: grade, value: parsed));
           }
         }
-        
+
         // Add timeframe grades as chart data points
         // Use the end date of the timeframe and a special category
         for (final tg in filteredTimeframeGrades) {
@@ -652,7 +655,7 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
             numericGrades.add((grade: syntheticGrade, value: parsed));
           }
         }
-        
+
         // Sort all grades by date for the chart
         numericGrades.sort((a, b) => a.grade.date.compareTo(b.grade.date));
         final categorySums = <String, double>{};
@@ -669,7 +672,10 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
           final average = entry.value / categoryCounts[categoryId]!;
           categoryAverages.add((value: average, categoryId: categoryId));
         }
-        final average = calculateWeightedAverage(categoryAverages, gradeCategories);
+        final average = calculateWeightedAverage(
+          categoryAverages,
+          gradeCategories,
+        );
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -733,8 +739,8 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
-                      ...filteredTimeframeGrades.map((tg) =>
-                        ListTile(
+                      ...filteredTimeframeGrades.map(
+                        (tg) => ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(tg.timeframe.label),
                           subtitle: Text(
@@ -744,7 +750,8 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
                             tg.grade,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          onTap: () => context.push('/groups/${tg.timeframe.groupId}'),
+                          onTap: () =>
+                              context.push('/groups/${tg.timeframe.groupId}'),
                         ),
                       ),
                     ],
@@ -944,6 +951,8 @@ class _GradeTableHeader extends StatelessWidget {
             child: Text(
               'grades'.tr(),
               style: Theme.of(context).textTheme.labelLarge,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 12),
@@ -961,6 +970,8 @@ class _GradeTableHeader extends StatelessWidget {
             child: Text(
               'label'.tr(),
               style: Theme.of(context).textTheme.labelLarge,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 12),
@@ -1096,8 +1107,8 @@ class _GradeChartCard extends StatelessWidget {
         : average;
     final plottedClassAverage = classAverage != null
         ? (shouldInvert
-            ? _flipValue(minRaw, maxRaw, classAverage!)
-            : classAverage)
+              ? _flipValue(minRaw, maxRaw, classAverage!)
+              : classAverage)
         : null;
     final minPlot = [
       ...plottedValues,
@@ -2157,9 +2168,7 @@ class _AttendanceTab extends ConsumerWidget {
                   confirmDismiss: (_) => showConfirmDialog(
                     context: context,
                     title: 'confirm_delete'.tr(
-                      namedArgs: {
-                        'name': dateFormat.format(log.date),
-                      },
+                      namedArgs: {'name': dateFormat.format(log.date)},
                     ),
                     body: log.isAbsent
                         ? (log.isExcused ? 'excused' : 'unexcused').tr()
@@ -2167,19 +2176,13 @@ class _AttendanceTab extends ConsumerWidget {
                   ),
                   onDismissed: (_) => ref
                       .read(attendanceRepositoryProvider)
-                      .clearAbsence(
-                        studentId: studentId,
-                        date: log.date,
-                      ),
+                      .clearAbsence(studentId: studentId, date: log.date),
                   child: _AttendanceLogTile(
                     log: log,
                     dateFormat: dateFormat,
                     onDelete: () => ref
                         .read(attendanceRepositoryProvider)
-                        .clearAbsence(
-                          studentId: studentId,
-                          date: log.date,
-                        ),
+                        .clearAbsence(studentId: studentId, date: log.date),
                     onToggleExcused: (excused) => ref
                         .read(attendanceRepositoryProvider)
                         .setExcused(
@@ -2207,10 +2210,9 @@ class _AttendanceTab extends ConsumerWidget {
     );
     if (selected == null) return;
 
-    await ref.read(attendanceRepositoryProvider).markAbsent(
-          studentId: studentId,
-          date: DateUtils.dateOnly(selected),
-        );
+    await ref
+        .read(attendanceRepositoryProvider)
+        .markAbsent(studentId: studentId, date: DateUtils.dateOnly(selected));
   }
 }
 
@@ -2371,9 +2373,7 @@ class _AttendanceBarChart extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               DateFormat.MMM(
-                                Localizations.localeOf(
-                                  context,
-                                ).toLanguageTag(),
+                                Localizations.localeOf(context).toLanguageTag(),
                               ).format(DateTime(month.$1, month.$2)),
                               style: Theme.of(context).textTheme.labelSmall,
                             ),

@@ -9,14 +9,15 @@ import '../../shared/theme/app_ui.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/utils/grade_categories.dart'
     show
-      GradeCategory,
-      colorForCategory,
-      colorFromHex,
-      defaultGradeCategories,
-      onColorForBackground,
-      parseGradeCategories;
+        GradeCategory,
+        colorForCategory,
+        colorFromHex,
+        defaultGradeCategories,
+        onColorForBackground,
+        parseGradeCategories;
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
+import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../grades/grade_picker_dialog.dart';
 import '../notes/note_links.dart';
@@ -41,10 +42,12 @@ class TimeframeGradesScreen extends ConsumerWidget {
     final studentsValue = ref.watch(groupStudentsProvider(groupId));
     final notesValue = ref.watch(groupNotesProvider(groupId));
     final groupValue = ref.watch(groupProvider(groupId));
-    final categoryAveragesValue =
-        ref.watch(timeframeCategoryAveragesProvider(params));
-    final timeframeGradesValue =
-        ref.watch(timeframeGradesProvider(timeframe.id));
+    final categoryAveragesValue = ref.watch(
+      timeframeCategoryAveragesProvider(params),
+    );
+    final timeframeGradesValue = ref.watch(
+      timeframeGradesProvider(timeframe.id),
+    );
     final attendanceValue = ref.watch(timeframeAttendanceProvider(params));
     final materialValue = ref.watch(timeframeMaterialProvider(params));
     final homeworkValue = ref.watch(timeframeHomeworkProvider(params));
@@ -94,8 +97,7 @@ class TimeframeGradesScreen extends ConsumerWidget {
           final gradeScaleEntries = group != null
               ? parseGradeScaleEntries(group.gradeScaleJson)
               : defaultGradeScaleEntries;
-          final gradeScale =
-              gradeScaleEntries.map((e) => e.label).toList();
+          final gradeScale = gradeScaleEntries.map((e) => e.label).toList();
           final categories = group != null
               ? parseGradeCategories(group.gradeCategoriesJson)
               : defaultGradeCategories;
@@ -108,14 +110,12 @@ class TimeframeGradesScreen extends ConsumerWidget {
             }
           }
 
-          final categoryAverages =
-              categoryAveragesValue.asData?.value ?? {};
+          final categoryAverages = categoryAveragesValue.asData?.value ?? {};
           final finalGrades = <int, String>{
             for (final g in timeframeGradesValue.asData?.value ?? [])
               g.studentId: g.grade,
           };
-          final attendanceLogs =
-              attendanceValue.asData?.value ?? {};
+          final attendanceLogs = attendanceValue.asData?.value ?? {};
           final materialLogs = materialValue.asData?.value ?? {};
           final homeworkLogs = homeworkValue.asData?.value ?? {};
 
@@ -152,7 +152,9 @@ class TimeframeGradesScreen extends ConsumerWidget {
       timeframeId: timeframe.id,
     );
     if (result != null) {
-      await ref.read(timeframeRepositoryProvider).updateTimeframe(
+      await ref
+          .read(timeframeRepositoryProvider)
+          .updateTimeframe(
             id: timeframe.id,
             label: result.label,
             startDate: result.startDate,
@@ -213,32 +215,32 @@ class _TimeframeTable extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return SingleChildScrollView(
       padding: appScreenPadding,
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: appCardPadding,
-          child: Column(
-            children: [
-              _TableHeader(),
-              for (var i = 0; i < students.length; i++) ...[
-                _TimeframeStudentRow(
-                  student: students[i],
-                  timeframe: timeframe,
-                  categories: categories,
-                  gradeScaleEntries: gradeScaleEntries,
-                  gradeScale: gradeScale,
-                  notes: notesByStudent[students[i].id] ?? [],
-                  perCategoryAverages:
-                      categoryAverages[students[i].id] ?? {},
-                  finalGrade: finalGrades[students[i].id],
-                  attendanceLogs:
-                      attendanceLogs[students[i].id] ?? [],
-                  materialLogs: materialLogs[students[i].id] ?? [],
-                  homeworkLogs: homeworkLogs[students[i].id] ?? [],
-                ),
-                if (i < students.length - 1) const Divider(height: 1),
+      child: ContentConstraints(
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: appCardPadding,
+            child: Column(
+              children: [
+                _TableHeader(),
+                for (var i = 0; i < students.length; i++) ...[
+                  _TimeframeStudentRow(
+                    student: students[i],
+                    timeframe: timeframe,
+                    categories: categories,
+                    gradeScaleEntries: gradeScaleEntries,
+                    gradeScale: gradeScale,
+                    notes: notesByStudent[students[i].id] ?? [],
+                    perCategoryAverages: categoryAverages[students[i].id] ?? {},
+                    finalGrade: finalGrades[students[i].id],
+                    attendanceLogs: attendanceLogs[students[i].id] ?? [],
+                    materialLogs: materialLogs[students[i].id] ?? [],
+                    homeworkLogs: homeworkLogs[students[i].id] ?? [],
+                  ),
+                  if (i < students.length - 1) const Divider(height: 1),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -332,20 +334,23 @@ class _TimeframeStudentRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sortField = ref.watch(studentSortFieldProvider);
 
-    final presentCount =
-        attendanceLogs.where((l) => !l.isAbsent).length;
-    final attendancePercent =
-        _formatPercent(presentCount, attendanceLogs.length);
+    final presentCount = attendanceLogs.where((l) => !l.isAbsent).length;
+    final attendancePercent = _formatPercent(
+      presentCount,
+      attendanceLogs.length,
+    );
 
-    final hadMaterialCount =
-        materialLogs.where((l) => l.hadMaterial).length;
-    final materialPercent =
-        _formatPercent(hadMaterialCount, materialLogs.length);
+    final hadMaterialCount = materialLogs.where((l) => l.hadMaterial).length;
+    final materialPercent = _formatPercent(
+      hadMaterialCount,
+      materialLogs.length,
+    );
 
-    final hadHomeworkCount =
-        homeworkLogs.where((l) => l.hadHomework).length;
-    final homeworkPercent =
-        _formatPercent(hadHomeworkCount, homeworkLogs.length);
+    final hadHomeworkCount = homeworkLogs.where((l) => l.hadHomework).length;
+    final homeworkPercent = _formatPercent(
+      hadHomeworkCount,
+      homeworkLogs.length,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -388,7 +393,8 @@ class _TimeframeStudentRow extends ConsumerWidget {
                           runSpacing: AppSpacing.xSmall,
                           children: [
                             for (final category in categories)
-                              if (perCategoryAverages[category.id] case final v?)
+                              if (perCategoryAverages[category.id]
+                                  case final v?)
                                 _CategoryChip(
                                   label:
                                       '${category.name}: ${gradeLabelForNumericValue(v, gradeScaleEntries)}',
@@ -406,7 +412,9 @@ class _TimeframeStudentRow extends ConsumerWidget {
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xSmall),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xSmall,
+              ),
               child: OutlinedButton(
                 onPressed: () => _pickFinalGrade(context, ref),
                 style: OutlinedButton.styleFrom(
@@ -415,10 +423,9 @@ class _TimeframeStudentRow extends ConsumerWidget {
                     horizontal: AppSpacing.small,
                   ),
                   backgroundColor: finalGrade == null
-                      ? Theme.of(context)
-                            .colorScheme
-                            .secondaryContainer
-                            .withValues(alpha: 0.35)
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.secondaryContainer.withValues(alpha: 0.35)
                       : null,
                 ),
                 child: Text(
@@ -430,18 +437,9 @@ class _TimeframeStudentRow extends ConsumerWidget {
               ),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: _StatCell(value: attendancePercent),
-          ),
-          Expanded(
-            flex: 2,
-            child: _StatCell(value: materialPercent),
-          ),
-          Expanded(
-            flex: 2,
-            child: _StatCell(value: homeworkPercent),
-          ),
+          Expanded(flex: 2, child: _StatCell(value: attendancePercent)),
+          Expanded(flex: 2, child: _StatCell(value: materialPercent)),
+          Expanded(flex: 2, child: _StatCell(value: homeworkPercent)),
           Expanded(
             flex: 2,
             child: Center(
@@ -477,8 +475,7 @@ class _TimeframeStudentRow extends ConsumerWidget {
 
     final repo = ref.read(timeframeGradeRepositoryProvider);
     if (result.value == null) {
-      final existing =
-          await repo.getGrade(timeframe.id, student.id);
+      final existing = await repo.getGrade(timeframe.id, student.id);
       if (existing != null) await repo.deleteGrade(existing.id);
     } else {
       await repo.saveGrade(
