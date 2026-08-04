@@ -63,7 +63,7 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
                         : 'newer_backup_exported_at')
                     .tr(
                       namedArgs: {
-                        if (deviceName != null) 'device': deviceName,
+                        'device': ?deviceName,
                         'datetime': DateFormat.yMd(localeTag)
                             .add_Hm()
                             .format(remoteModifiedAt.toLocal()),
@@ -145,7 +145,7 @@ class _AutoImportPromptCardState extends ConsumerState<AutoImportPromptCard> {
                           : 'newer_backup_exported_at')
                       .tr(
                         namedArgs: {
-                          if (deviceName != null) 'device': deviceName,
+                          'device': ?deviceName,
                           'datetime': DateFormat.yMd(localeTag)
                               .add_Hm()
                               .format(remoteModifiedAt.toLocal()),
