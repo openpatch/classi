@@ -494,7 +494,7 @@ class _DateFilterChips extends ConsumerWidget {
                 ),
               ),
             ],
-            error: (_, __) => <Widget>[],
+            error: (_, _) => <Widget>[],
           ),
           // Custom range
           Padding(
@@ -597,12 +597,12 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
         final timeframeGrades = timeframeGradesValue.when(
           data: (tfGrades) => tfGrades,
           loading: () => const [],
-          error: (_, __) => const [],
+          error: (_, _) => const [],
         );
         final timeframes = timeframesValue.when(
           data: (tfs) => tfs,
           loading: () => const [],
-          error: (_, __) => const [],
+          error: (_, _) => const [],
         );
 
         final timeframeMap = {for (final t in timeframes) t.id: t};
