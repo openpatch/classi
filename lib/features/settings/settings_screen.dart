@@ -548,6 +548,7 @@ class _SecuritySection extends ConsumerWidget {
             (value) => value == session.inactivityTimeout,
             orElse: () => SecurityPreferencesService.defaultInactivityTimeout,
           ),
+          isExpanded: true,
           decoration: InputDecoration(labelText: 'inactivity_timeout'.tr()),
           items: [
             for (final entry in _timeoutOptions.entries)
@@ -557,6 +558,8 @@ class _SecuritySection extends ConsumerWidget {
                   'minutes_count'.tr(
                     namedArgs: {'count': entry.key.toString()},
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
           ],
