@@ -22,6 +22,7 @@ import '../../features/settings/student_sort_controller.dart';
 import '../../features/settings/theme_controller.dart';
 import '../../features/students/student_repository.dart';
 import '../../features/students/student_sorting.dart';
+import '../../features/today/today_repository.dart';
 import '../database/app_database.dart';
 import '../security/biometric_service.dart';
 import '../security/key_service.dart';
@@ -198,6 +199,15 @@ final sessionRepositoryProvider = Provider<SessionRepository>(
 
 final groupExportServiceProvider = Provider<GroupExportService>(
   (ref) => GroupExportService(ref.watch(databaseProvider)),
+);
+
+final todayRepositoryProvider = Provider<TodayRepository>(
+  (ref) => TodayRepository(ref.watch(databaseProvider)),
+);
+
+final todayOverviewProvider = StreamProvider.autoDispose.family<
+    List<TodayGroupOverview>, DateTime>(
+  (ref, date) => ref.watch(todayRepositoryProvider).watchTodayOverview(date),
 );
 
 final timeframeRepositoryProvider = Provider<TimeframeRepository>(

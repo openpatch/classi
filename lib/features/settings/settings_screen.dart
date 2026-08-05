@@ -17,6 +17,7 @@ import '../../shared/widgets/app_updater.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../setup/database_selection_sheet.dart';
+import 'backup_conflict_screen.dart';
 import 'grade_system_controller.dart';
 import 'grade_system_editor.dart';
 import '../students/student_sorting.dart';
@@ -745,6 +746,57 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
     }
   }
 
+  /// Backups excluding `_CONFLICT_` copies, which are surfaced separately
+  /// through [_pendingConflicts] instead of appearing as plain list entries.
+  List<WebDavBackupEntry> get _nonConflictBackups => [
+    for (final backup in _backups ?? const <WebDavBackupEntry>[])
+      if (!backup.isConflict) backup,
+  ];
+
+  /// Pairs each conflict copy with its canonical counterpart, newest
+  /// conflict per library only (older conflict copies for the same library
+  /// are superseded once the newest one is resolved).
+  List<(WebDavBackupEntry canonical, WebDavBackupEntry conflict)>
+  get _pendingConflicts {
+    final backups = _backups;
+    if (backups == null) return const [];
+
+    final seenLibraries = <String>{};
+    final pairs = <(WebDavBackupEntry, WebDavBackupEntry)>[];
+    for (final entry in backups) {
+      if (!entry.isConflict || !seenLibraries.add(entry.libraryName)) {
+        continue;
+      }
+      final canonicalFileName = '${entry.libraryName}$classiBackupExtension';
+      WebDavBackupEntry? canonical;
+      for (final candidate in backups) {
+        if (!candidate.isConflict && candidate.fileName == canonicalFileName) {
+          canonical = candidate;
+          break;
+        }
+      }
+      if (canonical != null) {
+        pairs.add((canonical, entry));
+      }
+    }
+    return pairs;
+  }
+
+  Future<void> _resolveConflict(
+    WebDavBackupEntry canonical,
+    WebDavBackupEntry conflict,
+  ) async {
+    final resolved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            BackupConflictScreen(canonical: canonical, conflict: conflict),
+      ),
+    );
+    if (resolved == true) {
+      _loadBackups();
+    }
+  }
+
   Future<void> _loadBackups() async {
     if (_loadingBackups) return;
     setState(() {
@@ -977,6 +1029,12 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 12),
+          for (final (canonical, conflict) in _pendingConflicts) ...[
+            _ConflictBanner(
+              onResolve: () => _resolveConflict(canonical, conflict),
+            ),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               Expanded(
@@ -1008,7 +1066,7 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
             )
           else if (_backups == null || _loadingBackups && _backups!.isEmpty)
             const SizedBox.shrink()
-          else if (_backups!.isEmpty)
+          else if (_nonConflictBackups.isEmpty)
             Text(
               'no_webdav_backups_found'.tr(),
               style: Theme.of(context).textTheme.bodySmall,
@@ -1017,10 +1075,10 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _backups!.length,
+              itemCount: _nonConflictBackups.length,
               separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final backup = _backups![index];
+                final backup = _nonConflictBackups[index];
                 return _BackupListTile(
                   backup: backup,
                   localeTag: localeTag,
@@ -1120,6 +1178,59 @@ class _MaxVersionsPicker extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ConflictBanner extends StatelessWidget {
+  const _ConflictBanner({required this.onResolve});
+
+  final VoidCallback onResolve;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      color: colorScheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_outlined, color: colorScheme.onErrorContainer),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'backup_conflict_detected'.tr(),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: colorScheme.onErrorContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'backup_conflict_detected_hint'.tr(),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onErrorContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton(
+                      onPressed: onResolve,
+                      child: Text('resolve_conflict'.tr()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

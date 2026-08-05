@@ -735,6 +735,60 @@ class AppSessionController extends ChangeNotifier {
     }
   }
 
+  /// Resolves a sync conflict by keeping this device's current local content
+  /// and overwriting the canonical backup with it.
+  ///
+  /// [canonicalRevision] is the revision token currently on the server (from
+  /// the canonical [WebDavBackupEntry] the conflict was detected against).
+  /// Adopting it as this device's "last known revision" tells the next
+  /// export it has now acknowledged that remote state and intends to
+  /// supersede it, so the export proceeds instead of raising another
+  /// conflict. The conflict copy itself is left on the server untouched —
+  /// nothing is deleted by resolving this way.
+  ///
+  /// Adopting the remote revision is only safe for the duration of the
+  /// export it enables: if that upload does not land, the adopted revision
+  /// must not survive, or the *next* auto-export would silently overwrite
+  /// the server copy without ever surfacing the conflict again. So it is
+  /// rolled back unless the export actually succeeds.
+  ///
+  /// Returns a translation key on error or `null` on success.
+  Future<String?> keepThisDeviceVersionAfterConflict({
+    required String? canonicalRevision,
+  }) async {
+    if (_isBusy || _isExporting) return 'database_busy';
+    if (_database == null || _currentPassphrase == null) {
+      return 'database_busy';
+    }
+    if (!isWebDavConfigured) return 'webdav_not_configured';
+
+    final previousRevision = _lastKnownRevision;
+    final previousExportedAt = _lastExportedAt;
+
+    _lastKnownRevision = canonicalRevision;
+    await _libraryBackupPreferencesService.setLastKnownRevision(
+      canonicalRevision,
+    );
+
+    final errorCode = await exportNow();
+
+    // exportNow reports upload failures through the backup status message
+    // rather than its return value, so a null return is not proof the
+    // export landed. _lastExportedAt only advances on a completed upload,
+    // which makes it the authoritative signal here.
+    final exported =
+        _lastExportedAt != null && _lastExportedAt != previousExportedAt;
+    if (errorCode != null || !exported) {
+      _lastKnownRevision = previousRevision;
+      await _libraryBackupPreferencesService.setLastKnownRevision(
+        previousRevision,
+      );
+      return errorCode ?? _lastBackupMessageCode ?? 'backup_export_failed';
+    }
+
+    return null;
+  }
+
   /// Returns `true` if the WebDAV connection test succeeded.
   Future<bool> testWebDavConnection({
     String? url,

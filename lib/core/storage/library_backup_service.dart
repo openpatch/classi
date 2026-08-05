@@ -66,6 +66,7 @@ class WebDavBackupEntry {
     this.sizeBytes,
     this.deviceId,
     this.deviceName,
+    this.revision,
   });
 
   final String fileName;
@@ -79,6 +80,18 @@ class WebDavBackupEntry {
   /// metadata file could not be read.
   final String? deviceId;
   final String? deviceName;
+
+  /// This backup's own revision token from its sidecar, if known. Used to
+  /// reconcile a sync conflict (see [WebDavSyncConflictException]) by
+  /// telling the exporter which remote revision it is now superseding.
+  final String? revision;
+
+  /// Whether this is a `_CONFLICT_` copy uploaded when a device's export
+  /// found the canonical backup had moved on to a revision it never saw.
+  bool get isConflict =>
+      LibraryBackupService._conflictTimestampPattern.hasMatch(
+        p.basenameWithoutExtension(fileName),
+      );
 }
 
 /// Metadata read from a backup's `.meta.json` sidecar: which device
@@ -556,6 +569,7 @@ class LibraryBackupService {
           sizeBytes: candidates[index].sizeBytes,
           deviceId: deviceInfos[index].deviceId,
           deviceName: deviceInfos[index].deviceName,
+          revision: deviceInfos[index].revision,
         ),
     ];
 
@@ -588,11 +602,26 @@ class LibraryBackupService {
   static String backupFileNameForDatabasePath(String databasePath) =>
       '${_libraryNameForPath(databasePath)}$classiBackupExtension';
 
+  /// Matches the `_CONFLICT_<timestamp>` suffix appended to the canonical
+  /// library name for conflict copies, e.g. `MyClass_CONFLICT_20260507T080000Z`.
+  static final RegExp _conflictTimestampPattern = RegExp(
+    r'_CONFLICT_\d{8}T\d{6}Z$',
+  );
+
+  /// Matches the `_<timestamp>` suffix appended to the canonical library name
+  /// for archived copies, e.g. `MyClass_20260506T143200Z`.
+  static final RegExp _archivedTimestampPattern = RegExp(r'_\d{8}T\d{6}Z$');
+
   static String libraryNameForBackupFile(String backupFilePath) {
     final stem = _libraryNameForPath(backupFilePath);
-    // Archived files look like "name_20260506T143200Z". Strip the timestamp.
-    final timestampPattern = RegExp(r'_\d{8}T\d{6}Z$');
-    return stem.replaceFirst(timestampPattern, '');
+    final withoutConflictSuffix = stem.replaceFirst(
+      _conflictTimestampPattern,
+      '',
+    );
+    if (withoutConflictSuffix != stem) {
+      return withoutConflictSuffix;
+    }
+    return stem.replaceFirst(_archivedTimestampPattern, '');
   }
 
   static bool isBackupFilePath(String path) =>

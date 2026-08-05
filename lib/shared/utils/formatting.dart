@@ -248,26 +248,43 @@ bool _sameLabels(List<String> labels, List<GradeScaleEntry> entries) {
   return true;
 }
 
+/// The name shown for a student in place of [firstName]: [callName] (the
+/// informal "Rufname" a teacher actually calls them by) when set, otherwise
+/// [firstName] itself.
+String effectiveFirstName({required String firstName, String? callName}) {
+  final trimmedCallName = callName?.trim();
+  return trimmedCallName == null || trimmedCallName.isEmpty
+      ? firstName
+      : trimmedCallName;
+}
+
 String studentDisplayName({
   required String firstName,
   required String lastName,
+  String? callName,
   StudentSortField sortField = StudentSortField.lastName,
 }) {
+  final displayFirstName = effectiveFirstName(
+    firstName: firstName,
+    callName: callName,
+  );
   return switch (sortField) {
-    StudentSortField.firstName => '$firstName $lastName',
-    StudentSortField.lastName => '$lastName, $firstName',
+    StudentSortField.firstName => '$displayFirstName $lastName',
+    StudentSortField.lastName => '$lastName, $displayFirstName',
   };
 }
 
 String studentDisplayNameWithOrigin({
   required String firstName,
   required String lastName,
+  String? callName,
   String? originNote,
   StudentSortField sortField = StudentSortField.lastName,
 }) {
   final displayName = studentDisplayName(
     firstName: firstName,
     lastName: lastName,
+    callName: callName,
     sortField: sortField,
   );
   final trimmedOriginNote = originNote?.trim();
@@ -281,20 +298,31 @@ bool isGeneratedStudentDisplayName({
   required String value,
   required String firstName,
   required String lastName,
+  String? callName,
 }) {
   final trimmedValue = value.trim();
-  return trimmedValue ==
+  // Match against the call name *and* the plain first name: a label stored
+  // before a call name was set (e.g. a checklist populated from the group)
+  // must still count as auto-generated afterwards, so it re-renders with the
+  // new name instead of freezing as a custom label. The set collapses to one
+  // candidate when no call name is set.
+  final candidateFirstNames = {
+    effectiveFirstName(firstName: firstName, callName: callName),
+    firstName,
+  };
+  for (final candidateFirstName in candidateFirstNames) {
+    for (final sortField in StudentSortField.values) {
+      if (trimmedValue ==
           studentDisplayName(
-            firstName: firstName,
+            firstName: candidateFirstName,
             lastName: lastName,
-            sortField: StudentSortField.firstName,
-          ) ||
-      trimmedValue ==
-          studentDisplayName(
-            firstName: firstName,
-            lastName: lastName,
-            sortField: StudentSortField.lastName,
-          );
+            sortField: sortField,
+          )) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 String studentInitials({required String firstName, required String lastName}) {

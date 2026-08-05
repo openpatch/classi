@@ -265,6 +265,7 @@ class StudentDetailScreen extends ConsumerWidget {
                       title: studentDisplayNameWithOrigin(
                         firstName: student.firstName,
                         lastName: student.lastName,
+                        callName: student.callName,
                         originNote: student.originNote,
                         sortField: sortField,
                       ),
@@ -359,6 +360,7 @@ class StudentDetailScreen extends ConsumerWidget {
       context: context,
       initialFirstName: student.firstName,
       initialLastName: student.lastName,
+      initialCallName: student.callName,
       initialOriginNote: student.originNote,
       initialAvatarJson: student.avatarJson,
       title: 'edit'.tr(),
@@ -400,6 +402,7 @@ class StudentDetailScreen extends ConsumerWidget {
             id: student.id,
             firstName: result.firstName,
             lastName: result.lastName,
+            callName: result.callName,
             originNote: result.originNote,
             avatarJson: result.avatarJson,
           );
@@ -1937,6 +1940,7 @@ class _StudentNotesTab extends ConsumerWidget {
                                               firstName:
                                                   linkedStudent.firstName,
                                               lastName: linkedStudent.lastName,
+                                              callName: linkedStudent.callName,
                                               sortField: sortField,
                                             ),
                                           ),

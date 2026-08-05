@@ -302,7 +302,7 @@ class LessonStudentNotesSheet extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '${studentDisplayName(firstName: student.firstName, lastName: student.lastName, sortField: sortField)} · ${'notes'.tr()}',
+                    '${studentDisplayName(firstName: student.firstName, lastName: student.lastName, callName: student.callName, sortField: sortField)} · ${'notes'.tr()}',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -379,7 +379,9 @@ class _SummaryChip extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
             const SizedBox(width: AppSpacing.small),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Flexible(
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
             if (onTap != null) ...[
               const SizedBox(width: AppSpacing.xSmall),
               Icon(
@@ -599,6 +601,7 @@ class _LessonNameCell extends ConsumerWidget {
                 studentDisplayName(
                   firstName: student.firstName,
                   lastName: student.lastName,
+                  callName: student.callName,
                   sortField: sortField,
                 ),
                 maxLines: 2,

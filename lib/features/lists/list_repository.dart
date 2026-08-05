@@ -309,6 +309,7 @@ class ListRepository {
             label: studentDisplayName(
               firstName: student.firstName,
               lastName: student.lastName,
+              callName: student.callName,
               sortField: sortField,
             ),
           ),

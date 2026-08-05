@@ -375,5 +375,20 @@
   "filter_custom": "Eigener Zeitraum",
   "parent_summary": "Elterngespräch",
   "work_habits": "Arbeitsverhalten",
-  "empty_grades": "Noch keine Noten erfasst"
+  "empty_grades": "Noch keine Noten erfasst",
+  "lesson_not_started": "Noch nicht begonnen",
+  "start_lesson": "Stunde starten",
+  "continue_lesson": "Stunde fortsetzen",
+  "resolve_conflict": "Konflikt lösen",
+  "backup_conflict_detected": "Sicherungskonflikt",
+  "backup_conflict_detected_hint": "Ein anderes Gerät hat Änderungen an dieser Bibliothek gesichert, die diesem Gerät noch nicht bekannt sind.",
+  "backup_conflict_explanation": "Ein anderes Gerät hat nach der letzten Synchronisierung dieses Geräts Änderungen an dieser Bibliothek hochgeladen. Es wird nichts gelöscht — die gewählte Version wird zur aktiven Bibliothek, die andere bleibt in der Sicherungsliste verfügbar.",
+  "this_device_version": "Version dieses Geräts",
+  "server_version": "Version auf dem Server",
+  "keep_this_device_version": "Version dieses Geräts behalten",
+  "use_server_version": "Version auf dem Server verwenden",
+  "conflict_resolved": "Konflikt gelöst.",
+  "unknown_device": "Unbekanntes Gerät",
+  "call_name": "Rufname",
+  "call_name_hint": "Falls abweichend vom Vornamen"
 }
