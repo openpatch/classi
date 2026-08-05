@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.1] - 2026-08-05
+
+### Bug Fixes
+
+- Prevent chip label overflow and drop unused imports
+- Keep pre-existing list labels tied to their student
+- Roll back the adopted revision when conflict re-export fails
+
+
+### Features
+
+- Add Today dashboard and backup conflict resolution UI
+- Let the Today dashboard browse other dates
+- Make the Today dashboard's date deep-linkable
+- Add a call name (Rufname) for students
+
+
 ## [1.12.0] - 2026-08-04
 
 ### Bug Fixes
