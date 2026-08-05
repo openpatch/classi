@@ -746,6 +746,12 @@ class AppSessionController extends ChangeNotifier {
   /// conflict. The conflict copy itself is left on the server untouched —
   /// nothing is deleted by resolving this way.
   ///
+  /// Adopting the remote revision is only safe for the duration of the
+  /// export it enables: if that upload does not land, the adopted revision
+  /// must not survive, or the *next* auto-export would silently overwrite
+  /// the server copy without ever surfacing the conflict again. So it is
+  /// rolled back unless the export actually succeeds.
+  ///
   /// Returns a translation key on error or `null` on success.
   Future<String?> keepThisDeviceVersionAfterConflict({
     required String? canonicalRevision,
@@ -756,12 +762,31 @@ class AppSessionController extends ChangeNotifier {
     }
     if (!isWebDavConfigured) return 'webdav_not_configured';
 
+    final previousRevision = _lastKnownRevision;
+    final previousExportedAt = _lastExportedAt;
+
     _lastKnownRevision = canonicalRevision;
     await _libraryBackupPreferencesService.setLastKnownRevision(
       canonicalRevision,
     );
 
-    return exportNow();
+    final errorCode = await exportNow();
+
+    // exportNow reports upload failures through the backup status message
+    // rather than its return value, so a null return is not proof the
+    // export landed. _lastExportedAt only advances on a completed upload,
+    // which makes it the authoritative signal here.
+    final exported =
+        _lastExportedAt != null && _lastExportedAt != previousExportedAt;
+    if (errorCode != null || !exported) {
+      _lastKnownRevision = previousRevision;
+      await _libraryBackupPreferencesService.setLastKnownRevision(
+        previousRevision,
+      );
+      return errorCode ?? _lastBackupMessageCode ?? 'backup_export_failed';
+    }
+
+    return null;
   }
 
   /// Returns `true` if the WebDAV connection test succeeded.
