@@ -37,6 +37,7 @@ class SeatingPlanChip extends ConsumerWidget {
     final name = studentDisplayName(
       firstName: student.firstName,
       lastName: student.lastName,
+      callName: student.callName,
       sortField: sortField,
     );
 

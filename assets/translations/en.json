@@ -375,5 +375,20 @@
   "filter_custom": "Custom range",
   "parent_summary": "Parent meeting",
   "work_habits": "Work habits",
-  "empty_grades": "No grades recorded yet"
+  "empty_grades": "No grades recorded yet",
+  "lesson_not_started": "Not started yet",
+  "start_lesson": "Start lesson",
+  "continue_lesson": "Continue lesson",
+  "resolve_conflict": "Resolve conflict",
+  "backup_conflict_detected": "Backup conflict",
+  "backup_conflict_detected_hint": "Another device backed up changes to this library that this device hasn't synced yet. Resolve it to keep backups in sync.",
+  "backup_conflict_explanation": "Another device uploaded changes to this library after this device's last sync. Nothing has been deleted — pick which version becomes your active library. The version you don't choose stays available in your backup list.",
+  "this_device_version": "This device's version",
+  "server_version": "Server version",
+  "keep_this_device_version": "Keep this device's version",
+  "use_server_version": "Use the server version",
+  "conflict_resolved": "Conflict resolved.",
+  "unknown_device": "Unknown device",
+  "call_name": "Call name",
+  "call_name_hint": "If different from the first name"
 }

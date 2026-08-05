@@ -142,6 +142,7 @@ class GroupRepository {
                 firstName: student.firstName,
                 lastName: student.lastName,
                 groupId: clonedGroupId,
+                callName: Value(student.callName),
                 originNote: Value(student.originNote),
                 avatarJson: Value(student.avatarJson),
               ),

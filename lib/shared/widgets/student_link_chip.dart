@@ -26,6 +26,7 @@ class StudentLinkChip extends ConsumerWidget {
         studentDisplayName(
           firstName: student.firstName,
           lastName: student.lastName,
+          callName: student.callName,
           sortField: sortField,
         ),
       ),

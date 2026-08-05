@@ -93,6 +93,7 @@ class StudentSummaryScreen extends ConsumerWidget {
               subtitle: studentDisplayNameWithOrigin(
                 firstName: student.firstName,
                 lastName: student.lastName,
+                callName: student.callName,
                 originNote: student.originNote,
                 sortField: sortField,
               ),
@@ -136,6 +137,7 @@ class StudentSummaryScreen extends ConsumerWidget {
                   studentName: studentDisplayName(
                     firstName: student.firstName,
                     lastName: student.lastName,
+                    callName: student.callName,
                   ),
                   controller: controller,
                 ),
@@ -210,6 +212,7 @@ class _SummaryHeader extends StatelessWidget {
                 studentDisplayName(
                   firstName: student.firstName,
                   lastName: student.lastName,
+                  callName: student.callName,
                 ),
                 style: Theme.of(context).textTheme.titleLarge,
                 maxLines: 1,

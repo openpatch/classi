@@ -23,7 +23,7 @@ class _RecoveryKeyScreenState extends ConsumerState<RecoveryKeyScreen> {
     if (recoveryKey == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          context.go('/groups');
+          context.go('/today');
         }
       });
     }
@@ -135,6 +135,6 @@ class _RecoveryKeyScreenState extends ConsumerState<RecoveryKeyScreen> {
 
   void _continue() {
     ref.read(appSessionProvider).clearPendingRecoveryKey();
-    context.go('/groups');
+    context.go('/today');
   }
 }

@@ -773,6 +773,53 @@ void main() {
       expect(controller.lastExportedAt, isNull);
     },
   );
+
+  test(
+    'a failed keep-this-device resolution reports the failure and does not '
+    'leave the remote revision adopted',
+    () async {
+      final conflictService = _ConflictingLibraryBackupService();
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      final backupPreferences = _libraryBackupPreferencesServiceFor(
+        databasePathService,
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: backupPreferences,
+        libraryBackupService: conflictService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      final revisionBefore = controller.lastKnownRevision;
+
+      final errorCode = await controller.keepThisDeviceVersionAfterConflict(
+        canonicalRevision: 'server-revision',
+      );
+
+      // The upload never landed, so the caller has to hear about it —
+      // otherwise the conflict screen tells the teacher it was resolved.
+      expect(errorCode, isNotNull);
+      expect(controller.lastExportedAt, isNull);
+
+      // Adopting the server's revision is only licensed by a successful
+      // export. Left in place after a failure, the next auto-export would
+      // overwrite the server copy without ever prompting again.
+      expect(controller.lastKnownRevision, revisionBefore);
+      expect(await backupPreferences.lastKnownRevision(), revisionBefore);
+    },
+  );
 }
 
 class _TestDatabasePathService extends DatabasePathService {

@@ -514,6 +514,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                     studentDisplayName(
                       firstName: student.firstName,
                       lastName: student.lastName,
+                      callName: student.callName,
                       sortField: sortField,
                     ),
                   ),
@@ -700,6 +701,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     final name = studentDisplayName(
       firstName: student.firstName,
       lastName: student.lastName,
+      callName: student.callName,
       sortField: sortField,
     );
     final body = await _showQuickNoteDialog(

@@ -9,6 +9,11 @@ class StudentsTable extends Table {
 
   TextColumn get lastName => text().withLength(min: 1, max: 100)();
 
+  /// Informal name a teacher actually calls the student by (German
+  /// "Rufname"), shown instead of [firstName] wherever the surname is
+  /// still displayed alongside it. `null` means "same as firstName".
+  TextColumn get callName => text().nullable()();
+
   IntColumn get groupId =>
       integer().references(GroupsTable, #id, onDelete: KeyAction.cascade)();
 

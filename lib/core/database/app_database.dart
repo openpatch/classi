@@ -67,7 +67,7 @@ class AppDatabase extends _$AppDatabase {
   final String databasePath;
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -196,6 +196,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 21) {
         await migrator.createTable(timeframeGradesTable);
+      }
+      if (from < 22) {
+        await migrator.addColumn(studentsTable, studentsTable.callName);
       }
     },
   );

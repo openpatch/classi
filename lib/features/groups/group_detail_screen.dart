@@ -502,6 +502,7 @@ class GroupDetailScreen extends ConsumerWidget {
             groupId: groupId,
             firstName: result.firstName,
             lastName: result.lastName,
+            callName: result.callName,
             originNote: result.originNote,
             avatarJson: result.avatarJson,
           );
@@ -2378,6 +2379,7 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                             studentDisplayName(
                               firstName: student.firstName,
                               lastName: student.lastName,
+                              callName: student.callName,
                               sortField: widget.sortField,
                             ),
                           ),

@@ -62,6 +62,7 @@ List<StudentDraft> parseWebUntisStudentText(String source) {
     drafts.add((
       firstName: firstName,
       lastName: lastName,
+      callName: null,
       originNote: null,
       avatarJson: null,
     ));
@@ -84,6 +85,7 @@ StudentDraft? _parseBatchLine(String line) {
         return (
           firstName: firstName,
           lastName: lastName,
+          callName: null,
           originNote: null,
           avatarJson: null,
         );
@@ -101,6 +103,7 @@ StudentDraft? _parseBatchLine(String line) {
       return (
         firstName: parts.first,
         lastName: parts.sublist(1).join(' '),
+        callName: null,
         originNote: null,
         avatarJson: null,
       );
@@ -119,6 +122,7 @@ StudentDraft? _parseBatchLine(String line) {
   return (
     firstName: parts.first,
     lastName: parts.sublist(1).join(' '),
+    callName: null,
     originNote: null,
     avatarJson: null,
   );
