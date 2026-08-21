@@ -10,6 +10,8 @@ import '../../features/lessons/lesson_support.dart';
 import '../../features/lists/list_detail_screen.dart';
 import '../../features/lists/lists_screen.dart';
 import '../../features/notes/notes_screen.dart';
+import '../../features/school_years/school_year_detail_screen.dart';
+import '../../features/school_years/school_years_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/setup/recover_access_screen.dart';
 import '../../features/setup/recovery_key_screen.dart';
@@ -227,6 +229,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsScreen(),
+            routes: [
+              GoRoute(
+                path: 'school-years',
+                builder: (context, state) => const SchoolYearsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':schoolYearId',
+                    builder: (_, state) => SchoolYearDetailScreen(
+                      schoolYearId: int.parse(
+                        state.pathParameters['schoolYearId']!,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

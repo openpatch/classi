@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 
+import 'school_years_table.dart';
+
 class GroupsTable extends Table {
   IntColumn get id => integer().autoIncrement()();
 
@@ -19,4 +21,10 @@ class GroupsTable extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   DateTimeColumn get archivedAt => dateTime().nullable()();
+
+  IntColumn get schoolYearId => integer().nullable().references(
+    SchoolYearsTable,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
 }

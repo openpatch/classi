@@ -10,6 +10,7 @@ import '../../features/groups/group_export_service.dart';
 import '../../features/groups/group_repository.dart';
 import '../../features/groups/timeframe_grade_repository.dart';
 import '../../features/groups/timeframe_repository.dart';
+import '../../features/school_years/school_year_repository.dart';
 import '../../features/homework/homework_repository.dart';
 import '../../features/lists/list_repository.dart';
 import '../../features/lessons/lesson_repository.dart';
@@ -205,10 +206,45 @@ final todayRepositoryProvider = Provider<TodayRepository>(
   (ref) => TodayRepository(ref.watch(databaseProvider)),
 );
 
-final todayOverviewProvider = StreamProvider.autoDispose.family<
-    List<TodayGroupOverview>, DateTime>(
-  (ref, date) => ref.watch(todayRepositoryProvider).watchTodayOverview(date),
+final todayOverviewProvider = StreamProvider.autoDispose
+    .family<List<TodayGroupOverview>, DateTime>(
+      (ref, date) =>
+          ref.watch(todayRepositoryProvider).watchTodayOverview(date),
+    );
+
+final schoolYearRepositoryProvider = Provider<SchoolYearRepository>(
+  (ref) => SchoolYearRepository(ref.watch(databaseProvider)),
 );
+
+final schoolYearsProvider = StreamProvider.autoDispose<List<SchoolYear>>(
+  (ref) => ref.watch(schoolYearRepositoryProvider).watchSchoolYears(),
+);
+
+final activeSchoolYearsProvider = StreamProvider.autoDispose<List<SchoolYear>>(
+  (ref) => ref.watch(schoolYearRepositoryProvider).watchActiveSchoolYears(),
+);
+
+/// The school year new groups default to.
+final currentSchoolYearProvider = FutureProvider.autoDispose<SchoolYear?>(
+  (ref) => ref.watch(schoolYearRepositoryProvider).currentSchoolYear(),
+);
+
+final schoolYearProvider = StreamProvider.autoDispose.family<SchoolYear?, int>(
+  (ref, id) => ref.watch(schoolYearRepositoryProvider).watchSchoolYear(id),
+);
+
+/// Groups assigned to a school year, archived ones included.
+final schoolYearGroupsProvider = StreamProvider.autoDispose
+    .family<List<Group>, int>(
+      (ref, id) => ref.watch(schoolYearRepositoryProvider).watchGroups(id),
+    );
+
+/// The timeframes of one school year, shared by every group in it.
+final schoolYearTimeframesProvider = StreamProvider.autoDispose
+    .family<List<Timeframe>, int>(
+      (ref, schoolYearId) =>
+          ref.watch(timeframeRepositoryProvider).watchTimeframes(schoolYearId),
+    );
 
 final timeframeRepositoryProvider = Provider<TimeframeRepository>(
   (ref) => TimeframeRepository(ref.watch(databaseProvider)),
@@ -233,22 +269,40 @@ final studentTimeframeGradesProvider = StreamProvider.autoDispose
           .watchGradesForStudent(studentId),
     );
 
-// Stream of timeframes for a student's group
-// Note: This needs the student's groupId, which we get via studentRepository
+// Stream of timeframes for the school year of a student's group
 final studentTimeframesProvider = StreamProvider.autoDispose
+    .family<List<Timeframe>, int>((ref, studentId) {
+      final studentStream = ref
+          .watch(studentRepositoryProvider)
+          .watchStudent(studentId);
+      return studentStream.asyncExpand((student) {
+        if (student == null) return Stream.value(<Timeframe>[]);
+        return _timeframesForGroup(ref, student.groupId);
+      });
+    });
+
+/// The timeframes a group takes part in: those of its school year. Empty while
+/// the group is not assigned to one.
+final groupTimeframesProvider = StreamProvider.autoDispose
     .family<List<Timeframe>, int>(
-      (ref, studentId) {
-        // Watch the student's group timeframes
-        final studentStream = ref.watch(studentRepositoryProvider).watchStudent(studentId);
-        return studentStream.asyncExpand((student) {
-          if (student == null) return Stream.value([]);
-          return ref.watch(timeframeRepositoryProvider).watchTimeframes(student.groupId);
-        });
-      },
+      (ref, groupId) => _timeframesForGroup(ref, groupId),
     );
 
+Stream<List<Timeframe>> _timeframesForGroup(Ref ref, int groupId) {
+  return ref.watch(groupRepositoryProvider).watchGroup(groupId).asyncExpand((
+    group,
+  ) {
+    final schoolYearId = group?.schoolYearId;
+    if (schoolYearId == null) return Stream.value(<Timeframe>[]);
+    return ref.watch(timeframeRepositoryProvider).watchTimeframes(schoolYearId);
+  });
+}
+
 final timeframeCategoryAveragesProvider = StreamProvider.autoDispose
-    .family<Map<int, Map<String, double>>, ({int groupId, DateTime startDate, DateTime endDate})>(
+    .family<
+      Map<int, Map<String, double>>,
+      ({int groupId, DateTime startDate, DateTime endDate})
+    >(
       (ref, params) => ref
           .watch(gradeRepositoryProvider)
           .watchGroupCategoryAveragesInDateRange(
@@ -258,7 +312,11 @@ final timeframeCategoryAveragesProvider = StreamProvider.autoDispose
           ),
     );
 
-typedef _TimeframeParams = ({int groupId, DateTime startDate, DateTime endDate});
+typedef _TimeframeParams = ({
+  int groupId,
+  DateTime startDate,
+  DateTime endDate,
+});
 
 final timeframeAttendanceProvider = StreamProvider.autoDispose
     .family<Map<int, List<AttendanceLog>>, _TimeframeParams>(

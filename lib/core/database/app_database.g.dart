@@ -3,6 +3,410 @@
 part of 'app_database.dart';
 
 // ignore_for_file: type=lint
+class $SchoolYearsTableTable extends SchoolYearsTable
+    with TableInfo<$SchoolYearsTableTable, SchoolYearsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SchoolYearsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endDateMeta = const VerificationMeta(
+    'endDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+    'end_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _archivedAtMeta = const VerificationMeta(
+    'archivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> archivedAt = GeneratedColumn<DateTime>(
+    'archived_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    label,
+    startDate,
+    endDate,
+    archivedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'school_years_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SchoolYearsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(
+        _endDateMeta,
+        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endDateMeta);
+    }
+    if (data.containsKey('archived_at')) {
+      context.handle(
+        _archivedAtMeta,
+        archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SchoolYearsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SchoolYearsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      )!,
+      endDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_date'],
+      )!,
+      archivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}archived_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SchoolYearsTableTable createAlias(String alias) {
+    return $SchoolYearsTableTable(attachedDatabase, alias);
+  }
+}
+
+class SchoolYearsTableData extends DataClass
+    implements Insertable<SchoolYearsTableData> {
+  final int id;
+  final String label;
+  final DateTime startDate;
+  final DateTime endDate;
+  final DateTime? archivedAt;
+  final DateTime createdAt;
+  const SchoolYearsTableData({
+    required this.id,
+    required this.label,
+    required this.startDate,
+    required this.endDate,
+    this.archivedAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['label'] = Variable<String>(label);
+    map['start_date'] = Variable<DateTime>(startDate);
+    map['end_date'] = Variable<DateTime>(endDate);
+    if (!nullToAbsent || archivedAt != null) {
+      map['archived_at'] = Variable<DateTime>(archivedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SchoolYearsTableCompanion toCompanion(bool nullToAbsent) {
+    return SchoolYearsTableCompanion(
+      id: Value(id),
+      label: Value(label),
+      startDate: Value(startDate),
+      endDate: Value(endDate),
+      archivedAt: archivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(archivedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SchoolYearsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SchoolYearsTableData(
+      id: serializer.fromJson<int>(json['id']),
+      label: serializer.fromJson<String>(json['label']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      endDate: serializer.fromJson<DateTime>(json['endDate']),
+      archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'label': serializer.toJson<String>(label),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'endDate': serializer.toJson<DateTime>(endDate),
+      'archivedAt': serializer.toJson<DateTime?>(archivedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  SchoolYearsTableData copyWith({
+    int? id,
+    String? label,
+    DateTime? startDate,
+    DateTime? endDate,
+    Value<DateTime?> archivedAt = const Value.absent(),
+    DateTime? createdAt,
+  }) => SchoolYearsTableData(
+    id: id ?? this.id,
+    label: label ?? this.label,
+    startDate: startDate ?? this.startDate,
+    endDate: endDate ?? this.endDate,
+    archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  SchoolYearsTableData copyWithCompanion(SchoolYearsTableCompanion data) {
+    return SchoolYearsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      label: data.label.present ? data.label.value : this.label,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      archivedAt: data.archivedAt.present
+          ? data.archivedAt.value
+          : this.archivedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SchoolYearsTableData(')
+          ..write('id: $id, ')
+          ..write('label: $label, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, label, startDate, endDate, archivedAt, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SchoolYearsTableData &&
+          other.id == this.id &&
+          other.label == this.label &&
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
+          other.archivedAt == this.archivedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class SchoolYearsTableCompanion extends UpdateCompanion<SchoolYearsTableData> {
+  final Value<int> id;
+  final Value<String> label;
+  final Value<DateTime> startDate;
+  final Value<DateTime> endDate;
+  final Value<DateTime?> archivedAt;
+  final Value<DateTime> createdAt;
+  const SchoolYearsTableCompanion({
+    this.id = const Value.absent(),
+    this.label = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.archivedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  SchoolYearsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String label,
+    required DateTime startDate,
+    required DateTime endDate,
+    this.archivedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : label = Value(label),
+       startDate = Value(startDate),
+       endDate = Value(endDate);
+  static Insertable<SchoolYearsTableData> custom({
+    Expression<int>? id,
+    Expression<String>? label,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
+    Expression<DateTime>? archivedAt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (label != null) 'label': label,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (archivedAt != null) 'archived_at': archivedAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  SchoolYearsTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? label,
+    Value<DateTime>? startDate,
+    Value<DateTime>? endDate,
+    Value<DateTime?>? archivedAt,
+    Value<DateTime>? createdAt,
+  }) {
+    return SchoolYearsTableCompanion(
+      id: id ?? this.id,
+      label: label ?? this.label,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      archivedAt: archivedAt ?? this.archivedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (archivedAt.present) {
+      map['archived_at'] = Variable<DateTime>(archivedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SchoolYearsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('label: $label, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $GroupsTableTable extends GroupsTable
     with TableInfo<$GroupsTableTable, GroupsTableData> {
   @override
@@ -96,6 +500,20 @@ class $GroupsTableTable extends GroupsTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _schoolYearIdMeta = const VerificationMeta(
+    'schoolYearId',
+  );
+  @override
+  late final GeneratedColumn<int> schoolYearId = GeneratedColumn<int>(
+    'school_year_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES school_years_table (id) ON DELETE SET NULL',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -105,6 +523,7 @@ class $GroupsTableTable extends GroupsTable
     gradeCategoriesJson,
     createdAt,
     archivedAt,
+    schoolYearId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -165,6 +584,15 @@ class $GroupsTableTable extends GroupsTable
         archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
       );
     }
+    if (data.containsKey('school_year_id')) {
+      context.handle(
+        _schoolYearIdMeta,
+        schoolYearId.isAcceptableOrUnknown(
+          data['school_year_id']!,
+          _schoolYearIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -202,6 +630,10 @@ class $GroupsTableTable extends GroupsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}archived_at'],
       ),
+      schoolYearId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}school_year_id'],
+      ),
     );
   }
 
@@ -219,6 +651,7 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
   final String gradeCategoriesJson;
   final DateTime createdAt;
   final DateTime? archivedAt;
+  final int? schoolYearId;
   const GroupsTableData({
     required this.id,
     required this.name,
@@ -227,6 +660,7 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
     required this.gradeCategoriesJson,
     required this.createdAt,
     this.archivedAt,
+    this.schoolYearId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -239,6 +673,9 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || archivedAt != null) {
       map['archived_at'] = Variable<DateTime>(archivedAt);
+    }
+    if (!nullToAbsent || schoolYearId != null) {
+      map['school_year_id'] = Variable<int>(schoolYearId);
     }
     return map;
   }
@@ -254,6 +691,9 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
       archivedAt: archivedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(archivedAt),
+      schoolYearId: schoolYearId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(schoolYearId),
     );
   }
 
@@ -272,6 +712,7 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
       ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
+      schoolYearId: serializer.fromJson<int?>(json['schoolYearId']),
     );
   }
   @override
@@ -285,6 +726,7 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
       'gradeCategoriesJson': serializer.toJson<String>(gradeCategoriesJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'archivedAt': serializer.toJson<DateTime?>(archivedAt),
+      'schoolYearId': serializer.toJson<int?>(schoolYearId),
     };
   }
 
@@ -296,6 +738,7 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
     String? gradeCategoriesJson,
     DateTime? createdAt,
     Value<DateTime?> archivedAt = const Value.absent(),
+    Value<int?> schoolYearId = const Value.absent(),
   }) => GroupsTableData(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -304,6 +747,7 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
     gradeCategoriesJson: gradeCategoriesJson ?? this.gradeCategoriesJson,
     createdAt: createdAt ?? this.createdAt,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
+    schoolYearId: schoolYearId.present ? schoolYearId.value : this.schoolYearId,
   );
   GroupsTableData copyWithCompanion(GroupsTableCompanion data) {
     return GroupsTableData(
@@ -320,6 +764,9 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
       archivedAt: data.archivedAt.present
           ? data.archivedAt.value
           : this.archivedAt,
+      schoolYearId: data.schoolYearId.present
+          ? data.schoolYearId.value
+          : this.schoolYearId,
     );
   }
 
@@ -332,7 +779,8 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
           ..write('gradeScaleJson: $gradeScaleJson, ')
           ..write('gradeCategoriesJson: $gradeCategoriesJson, ')
           ..write('createdAt: $createdAt, ')
-          ..write('archivedAt: $archivedAt')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('schoolYearId: $schoolYearId')
           ..write(')'))
         .toString();
   }
@@ -346,6 +794,7 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
     gradeCategoriesJson,
     createdAt,
     archivedAt,
+    schoolYearId,
   );
   @override
   bool operator ==(Object other) =>
@@ -357,7 +806,8 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
           other.gradeScaleJson == this.gradeScaleJson &&
           other.gradeCategoriesJson == this.gradeCategoriesJson &&
           other.createdAt == this.createdAt &&
-          other.archivedAt == this.archivedAt);
+          other.archivedAt == this.archivedAt &&
+          other.schoolYearId == this.schoolYearId);
 }
 
 class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
@@ -368,6 +818,7 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
   final Value<String> gradeCategoriesJson;
   final Value<DateTime> createdAt;
   final Value<DateTime?> archivedAt;
+  final Value<int?> schoolYearId;
   const GroupsTableCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -376,6 +827,7 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     this.gradeCategoriesJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.archivedAt = const Value.absent(),
+    this.schoolYearId = const Value.absent(),
   });
   GroupsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -385,6 +837,7 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     this.gradeCategoriesJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.archivedAt = const Value.absent(),
+    this.schoolYearId = const Value.absent(),
   }) : name = Value(name);
   static Insertable<GroupsTableData> custom({
     Expression<int>? id,
@@ -394,6 +847,7 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     Expression<String>? gradeCategoriesJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? archivedAt,
+    Expression<int>? schoolYearId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -404,6 +858,7 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
         'grade_categories_json': gradeCategoriesJson,
       if (createdAt != null) 'created_at': createdAt,
       if (archivedAt != null) 'archived_at': archivedAt,
+      if (schoolYearId != null) 'school_year_id': schoolYearId,
     });
   }
 
@@ -415,6 +870,7 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     Value<String>? gradeCategoriesJson,
     Value<DateTime>? createdAt,
     Value<DateTime?>? archivedAt,
+    Value<int?>? schoolYearId,
   }) {
     return GroupsTableCompanion(
       id: id ?? this.id,
@@ -424,6 +880,7 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
       gradeCategoriesJson: gradeCategoriesJson ?? this.gradeCategoriesJson,
       createdAt: createdAt ?? this.createdAt,
       archivedAt: archivedAt ?? this.archivedAt,
+      schoolYearId: schoolYearId ?? this.schoolYearId,
     );
   }
 
@@ -453,6 +910,9 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     if (archivedAt.present) {
       map['archived_at'] = Variable<DateTime>(archivedAt.value);
     }
+    if (schoolYearId.present) {
+      map['school_year_id'] = Variable<int>(schoolYearId.value);
+    }
     return map;
   }
 
@@ -465,7 +925,8 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
           ..write('gradeScaleJson: $gradeScaleJson, ')
           ..write('gradeCategoriesJson: $gradeCategoriesJson, ')
           ..write('createdAt: $createdAt, ')
-          ..write('archivedAt: $archivedAt')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('schoolYearId: $schoolYearId')
           ..write(')'))
         .toString();
   }
@@ -5450,18 +5911,18 @@ class $TimeframesTableTable extends TimeframesTable
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
-  static const VerificationMeta _groupIdMeta = const VerificationMeta(
-    'groupId',
+  static const VerificationMeta _schoolYearIdMeta = const VerificationMeta(
+    'schoolYearId',
   );
   @override
-  late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
-    'group_id',
+  late final GeneratedColumn<int> schoolYearId = GeneratedColumn<int>(
+    'school_year_id',
     aliasedName,
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES groups_table (id) ON DELETE CASCADE',
+      'REFERENCES school_years_table (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _labelMeta = const VerificationMeta('label');
@@ -5499,17 +5960,6 @@ class $TimeframesTableTable extends TimeframesTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _finalGradeMeta = const VerificationMeta(
-    'finalGrade',
-  );
-  @override
-  late final GeneratedColumn<String> finalGrade = GeneratedColumn<String>(
-    'final_grade',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -5525,11 +5975,10 @@ class $TimeframesTableTable extends TimeframesTable
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    groupId,
+    schoolYearId,
     label,
     startDate,
     endDate,
-    finalGrade,
     createdAt,
   ];
   @override
@@ -5547,13 +5996,16 @@ class $TimeframesTableTable extends TimeframesTable
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
-    if (data.containsKey('group_id')) {
+    if (data.containsKey('school_year_id')) {
       context.handle(
-        _groupIdMeta,
-        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+        _schoolYearIdMeta,
+        schoolYearId.isAcceptableOrUnknown(
+          data['school_year_id']!,
+          _schoolYearIdMeta,
+        ),
       );
     } else if (isInserting) {
-      context.missing(_groupIdMeta);
+      context.missing(_schoolYearIdMeta);
     }
     if (data.containsKey('label')) {
       context.handle(
@@ -5579,12 +6031,6 @@ class $TimeframesTableTable extends TimeframesTable
     } else if (isInserting) {
       context.missing(_endDateMeta);
     }
-    if (data.containsKey('final_grade')) {
-      context.handle(
-        _finalGradeMeta,
-        finalGrade.isAcceptableOrUnknown(data['final_grade']!, _finalGradeMeta),
-      );
-    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -5604,9 +6050,9 @@ class $TimeframesTableTable extends TimeframesTable
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
-      groupId: attachedDatabase.typeMapping.read(
+      schoolYearId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
-        data['${effectivePrefix}group_id'],
+        data['${effectivePrefix}school_year_id'],
       )!,
       label: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -5620,10 +6066,6 @@ class $TimeframesTableTable extends TimeframesTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}end_date'],
       )!,
-      finalGrade: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}final_grade'],
-      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -5640,32 +6082,27 @@ class $TimeframesTableTable extends TimeframesTable
 class TimeframesTableData extends DataClass
     implements Insertable<TimeframesTableData> {
   final int id;
-  final int groupId;
+  final int schoolYearId;
   final String label;
   final DateTime startDate;
   final DateTime endDate;
-  final String? finalGrade;
   final DateTime createdAt;
   const TimeframesTableData({
     required this.id,
-    required this.groupId,
+    required this.schoolYearId,
     required this.label,
     required this.startDate,
     required this.endDate,
-    this.finalGrade,
     required this.createdAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['group_id'] = Variable<int>(groupId);
+    map['school_year_id'] = Variable<int>(schoolYearId);
     map['label'] = Variable<String>(label);
     map['start_date'] = Variable<DateTime>(startDate);
     map['end_date'] = Variable<DateTime>(endDate);
-    if (!nullToAbsent || finalGrade != null) {
-      map['final_grade'] = Variable<String>(finalGrade);
-    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -5673,13 +6110,10 @@ class TimeframesTableData extends DataClass
   TimeframesTableCompanion toCompanion(bool nullToAbsent) {
     return TimeframesTableCompanion(
       id: Value(id),
-      groupId: Value(groupId),
+      schoolYearId: Value(schoolYearId),
       label: Value(label),
       startDate: Value(startDate),
       endDate: Value(endDate),
-      finalGrade: finalGrade == null && nullToAbsent
-          ? const Value.absent()
-          : Value(finalGrade),
       createdAt: Value(createdAt),
     );
   }
@@ -5691,11 +6125,10 @@ class TimeframesTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TimeframesTableData(
       id: serializer.fromJson<int>(json['id']),
-      groupId: serializer.fromJson<int>(json['groupId']),
+      schoolYearId: serializer.fromJson<int>(json['schoolYearId']),
       label: serializer.fromJson<String>(json['label']),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime>(json['endDate']),
-      finalGrade: serializer.fromJson<String?>(json['finalGrade']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -5704,42 +6137,38 @@ class TimeframesTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'groupId': serializer.toJson<int>(groupId),
+      'schoolYearId': serializer.toJson<int>(schoolYearId),
       'label': serializer.toJson<String>(label),
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime>(endDate),
-      'finalGrade': serializer.toJson<String?>(finalGrade),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
 
   TimeframesTableData copyWith({
     int? id,
-    int? groupId,
+    int? schoolYearId,
     String? label,
     DateTime? startDate,
     DateTime? endDate,
-    Value<String?> finalGrade = const Value.absent(),
     DateTime? createdAt,
   }) => TimeframesTableData(
     id: id ?? this.id,
-    groupId: groupId ?? this.groupId,
+    schoolYearId: schoolYearId ?? this.schoolYearId,
     label: label ?? this.label,
     startDate: startDate ?? this.startDate,
     endDate: endDate ?? this.endDate,
-    finalGrade: finalGrade.present ? finalGrade.value : this.finalGrade,
     createdAt: createdAt ?? this.createdAt,
   );
   TimeframesTableData copyWithCompanion(TimeframesTableCompanion data) {
     return TimeframesTableData(
       id: data.id.present ? data.id.value : this.id,
-      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      schoolYearId: data.schoolYearId.present
+          ? data.schoolYearId.value
+          : this.schoolYearId,
       label: data.label.present ? data.label.value : this.label,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
-      finalGrade: data.finalGrade.present
-          ? data.finalGrade.value
-          : this.finalGrade,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -5748,104 +6177,88 @@ class TimeframesTableData extends DataClass
   String toString() {
     return (StringBuffer('TimeframesTableData(')
           ..write('id: $id, ')
-          ..write('groupId: $groupId, ')
+          ..write('schoolYearId: $schoolYearId, ')
           ..write('label: $label, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
-          ..write('finalGrade: $finalGrade, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    groupId,
-    label,
-    startDate,
-    endDate,
-    finalGrade,
-    createdAt,
-  );
+  int get hashCode =>
+      Object.hash(id, schoolYearId, label, startDate, endDate, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is TimeframesTableData &&
           other.id == this.id &&
-          other.groupId == this.groupId &&
+          other.schoolYearId == this.schoolYearId &&
           other.label == this.label &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
-          other.finalGrade == this.finalGrade &&
           other.createdAt == this.createdAt);
 }
 
 class TimeframesTableCompanion extends UpdateCompanion<TimeframesTableData> {
   final Value<int> id;
-  final Value<int> groupId;
+  final Value<int> schoolYearId;
   final Value<String> label;
   final Value<DateTime> startDate;
   final Value<DateTime> endDate;
-  final Value<String?> finalGrade;
   final Value<DateTime> createdAt;
   const TimeframesTableCompanion({
     this.id = const Value.absent(),
-    this.groupId = const Value.absent(),
+    this.schoolYearId = const Value.absent(),
     this.label = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
-    this.finalGrade = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   TimeframesTableCompanion.insert({
     this.id = const Value.absent(),
-    required int groupId,
+    required int schoolYearId,
     required String label,
     required DateTime startDate,
     required DateTime endDate,
-    this.finalGrade = const Value.absent(),
     this.createdAt = const Value.absent(),
-  }) : groupId = Value(groupId),
+  }) : schoolYearId = Value(schoolYearId),
        label = Value(label),
        startDate = Value(startDate),
        endDate = Value(endDate);
   static Insertable<TimeframesTableData> custom({
     Expression<int>? id,
-    Expression<int>? groupId,
+    Expression<int>? schoolYearId,
     Expression<String>? label,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
-    Expression<String>? finalGrade,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (groupId != null) 'group_id': groupId,
+      if (schoolYearId != null) 'school_year_id': schoolYearId,
       if (label != null) 'label': label,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
-      if (finalGrade != null) 'final_grade': finalGrade,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
 
   TimeframesTableCompanion copyWith({
     Value<int>? id,
-    Value<int>? groupId,
+    Value<int>? schoolYearId,
     Value<String>? label,
     Value<DateTime>? startDate,
     Value<DateTime>? endDate,
-    Value<String?>? finalGrade,
     Value<DateTime>? createdAt,
   }) {
     return TimeframesTableCompanion(
       id: id ?? this.id,
-      groupId: groupId ?? this.groupId,
+      schoolYearId: schoolYearId ?? this.schoolYearId,
       label: label ?? this.label,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
-      finalGrade: finalGrade ?? this.finalGrade,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -5856,8 +6269,8 @@ class TimeframesTableCompanion extends UpdateCompanion<TimeframesTableData> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
-    if (groupId.present) {
-      map['group_id'] = Variable<int>(groupId.value);
+    if (schoolYearId.present) {
+      map['school_year_id'] = Variable<int>(schoolYearId.value);
     }
     if (label.present) {
       map['label'] = Variable<String>(label.value);
@@ -5867,9 +6280,6 @@ class TimeframesTableCompanion extends UpdateCompanion<TimeframesTableData> {
     }
     if (endDate.present) {
       map['end_date'] = Variable<DateTime>(endDate.value);
-    }
-    if (finalGrade.present) {
-      map['final_grade'] = Variable<String>(finalGrade.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -5881,11 +6291,10 @@ class TimeframesTableCompanion extends UpdateCompanion<TimeframesTableData> {
   String toString() {
     return (StringBuffer('TimeframesTableCompanion(')
           ..write('id: $id, ')
-          ..write('groupId: $groupId, ')
+          ..write('schoolYearId: $schoolYearId, ')
           ..write('label: $label, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
-          ..write('finalGrade: $finalGrade, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -6215,6 +6624,9 @@ class TimeframeGradesTableCompanion
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $SchoolYearsTableTable schoolYearsTable = $SchoolYearsTableTable(
+    this,
+  );
   late final $GroupsTableTable groupsTable = $GroupsTableTable(this);
   late final $StudentsTableTable studentsTable = $StudentsTableTable(this);
   late final $AttendanceLogsTableTable attendanceLogsTable =
@@ -6243,6 +6655,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    schoolYearsTable,
     groupsTable,
     studentsTable,
     attendanceLogsTable,
@@ -6260,6 +6673,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'school_years_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('groups_table', kind: UpdateKind.update)],
+    ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'groups_table',
@@ -6364,7 +6784,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
-        'groups_table',
+        'school_years_table',
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('timeframes_table', kind: UpdateKind.delete)],
@@ -6386,6 +6806,439 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ]);
 }
 
+typedef $$SchoolYearsTableTableCreateCompanionBuilder =
+    SchoolYearsTableCompanion Function({
+      Value<int> id,
+      required String label,
+      required DateTime startDate,
+      required DateTime endDate,
+      Value<DateTime?> archivedAt,
+      Value<DateTime> createdAt,
+    });
+typedef $$SchoolYearsTableTableUpdateCompanionBuilder =
+    SchoolYearsTableCompanion Function({
+      Value<int> id,
+      Value<String> label,
+      Value<DateTime> startDate,
+      Value<DateTime> endDate,
+      Value<DateTime?> archivedAt,
+      Value<DateTime> createdAt,
+    });
+
+final class $$SchoolYearsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SchoolYearsTableTable,
+          SchoolYearsTableData
+        > {
+  $$SchoolYearsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$GroupsTableTable, List<GroupsTableData>>
+  _groupsTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.groupsTable,
+    aliasName: $_aliasNameGenerator(
+      db.schoolYearsTable.id,
+      db.groupsTable.schoolYearId,
+    ),
+  );
+
+  $$GroupsTableTableProcessedTableManager get groupsTableRefs {
+    final manager = $$GroupsTableTableTableManager(
+      $_db,
+      $_db.groupsTable,
+    ).filter((f) => f.schoolYearId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_groupsTableRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$TimeframesTableTable, List<TimeframesTableData>>
+  _timeframesTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.timeframesTable,
+    aliasName: $_aliasNameGenerator(
+      db.schoolYearsTable.id,
+      db.timeframesTable.schoolYearId,
+    ),
+  );
+
+  $$TimeframesTableTableProcessedTableManager get timeframesTableRefs {
+    final manager = $$TimeframesTableTableTableManager(
+      $_db,
+      $_db.timeframesTable,
+    ).filter((f) => f.schoolYearId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _timeframesTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$SchoolYearsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SchoolYearsTableTable> {
+  $$SchoolYearsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> groupsTableRefs(
+    Expression<bool> Function($$GroupsTableTableFilterComposer f) f,
+  ) {
+    final $$GroupsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.schoolYearId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> timeframesTableRefs(
+    Expression<bool> Function($$TimeframesTableTableFilterComposer f) f,
+  ) {
+    final $$TimeframesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.timeframesTable,
+      getReferencedColumn: (t) => t.schoolYearId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TimeframesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.timeframesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$SchoolYearsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SchoolYearsTableTable> {
+  $$SchoolYearsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SchoolYearsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SchoolYearsTableTable> {
+  $$SchoolYearsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> groupsTableRefs<T extends Object>(
+    Expression<T> Function($$GroupsTableTableAnnotationComposer a) f,
+  ) {
+    final $$GroupsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.schoolYearId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> timeframesTableRefs<T extends Object>(
+    Expression<T> Function($$TimeframesTableTableAnnotationComposer a) f,
+  ) {
+    final $$TimeframesTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.timeframesTable,
+      getReferencedColumn: (t) => t.schoolYearId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TimeframesTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.timeframesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$SchoolYearsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SchoolYearsTableTable,
+          SchoolYearsTableData,
+          $$SchoolYearsTableTableFilterComposer,
+          $$SchoolYearsTableTableOrderingComposer,
+          $$SchoolYearsTableTableAnnotationComposer,
+          $$SchoolYearsTableTableCreateCompanionBuilder,
+          $$SchoolYearsTableTableUpdateCompanionBuilder,
+          (SchoolYearsTableData, $$SchoolYearsTableTableReferences),
+          SchoolYearsTableData,
+          PrefetchHooks Function({
+            bool groupsTableRefs,
+            bool timeframesTableRefs,
+          })
+        > {
+  $$SchoolYearsTableTableTableManager(
+    _$AppDatabase db,
+    $SchoolYearsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SchoolYearsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SchoolYearsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SchoolYearsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<DateTime> startDate = const Value.absent(),
+                Value<DateTime> endDate = const Value.absent(),
+                Value<DateTime?> archivedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => SchoolYearsTableCompanion(
+                id: id,
+                label: label,
+                startDate: startDate,
+                endDate: endDate,
+                archivedAt: archivedAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String label,
+                required DateTime startDate,
+                required DateTime endDate,
+                Value<DateTime?> archivedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => SchoolYearsTableCompanion.insert(
+                id: id,
+                label: label,
+                startDate: startDate,
+                endDate: endDate,
+                archivedAt: archivedAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SchoolYearsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({groupsTableRefs = false, timeframesTableRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (groupsTableRefs) db.groupsTable,
+                    if (timeframesTableRefs) db.timeframesTable,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (groupsTableRefs)
+                        await $_getPrefetchedData<
+                          SchoolYearsTableData,
+                          $SchoolYearsTableTable,
+                          GroupsTableData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SchoolYearsTableTableReferences
+                              ._groupsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SchoolYearsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).groupsTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.schoolYearId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (timeframesTableRefs)
+                        await $_getPrefetchedData<
+                          SchoolYearsTableData,
+                          $SchoolYearsTableTable,
+                          TimeframesTableData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SchoolYearsTableTableReferences
+                              ._timeframesTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SchoolYearsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).timeframesTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.schoolYearId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$SchoolYearsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SchoolYearsTableTable,
+      SchoolYearsTableData,
+      $$SchoolYearsTableTableFilterComposer,
+      $$SchoolYearsTableTableOrderingComposer,
+      $$SchoolYearsTableTableAnnotationComposer,
+      $$SchoolYearsTableTableCreateCompanionBuilder,
+      $$SchoolYearsTableTableUpdateCompanionBuilder,
+      (SchoolYearsTableData, $$SchoolYearsTableTableReferences),
+      SchoolYearsTableData,
+      PrefetchHooks Function({bool groupsTableRefs, bool timeframesTableRefs})
+    >;
 typedef $$GroupsTableTableCreateCompanionBuilder =
     GroupsTableCompanion Function({
       Value<int> id,
@@ -6395,6 +7248,7 @@ typedef $$GroupsTableTableCreateCompanionBuilder =
       Value<String> gradeCategoriesJson,
       Value<DateTime> createdAt,
       Value<DateTime?> archivedAt,
+      Value<int?> schoolYearId,
     });
 typedef $$GroupsTableTableUpdateCompanionBuilder =
     GroupsTableCompanion Function({
@@ -6405,11 +7259,34 @@ typedef $$GroupsTableTableUpdateCompanionBuilder =
       Value<String> gradeCategoriesJson,
       Value<DateTime> createdAt,
       Value<DateTime?> archivedAt,
+      Value<int?> schoolYearId,
     });
 
 final class $$GroupsTableTableReferences
     extends BaseReferences<_$AppDatabase, $GroupsTableTable, GroupsTableData> {
   $$GroupsTableTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SchoolYearsTableTable _schoolYearIdTable(_$AppDatabase db) =>
+      db.schoolYearsTable.createAlias(
+        $_aliasNameGenerator(
+          db.groupsTable.schoolYearId,
+          db.schoolYearsTable.id,
+        ),
+      );
+
+  $$SchoolYearsTableTableProcessedTableManager? get schoolYearId {
+    final $_column = $_itemColumn<int>('school_year_id');
+    if ($_column == null) return null;
+    final manager = $$SchoolYearsTableTableTableManager(
+      $_db,
+      $_db.schoolYearsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_schoolYearIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 
   static MultiTypedResultKey<$StudentsTableTable, List<StudentsTableData>>
   _studentsTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
@@ -6512,29 +7389,6 @@ final class $$GroupsTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
-
-  static MultiTypedResultKey<$TimeframesTableTable, List<TimeframesTableData>>
-  _timeframesTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.timeframesTable,
-    aliasName: $_aliasNameGenerator(
-      db.groupsTable.id,
-      db.timeframesTable.groupId,
-    ),
-  );
-
-  $$TimeframesTableTableProcessedTableManager get timeframesTableRefs {
-    final manager = $$TimeframesTableTableTableManager(
-      $_db,
-      $_db.timeframesTable,
-    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(
-      _timeframesTableRefsTable($_db),
-    );
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
 }
 
 class $$GroupsTableTableFilterComposer
@@ -6580,6 +7434,29 @@ class $$GroupsTableTableFilterComposer
     column: $table.archivedAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$SchoolYearsTableTableFilterComposer get schoolYearId {
+    final $$SchoolYearsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.schoolYearId,
+      referencedTable: $db.schoolYearsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SchoolYearsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.schoolYearsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<bool> studentsTableRefs(
     Expression<bool> Function($$StudentsTableTableFilterComposer f) f,
@@ -6705,31 +7582,6 @@ class $$GroupsTableTableFilterComposer
     );
     return f(composer);
   }
-
-  Expression<bool> timeframesTableRefs(
-    Expression<bool> Function($$TimeframesTableTableFilterComposer f) f,
-  ) {
-    final $$TimeframesTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.timeframesTable,
-      getReferencedColumn: (t) => t.groupId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TimeframesTableTableFilterComposer(
-            $db: $db,
-            $table: $db.timeframesTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
 }
 
 class $$GroupsTableTableOrderingComposer
@@ -6775,6 +7627,29 @@ class $$GroupsTableTableOrderingComposer
     column: $table.archivedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$SchoolYearsTableTableOrderingComposer get schoolYearId {
+    final $$SchoolYearsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.schoolYearId,
+      referencedTable: $db.schoolYearsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SchoolYearsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.schoolYearsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$GroupsTableTableAnnotationComposer
@@ -6812,6 +7687,29 @@ class $$GroupsTableTableAnnotationComposer
     column: $table.archivedAt,
     builder: (column) => column,
   );
+
+  $$SchoolYearsTableTableAnnotationComposer get schoolYearId {
+    final $$SchoolYearsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.schoolYearId,
+      referencedTable: $db.schoolYearsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SchoolYearsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.schoolYearsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<T> studentsTableRefs<T extends Object>(
     Expression<T> Function($$StudentsTableTableAnnotationComposer a) f,
@@ -6938,31 +7836,6 @@ class $$GroupsTableTableAnnotationComposer
     );
     return f(composer);
   }
-
-  Expression<T> timeframesTableRefs<T extends Object>(
-    Expression<T> Function($$TimeframesTableTableAnnotationComposer a) f,
-  ) {
-    final $$TimeframesTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.timeframesTable,
-      getReferencedColumn: (t) => t.groupId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TimeframesTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.timeframesTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
 }
 
 class $$GroupsTableTableTableManager
@@ -6979,12 +7852,12 @@ class $$GroupsTableTableTableManager
           (GroupsTableData, $$GroupsTableTableReferences),
           GroupsTableData,
           PrefetchHooks Function({
+            bool schoolYearId,
             bool studentsTableRefs,
             bool listsTableRefs,
             bool notesTableRefs,
             bool seatingPlansTableRefs,
             bool sessionsTableRefs,
-            bool timeframesTableRefs,
           })
         > {
   $$GroupsTableTableTableManager(_$AppDatabase db, $GroupsTableTable table)
@@ -7007,6 +7880,7 @@ class $$GroupsTableTableTableManager
                 Value<String> gradeCategoriesJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
+                Value<int?> schoolYearId = const Value.absent(),
               }) => GroupsTableCompanion(
                 id: id,
                 name: name,
@@ -7015,6 +7889,7 @@ class $$GroupsTableTableTableManager
                 gradeCategoriesJson: gradeCategoriesJson,
                 createdAt: createdAt,
                 archivedAt: archivedAt,
+                schoolYearId: schoolYearId,
               ),
           createCompanionCallback:
               ({
@@ -7025,6 +7900,7 @@ class $$GroupsTableTableTableManager
                 Value<String> gradeCategoriesJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
+                Value<int?> schoolYearId = const Value.absent(),
               }) => GroupsTableCompanion.insert(
                 id: id,
                 name: name,
@@ -7033,6 +7909,7 @@ class $$GroupsTableTableTableManager
                 gradeCategoriesJson: gradeCategoriesJson,
                 createdAt: createdAt,
                 archivedAt: archivedAt,
+                schoolYearId: schoolYearId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -7044,12 +7921,12 @@ class $$GroupsTableTableTableManager
               .toList(),
           prefetchHooksCallback:
               ({
+                schoolYearId = false,
                 studentsTableRefs = false,
                 listsTableRefs = false,
                 notesTableRefs = false,
                 seatingPlansTableRefs = false,
                 sessionsTableRefs = false,
-                timeframesTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -7059,9 +7936,41 @@ class $$GroupsTableTableTableManager
                     if (notesTableRefs) db.notesTable,
                     if (seatingPlansTableRefs) db.seatingPlansTable,
                     if (sessionsTableRefs) db.sessionsTable,
-                    if (timeframesTableRefs) db.timeframesTable,
                   ],
-                  addJoins: null,
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (schoolYearId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.schoolYearId,
+                                    referencedTable:
+                                        $$GroupsTableTableReferences
+                                            ._schoolYearIdTable(db),
+                                    referencedColumn:
+                                        $$GroupsTableTableReferences
+                                            ._schoolYearIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (studentsTableRefs)
@@ -7169,27 +8078,6 @@ class $$GroupsTableTableTableManager
                               ),
                           typedResults: items,
                         ),
-                      if (timeframesTableRefs)
-                        await $_getPrefetchedData<
-                          GroupsTableData,
-                          $GroupsTableTable,
-                          TimeframesTableData
-                        >(
-                          currentTable: table,
-                          referencedTable: $$GroupsTableTableReferences
-                              ._timeframesTableRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$GroupsTableTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).timeframesTableRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.groupId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
                     ];
                   },
                 );
@@ -7211,12 +8099,12 @@ typedef $$GroupsTableTableProcessedTableManager =
       (GroupsTableData, $$GroupsTableTableReferences),
       GroupsTableData,
       PrefetchHooks Function({
+        bool schoolYearId,
         bool studentsTableRefs,
         bool listsTableRefs,
         bool notesTableRefs,
         bool seatingPlansTableRefs,
         bool sessionsTableRefs,
-        bool timeframesTableRefs,
       })
     >;
 typedef $$StudentsTableTableCreateCompanionBuilder =
@@ -12492,21 +13380,19 @@ typedef $$SessionsTableTableProcessedTableManager =
 typedef $$TimeframesTableTableCreateCompanionBuilder =
     TimeframesTableCompanion Function({
       Value<int> id,
-      required int groupId,
+      required int schoolYearId,
       required String label,
       required DateTime startDate,
       required DateTime endDate,
-      Value<String?> finalGrade,
       Value<DateTime> createdAt,
     });
 typedef $$TimeframesTableTableUpdateCompanionBuilder =
     TimeframesTableCompanion Function({
       Value<int> id,
-      Value<int> groupId,
+      Value<int> schoolYearId,
       Value<String> label,
       Value<DateTime> startDate,
       Value<DateTime> endDate,
-      Value<String?> finalGrade,
       Value<DateTime> createdAt,
     });
 
@@ -12523,19 +13409,22 @@ final class $$TimeframesTableTableReferences
     super.$_typedResult,
   );
 
-  static $GroupsTableTable _groupIdTable(_$AppDatabase db) =>
-      db.groupsTable.createAlias(
-        $_aliasNameGenerator(db.timeframesTable.groupId, db.groupsTable.id),
+  static $SchoolYearsTableTable _schoolYearIdTable(_$AppDatabase db) =>
+      db.schoolYearsTable.createAlias(
+        $_aliasNameGenerator(
+          db.timeframesTable.schoolYearId,
+          db.schoolYearsTable.id,
+        ),
       );
 
-  $$GroupsTableTableProcessedTableManager get groupId {
-    final $_column = $_itemColumn<int>('group_id')!;
+  $$SchoolYearsTableTableProcessedTableManager get schoolYearId {
+    final $_column = $_itemColumn<int>('school_year_id')!;
 
-    final manager = $$GroupsTableTableTableManager(
+    final manager = $$SchoolYearsTableTableTableManager(
       $_db,
-      $_db.groupsTable,
+      $_db.schoolYearsTable,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_schoolYearIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -12600,30 +13489,25 @@ class $$TimeframesTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get finalGrade => $composableBuilder(
-    column: $table.finalGrade,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
 
-  $$GroupsTableTableFilterComposer get groupId {
-    final $$GroupsTableTableFilterComposer composer = $composerBuilder(
+  $$SchoolYearsTableTableFilterComposer get schoolYearId {
+    final $$SchoolYearsTableTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.groupId,
-      referencedTable: $db.groupsTable,
+      getCurrentColumn: (t) => t.schoolYearId,
+      referencedTable: $db.schoolYearsTable,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$GroupsTableTableFilterComposer(
+          }) => $$SchoolYearsTableTableFilterComposer(
             $db: $db,
-            $table: $db.groupsTable,
+            $table: $db.schoolYearsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -12688,30 +13572,25 @@ class $$TimeframesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get finalGrade => $composableBuilder(
-    column: $table.finalGrade,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
 
-  $$GroupsTableTableOrderingComposer get groupId {
-    final $$GroupsTableTableOrderingComposer composer = $composerBuilder(
+  $$SchoolYearsTableTableOrderingComposer get schoolYearId {
+    final $$SchoolYearsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.groupId,
-      referencedTable: $db.groupsTable,
+      getCurrentColumn: (t) => t.schoolYearId,
+      referencedTable: $db.schoolYearsTable,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$GroupsTableTableOrderingComposer(
+          }) => $$SchoolYearsTableTableOrderingComposer(
             $db: $db,
-            $table: $db.groupsTable,
+            $table: $db.schoolYearsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -12743,28 +13622,23 @@ class $$TimeframesTableTableAnnotationComposer
   GeneratedColumn<DateTime> get endDate =>
       $composableBuilder(column: $table.endDate, builder: (column) => column);
 
-  GeneratedColumn<String> get finalGrade => $composableBuilder(
-    column: $table.finalGrade,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  $$GroupsTableTableAnnotationComposer get groupId {
-    final $$GroupsTableTableAnnotationComposer composer = $composerBuilder(
+  $$SchoolYearsTableTableAnnotationComposer get schoolYearId {
+    final $$SchoolYearsTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.groupId,
-      referencedTable: $db.groupsTable,
+      getCurrentColumn: (t) => t.schoolYearId,
+      referencedTable: $db.schoolYearsTable,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$GroupsTableTableAnnotationComposer(
+          }) => $$SchoolYearsTableTableAnnotationComposer(
             $db: $db,
-            $table: $db.groupsTable,
+            $table: $db.schoolYearsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -12814,7 +13688,10 @@ class $$TimeframesTableTableTableManager
           $$TimeframesTableTableUpdateCompanionBuilder,
           (TimeframesTableData, $$TimeframesTableTableReferences),
           TimeframesTableData,
-          PrefetchHooks Function({bool groupId, bool timeframeGradesTableRefs})
+          PrefetchHooks Function({
+            bool schoolYearId,
+            bool timeframeGradesTableRefs,
+          })
         > {
   $$TimeframesTableTableTableManager(
     _$AppDatabase db,
@@ -12832,37 +13709,33 @@ class $$TimeframesTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<int> groupId = const Value.absent(),
+                Value<int> schoolYearId = const Value.absent(),
                 Value<String> label = const Value.absent(),
                 Value<DateTime> startDate = const Value.absent(),
                 Value<DateTime> endDate = const Value.absent(),
-                Value<String?> finalGrade = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => TimeframesTableCompanion(
                 id: id,
-                groupId: groupId,
+                schoolYearId: schoolYearId,
                 label: label,
                 startDate: startDate,
                 endDate: endDate,
-                finalGrade: finalGrade,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required int groupId,
+                required int schoolYearId,
                 required String label,
                 required DateTime startDate,
                 required DateTime endDate,
-                Value<String?> finalGrade = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => TimeframesTableCompanion.insert(
                 id: id,
-                groupId: groupId,
+                schoolYearId: schoolYearId,
                 label: label,
                 startDate: startDate,
                 endDate: endDate,
-                finalGrade: finalGrade,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -12874,7 +13747,7 @@ class $$TimeframesTableTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({groupId = false, timeframeGradesTableRefs = false}) {
+              ({schoolYearId = false, timeframeGradesTableRefs = false}) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
@@ -12896,17 +13769,17 @@ class $$TimeframesTableTableTableManager
                           dynamic
                         >
                       >(state) {
-                        if (groupId) {
+                        if (schoolYearId) {
                           state =
                               state.withJoin(
                                     currentTable: table,
-                                    currentColumn: table.groupId,
+                                    currentColumn: table.schoolYearId,
                                     referencedTable:
                                         $$TimeframesTableTableReferences
-                                            ._groupIdTable(db),
+                                            ._schoolYearIdTable(db),
                                     referencedColumn:
                                         $$TimeframesTableTableReferences
-                                            ._groupIdTable(db)
+                                            ._schoolYearIdTable(db)
                                             .id,
                                   )
                                   as T;
@@ -12957,7 +13830,7 @@ typedef $$TimeframesTableTableProcessedTableManager =
       $$TimeframesTableTableUpdateCompanionBuilder,
       (TimeframesTableData, $$TimeframesTableTableReferences),
       TimeframesTableData,
-      PrefetchHooks Function({bool groupId, bool timeframeGradesTableRefs})
+      PrefetchHooks Function({bool schoolYearId, bool timeframeGradesTableRefs})
     >;
 typedef $$TimeframeGradesTableTableCreateCompanionBuilder =
     TimeframeGradesTableCompanion Function({
@@ -13372,6 +14245,8 @@ typedef $$TimeframeGradesTableTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$SchoolYearsTableTableTableManager get schoolYearsTable =>
+      $$SchoolYearsTableTableTableManager(_db, _db.schoolYearsTable);
   $$GroupsTableTableTableManager get groupsTable =>
       $$GroupsTableTableTableManager(_db, _db.groupsTable);
   $$StudentsTableTableTableManager get studentsTable =>
