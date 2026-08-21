@@ -41,12 +41,14 @@ class GroupRepository {
     String colorHex = '#FF1E88E5',
     required List<GradeScaleEntry> gradeScale,
     List<GradeCategory> gradeCategories = defaultGradeCategories,
+    int? schoolYearId,
   }) {
     return _database
         .into(_database.groupsTable)
         .insert(
           GroupsTableCompanion.insert(
             name: name.trim(),
+            schoolYearId: Value(schoolYearId),
             colorHex: Value(normalizeColorHex(colorHex, fallback: '#FF1E88E5')),
             gradeScaleJson: Value(encodeGradeScaleEntries(gradeScale)),
             gradeCategoriesJson: Value(encodeGradeCategories(gradeCategories)),
@@ -60,12 +62,14 @@ class GroupRepository {
     String? colorHex,
     required List<GradeScaleEntry> gradeScale,
     required List<GradeCategory> gradeCategories,
+    Value<int?> schoolYearId = const Value.absent(),
   }) {
     return (_database.update(
       _database.groupsTable,
     )..where((table) => table.id.equals(id))).write(
       GroupsTableCompanion(
         name: Value(name.trim()),
+        schoolYearId: schoolYearId,
         colorHex: colorHex == null
             ? const Value.absent()
             : Value(normalizeColorHex(colorHex, fallback: '#FF1E88E5')),
@@ -115,6 +119,7 @@ class GroupRepository {
     String? colorHex,
     List<GradeScaleEntry>? gradeScale,
     List<GradeCategory>? gradeCategories,
+    Value<int?> schoolYearId = const Value.absent(),
   }) {
     return _database.transaction(() async {
       final sourceGroup = await (_database.select(
@@ -132,6 +137,9 @@ class GroupRepository {
         gradeCategories:
             gradeCategories ??
             parseGradeCategories(sourceGroup.gradeCategoriesJson),
+        schoolYearId: schoolYearId.present
+            ? schoolYearId.value
+            : sourceGroup.schoolYearId,
       );
 
       for (final student in students) {

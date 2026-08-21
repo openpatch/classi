@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../shared/utils/formatting.dart';
+import '../school_years/school_year_repository.dart';
 import 'timeframe_repository.dart';
 
 class TimeframeEditorResult {
@@ -18,7 +19,7 @@ class TimeframeEditorResult {
 
 Future<TimeframeEditorResult?> showTimeframeEditorSheet({
   required BuildContext context,
-  required int groupId,
+  required SchoolYear schoolYear,
   required TimeframeRepository timeframeRepository,
   String? initialLabel,
   DateTime? initialStartDate,
@@ -31,7 +32,7 @@ Future<TimeframeEditorResult?> showTimeframeEditorSheet({
     useSafeArea: true,
     showDragHandle: true,
     builder: (context) => _TimeframeEditorSheet(
-      groupId: groupId,
+      schoolYear: schoolYear,
       timeframeRepository: timeframeRepository,
       initialLabel: initialLabel,
       initialStartDate: initialStartDate,
@@ -43,7 +44,7 @@ Future<TimeframeEditorResult?> showTimeframeEditorSheet({
 
 class _TimeframeEditorSheet extends StatefulWidget {
   const _TimeframeEditorSheet({
-    required this.groupId,
+    required this.schoolYear,
     required this.timeframeRepository,
     this.initialLabel,
     this.initialStartDate,
@@ -51,7 +52,7 @@ class _TimeframeEditorSheet extends StatefulWidget {
     this.timeframeId,
   });
 
-  final int groupId;
+  final SchoolYear schoolYear;
   final TimeframeRepository timeframeRepository;
   final String? initialLabel;
   final DateTime? initialStartDate;
@@ -71,14 +72,16 @@ class _TimeframeEditorSheetState extends State<_TimeframeEditorSheet> {
   @override
   void initState() {
     super.initState();
-    _labelController = TextEditingController(
-      text: widget.initialLabel ?? '',
-    );
-    _startDate = DateUtils.dateOnly(
-      widget.initialStartDate ?? DateTime.now(),
-    );
+    _labelController = TextEditingController(text: widget.initialLabel ?? '');
+    final year = widget.schoolYear;
+    final today = DateTime.now();
+    final defaultStart =
+        today.isAfter(year.startDate) && today.isBefore(year.endDate)
+        ? today
+        : year.startDate;
+    _startDate = DateUtils.dateOnly(widget.initialStartDate ?? defaultStart);
     _endDate = DateUtils.dateOnly(
-      widget.initialEndDate ?? DateTime.now().add(const Duration(days: 30)),
+      widget.initialEndDate ?? defaultStart.add(const Duration(days: 30)),
     );
   }
 
@@ -106,13 +109,21 @@ class _TimeframeEditorSheetState extends State<_TimeframeEditorSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.timeframeId == null ? 'add_timeframe'.tr() : 'edit_timeframe'.tr(),
+                widget.timeframeId == null
+                    ? 'add_timeframe'.tr()
+                    : 'edit_timeframe'.tr(),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _labelController,
-                decoration: InputDecoration(labelText: 'timeframe_label'.tr()),
+                decoration: InputDecoration(
+                  labelText: 'timeframe_label'.tr(),
+                  helperText: 'timeframe_applies_to_school_year'.tr(
+                    namedArgs: {'year': widget.schoolYear.label},
+                  ),
+                  helperMaxLines: 2,
+                ),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Please enter a label'.tr()
                     : null,
@@ -122,7 +133,9 @@ class _TimeframeEditorSheetState extends State<_TimeframeEditorSheet> {
                 contentPadding: EdgeInsets.zero,
                 title: Text('start_date'.tr()),
                 subtitle: Text(
-                  MaterialLocalizations.of(context).formatMediumDate(_startDate),
+                  MaterialLocalizations.of(
+                    context,
+                  ).formatMediumDate(_startDate),
                 ),
                 trailing: IconButton(
                   onPressed: _pickStartDate,
@@ -147,8 +160,8 @@ class _TimeframeEditorSheetState extends State<_TimeframeEditorSheet> {
                   child: Text(
                     'end_date_must_be_after_start_date'.tr(),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -160,10 +173,7 @@ class _TimeframeEditorSheetState extends State<_TimeframeEditorSheet> {
                     child: Text('cancel'.tr()),
                   ),
                   const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: _save,
-                    child: Text('save'.tr()),
-                  ),
+                  FilledButton(onPressed: _save, child: Text('save'.tr())),
                 ],
               ),
             ],
@@ -173,12 +183,28 @@ class _TimeframeEditorSheetState extends State<_TimeframeEditorSheet> {
     );
   }
 
+  DateTime get _firstSelectableDate {
+    var first = DateUtils.dateOnly(widget.schoolYear.startDate);
+    for (final date in [_startDate, _endDate]) {
+      if (date.isBefore(first)) first = date;
+    }
+    return first;
+  }
+
+  DateTime get _lastSelectableDate {
+    var last = DateUtils.dateOnly(widget.schoolYear.endDate);
+    for (final date in [_startDate, _endDate]) {
+      if (date.isAfter(last)) last = date;
+    }
+    return last;
+  }
+
   Future<void> _pickStartDate() async {
     final selected = await showDatePicker(
       context: context,
       initialDate: _startDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+      firstDate: _firstSelectableDate,
+      lastDate: _lastSelectableDate,
     );
     if (selected == null) {
       return;
@@ -191,8 +217,8 @@ class _TimeframeEditorSheetState extends State<_TimeframeEditorSheet> {
     final selected = await showDatePicker(
       context: context,
       initialDate: _endDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+      firstDate: _firstSelectableDate,
+      lastDate: _lastSelectableDate,
     );
     if (selected == null) {
       return;
@@ -211,7 +237,7 @@ class _TimeframeEditorSheetState extends State<_TimeframeEditorSheet> {
     }
 
     final overlaps = await widget.timeframeRepository.getOverlappingTimeframes(
-      groupId: widget.groupId,
+      schoolYearId: widget.schoolYear.id,
       startDate: _startDate,
       endDate: _endDate,
       excludeId: widget.timeframeId,
@@ -249,12 +275,14 @@ class _TimeframeEditorSheetState extends State<_TimeframeEditorSheet> {
               children: [
                 Text('this_timeframe_overlaps_with'.tr()),
                 const SizedBox(height: 12),
-                ...overlaps.map((t) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        '• ${t.label}: ${formatShortDate(t.startDate)} - ${formatShortDate(t.endDate)}',
-                      ),
-                    )),
+                ...overlaps.map(
+                  (t) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '• ${t.label}: ${formatShortDate(t.startDate)} - ${formatShortDate(t.endDate)}',
+                    ),
+                  ),
+                ),
               ],
             ),
             actions: [

@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/providers/app_providers.dart';
@@ -84,6 +85,17 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             const _SectionCard(title: '', child: _GradeSystemsSection()),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'school_years'.tr(),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('manage_school_years'.tr()),
+                subtitle: Text('school_years_hint'.tr()),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/settings/school-years'),
+              ),
+            ),
             const SizedBox(height: 16),
             _SectionCard(
               title: 'change_passphrase'.tr(),
@@ -1060,9 +1072,7 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
           if (_backupsLoadFailed)
             Text(
               'webdav_connection_failed'.tr(),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-              ),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             )
           else if (_backups == null || _loadingBackups && _backups!.isEmpty)
             const SizedBox.shrink()
@@ -1199,7 +1209,10 @@ class _ConflictBanner extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.warning_amber_outlined, color: colorScheme.onErrorContainer),
+            Icon(
+              Icons.warning_amber_outlined,
+              color: colorScheme.onErrorContainer,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

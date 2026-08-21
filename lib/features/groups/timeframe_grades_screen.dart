@@ -26,13 +26,20 @@ import 'group_detail_screen.dart'
 import 'timeframe_editor_sheet.dart';
 
 class TimeframeGradesScreen extends ConsumerWidget {
-  const TimeframeGradesScreen({required this.timeframe, super.key});
+  const TimeframeGradesScreen({
+    required this.timeframe,
+    required this.groupId,
+    super.key,
+  });
 
   final Timeframe timeframe;
 
+  /// Timeframes are shared by every group in a school year, so the group whose
+  /// grades are shown has to be passed in.
+  final int groupId;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupId = timeframe.groupId;
     final params = (
       groupId: groupId,
       startDate: timeframe.startDate,
@@ -142,9 +149,16 @@ class TimeframeGradesScreen extends ConsumerWidget {
     WidgetRef ref,
     Timeframe timeframe,
   ) async {
+    final schoolYear = await ref
+        .read(schoolYearRepositoryProvider)
+        .getSchoolYear(timeframe.schoolYearId);
+    if (schoolYear == null || !context.mounted) {
+      return;
+    }
+
     final result = await showTimeframeEditorSheet(
       context: context,
-      groupId: timeframe.groupId,
+      schoolYear: schoolYear,
       timeframeRepository: ref.read(timeframeRepositoryProvider),
       initialLabel: timeframe.label,
       initialStartDate: timeframe.startDate,

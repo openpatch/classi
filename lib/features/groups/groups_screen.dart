@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 
+import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -101,9 +102,18 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen>
       return;
     }
 
+    final schoolYearRepository = ref.read(schoolYearRepositoryProvider);
+    final schoolYears = await schoolYearRepository.allSchoolYears();
+    final currentSchoolYear = await schoolYearRepository.currentSchoolYear();
+    if (!mounted) {
+      return;
+    }
+
     final result = await showGroupFormSheet(
       context: context,
       gradeSystems: gradeSystems,
+      schoolYears: schoolYears,
+      initialSchoolYearId: currentSchoolYear?.id,
     );
     if (result == null) {
       return;
@@ -117,6 +127,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen>
             colorHex: result.colorHex,
             gradeScale: result.gradeScale,
             gradeCategories: result.gradeCategories,
+            schoolYearId: result.schoolYearId,
           );
     } catch (e, st) {
       developer.log(
@@ -150,78 +161,78 @@ class _GroupsList extends ConsumerWidget {
 
     return ContentConstraints(
       child: groupsValue.when(
-      data: (groups) {
-        if (groups.isEmpty) {
-          return EmptyState(
-            icon: archived ? Icons.archive_outlined : Icons.groups_outlined,
-            title: emptyKey.tr(),
-          );
-        }
-        final studentCounts = studentCountsValue.value ?? const <int, int>{};
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 400,
-            mainAxisExtent: 76,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: groups.length,
-          itemBuilder: (context, index) {
-            final group = groups[index];
-            final groupColor = colorFromHex(group.colorHex);
-            final studentCount = studentCounts[group.id] ?? 0;
-            return Card(
-              child: ListTile(
-                onTap: () => context.go('/groups/${group.id}'),
-                leading: CircleAvatar(
-                  radius: 12,
-                  backgroundColor: groupColor.withValues(alpha: 0.18),
-                  child: CircleAvatar(radius: 5, backgroundColor: groupColor),
-                ),
-                title: Text('${group.name} ($studentCount)'),
-                trailing: PopupMenuButton<_GroupAction>(
-                  onSelected: (action) => _handleAction(
-                    context: context,
-                    ref: ref,
-                    group: group,
-                    action: action,
-                  ),
-                  itemBuilder: (context) => [
-                    if (!archived)
-                      PopupMenuItem(
-                        value: _GroupAction.edit,
-                        child: Text('edit'.tr()),
-                      ),
-                    if (!archived)
-                      PopupMenuItem(
-                        value: _GroupAction.clone,
-                        child: Text('clone_group'.tr()),
-                      ),
-                    PopupMenuItem(
-                      value: archived
-                          ? _GroupAction.unarchive
-                          : _GroupAction.archive,
-                      child: Text(
-                        archived
-                            ? 'unarchive_group'.tr()
-                            : 'archive_group'.tr(),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: _GroupAction.delete,
-                      child: Text('delete'.tr()),
-                    ),
-                  ],
-                ),
-              ),
+        data: (groups) {
+          if (groups.isEmpty) {
+            return EmptyState(
+              icon: archived ? Icons.archive_outlined : Icons.groups_outlined,
+              title: emptyKey.tr(),
             );
-          },
-        );
-      },
-      error: (error, _) => const AppErrorState(),
-      loading: () => const Center(child: CircularProgressIndicator()),
-    ),
+          }
+          final studentCounts = studentCountsValue.value ?? const <int, int>{};
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 400,
+              mainAxisExtent: 76,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: groups.length,
+            itemBuilder: (context, index) {
+              final group = groups[index];
+              final groupColor = colorFromHex(group.colorHex);
+              final studentCount = studentCounts[group.id] ?? 0;
+              return Card(
+                child: ListTile(
+                  onTap: () => context.go('/groups/${group.id}'),
+                  leading: CircleAvatar(
+                    radius: 12,
+                    backgroundColor: groupColor.withValues(alpha: 0.18),
+                    child: CircleAvatar(radius: 5, backgroundColor: groupColor),
+                  ),
+                  title: Text('${group.name} ($studentCount)'),
+                  trailing: PopupMenuButton<_GroupAction>(
+                    onSelected: (action) => _handleAction(
+                      context: context,
+                      ref: ref,
+                      group: group,
+                      action: action,
+                    ),
+                    itemBuilder: (context) => [
+                      if (!archived)
+                        PopupMenuItem(
+                          value: _GroupAction.edit,
+                          child: Text('edit'.tr()),
+                        ),
+                      if (!archived)
+                        PopupMenuItem(
+                          value: _GroupAction.clone,
+                          child: Text('clone_group'.tr()),
+                        ),
+                      PopupMenuItem(
+                        value: archived
+                            ? _GroupAction.unarchive
+                            : _GroupAction.archive,
+                        child: Text(
+                          archived
+                              ? 'unarchive_group'.tr()
+                              : 'archive_group'.tr(),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: _GroupAction.delete,
+                        child: Text('delete'.tr()),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+        error: (error, _) => const AppErrorState(),
+        loading: () => const Center(child: CircularProgressIndicator()),
+      ),
     );
   }
 
@@ -239,9 +250,17 @@ class _GroupsList extends ConsumerWidget {
         if (systemsForEdit.isEmpty) {
           return;
         }
+        final schoolYearsForEdit = await ref
+            .read(schoolYearRepositoryProvider)
+            .allSchoolYears();
+        if (!context.mounted) {
+          return;
+        }
         final result = await showGroupFormSheet(
           context: context,
           gradeSystems: systemsForEdit,
+          schoolYears: schoolYearsForEdit,
+          initialSchoolYearId: group.schoolYearId,
           initialName: group.name,
           initialGroupColorHex: group.colorHex,
           initialGradeScale: parseGradeScaleEntries(group.gradeScaleJson),
@@ -258,6 +277,7 @@ class _GroupsList extends ConsumerWidget {
               colorHex: result.colorHex,
               gradeScale: result.gradeScale,
               gradeCategories: result.gradeCategories,
+              schoolYearId: Value(result.schoolYearId),
             );
           } catch (e, st) {
             developer.log(
@@ -278,9 +298,17 @@ class _GroupsList extends ConsumerWidget {
         if (systemsForClone.isEmpty) {
           return;
         }
+        final schoolYearsForClone = await ref
+            .read(schoolYearRepositoryProvider)
+            .allSchoolYears();
+        if (!context.mounted) {
+          return;
+        }
         final result = await showGroupFormSheet(
           context: context,
           gradeSystems: systemsForClone,
+          schoolYears: schoolYearsForClone,
+          initialSchoolYearId: group.schoolYearId,
           initialName: '${group.name} Copy',
           initialGroupColorHex: group.colorHex,
           initialGradeScale: parseGradeScaleEntries(group.gradeScaleJson),
@@ -297,6 +325,7 @@ class _GroupsList extends ConsumerWidget {
               colorHex: result.colorHex,
               gradeScale: result.gradeScale,
               gradeCategories: result.gradeCategories,
+              schoolYearId: Value(result.schoolYearId),
             );
           } catch (e, st) {
             developer.log(

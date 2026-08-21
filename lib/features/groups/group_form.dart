@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../school_years/school_year_repository.dart';
 import '../settings/grade_system_controller.dart';
 import '../../shared/utils/grade_categories.dart';
 import '../../shared/utils/formatting.dart';
@@ -10,11 +11,14 @@ typedef GroupFormResult = ({
   String colorHex,
   List<GradeScaleEntry> gradeScale,
   List<GradeCategory> gradeCategories,
+  int? schoolYearId,
 });
 
 Future<GroupFormResult?> showGroupFormSheet({
   required BuildContext context,
   required List<GradeSystemDefinition> gradeSystems,
+  required List<SchoolYear> schoolYears,
+  int? initialSchoolYearId,
   String? initialName,
   String? initialGroupColorHex,
   List<GradeScaleEntry>? initialGradeScale,
@@ -28,6 +32,8 @@ Future<GroupFormResult?> showGroupFormSheet({
     showDragHandle: true,
     builder: (context) => _GroupFormSheet(
       gradeSystems: gradeSystems,
+      schoolYears: schoolYears,
+      initialSchoolYearId: initialSchoolYearId,
       initialName: initialName,
       initialGroupColorHex: initialGroupColorHex,
       initialGradeScale: initialGradeScale,
@@ -40,6 +46,8 @@ Future<GroupFormResult?> showGroupFormSheet({
 class _GroupFormSheet extends StatefulWidget {
   const _GroupFormSheet({
     required this.gradeSystems,
+    required this.schoolYears,
+    this.initialSchoolYearId,
     this.initialName,
     this.initialGroupColorHex,
     this.initialGradeScale,
@@ -48,6 +56,8 @@ class _GroupFormSheet extends StatefulWidget {
   });
 
   final List<GradeSystemDefinition> gradeSystems;
+  final List<SchoolYear> schoolYears;
+  final int? initialSchoolYearId;
   final String? initialName;
   final String? initialGroupColorHex;
   final List<GradeScaleEntry>? initialGradeScale;
@@ -64,6 +74,7 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
   late final List<_EditableGradeCategory> _categories;
   late String _selectedGradeSystemId;
   late String _selectedGroupColorHex;
+  int? _selectedSchoolYearId;
 
   @override
   void initState() {
@@ -85,6 +96,10 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
       widget.initialGroupColorHex,
       fallback: groupColorPalette.first,
     );
+    _selectedSchoolYearId =
+        widget.schoolYears.any((year) => year.id == widget.initialSchoolYearId)
+        ? widget.initialSchoolYearId
+        : null;
   }
 
   @override
@@ -150,6 +165,35 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
                   }
                   setState(() => _selectedGradeSystemId = value);
                 },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                initialValue: _selectedSchoolYearId,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: 'school_year'.tr(),
+                  helperText: 'school_year_hint'.tr(),
+                  helperMaxLines: 2,
+                ),
+                items: [
+                  DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('no_school_year'.tr()),
+                  ),
+                  for (final year in widget.schoolYears)
+                    DropdownMenuItem<int?>(
+                      value: year.id,
+                      child: Text(
+                        year.archivedAt == null
+                            ? year.label
+                            : '${year.label} (${'archived'.tr()})',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (value) =>
+                    setState(() => _selectedSchoolYearId = value),
               ),
               const SizedBox(height: 16),
               Align(
@@ -278,6 +322,7 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
       colorHex: _selectedGroupColorHex,
       gradeScale: _selectedGradeSystem.entries,
       gradeCategories: _parseCategories(),
+      schoolYearId: _selectedSchoolYearId,
     ));
   }
 

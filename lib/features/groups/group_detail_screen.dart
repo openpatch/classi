@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,7 +87,8 @@ final groupListsProvider = StreamProvider.autoDispose
       (ref, groupId) => ref.watch(listRepositoryProvider).watchLists(groupId),
     );
 
-final archivedGroupListsProvider = StreamProvider.autoDispose .family<List<Checklist>, int>(
+final archivedGroupListsProvider = StreamProvider.autoDispose
+    .family<List<Checklist>, int>(
       (ref, groupId) =>
           ref.watch(listRepositoryProvider).watchArchivedLists(groupId),
     );
@@ -104,23 +106,12 @@ final groupSessionSummariesProvider = StreamProvider.autoDispose
           .watchGroupSessionSummaries(groupId),
     );
 
-final groupTimeframesProvider = StreamProvider.autoDispose
-    .family<List<Timeframe>, int>(
-      (ref, groupId) => ref
-          .watch(timeframeRepositoryProvider)
-          .watchTimeframes(groupId),
-    );
-
 // Providers for timeframe-specific student data
 final studentGradesInTimeframeProvider = StreamProvider.autoDispose
     .family<List<GradeEntry>, (int, DateTime, DateTime)>(
       (ref, params) => ref
           .watch(gradeRepositoryProvider)
-          .watchGradesForStudentInDateRange(
-            params.$1,
-            params.$2,
-            params.$3,
-          ),
+          .watchGradesForStudentInDateRange(params.$1, params.$2, params.$3),
     );
 
 final studentAttendanceInTimeframeProvider = StreamProvider.autoDispose
@@ -138,22 +129,14 @@ final studentMaterialInTimeframeProvider = StreamProvider.autoDispose
     .family<List<MaterialLog>, (int, DateTime, DateTime)>(
       (ref, params) => ref
           .watch(materialRepositoryProvider)
-          .watchMaterialForStudentInDateRange(
-            params.$1,
-            params.$2,
-            params.$3,
-          ),
+          .watchMaterialForStudentInDateRange(params.$1, params.$2, params.$3),
     );
 
 final studentHomeworkInTimeframeProvider = StreamProvider.autoDispose
     .family<List<HomeworkLog>, (int, DateTime, DateTime)>(
       (ref, params) => ref
           .watch(homeworkRepositoryProvider)
-          .watchHomeworkForStudentInDateRange(
-            params.$1,
-            params.$2,
-            params.$3,
-          ),
+          .watchHomeworkForStudentInDateRange(params.$1, params.$2, params.$3),
     );
 
 String _lessonModeLocation({
@@ -379,6 +362,7 @@ class GroupDetailScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.large),
                   _TimeframesCard(
                     groupId: group.id,
+                    schoolYearId: group.schoolYearId,
                     archived: archived,
                     gradeScaleEntries: gradeScaleEntries,
                   ),
@@ -397,8 +381,7 @@ class GroupDetailScreen extends ConsumerWidget {
                     archived: archived,
                     onAddSession: archived
                         ? null
-                        : () =>
-                              _addSession(context, ref, group.id, categories),
+                        : () => _addSession(context, ref, group.id, categories),
                     onEditSession: archived
                         ? null
                         : (summary) =>
@@ -877,21 +860,21 @@ class GroupDetailScreen extends ConsumerWidget {
     try {
       final result = switch (exportType) {
         _ExportType.grades => await service.exportGradesCsv(
-            groupId: groupId,
-            groupName: groupName,
-          ),
+          groupId: groupId,
+          groupName: groupName,
+        ),
         _ExportType.attendance => await service.exportAttendanceCsv(
-            groupId: groupId,
-            groupName: groupName,
-          ),
+          groupId: groupId,
+          groupName: groupName,
+        ),
         _ExportType.homeworkMaterial => await service.exportHomeworkMaterialCsv(
-            groupId: groupId,
-            groupName: groupName,
-          ),
+          groupId: groupId,
+          groupName: groupName,
+        ),
         _ExportType.summary => await service.exportSummaryCsv(
-            groupId: groupId,
-            groupName: groupName,
-          ),
+          groupId: groupId,
+          groupName: groupName,
+        ),
       };
       if (!context.mounted) return;
       final session = ref.read(appSessionProvider);
@@ -914,9 +897,7 @@ class GroupDetailScreen extends ConsumerWidget {
         },
       );
       if (saved && context.mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('export_success'.tr())),
-        );
+        messenger.showSnackBar(SnackBar(content: Text('export_success'.tr())));
       }
     } catch (e, st) {
       developer.log(
@@ -926,9 +907,7 @@ class GroupDetailScreen extends ConsumerWidget {
         stackTrace: st,
       );
       if (context.mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('export_failed'.tr())),
-        );
+        messenger.showSnackBar(SnackBar(content: Text('export_failed'.tr())));
       }
     }
   }
@@ -943,9 +922,18 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
 
+    final schoolYears = await ref
+        .read(schoolYearRepositoryProvider)
+        .allSchoolYears();
+    if (!context.mounted) {
+      return;
+    }
+
     final result = await showGroupFormSheet(
       context: context,
       gradeSystems: gradeSystems,
+      schoolYears: schoolYears,
+      initialSchoolYearId: group.schoolYearId,
       initialName: group.name,
       initialGroupColorHex: group.colorHex,
       initialGradeScale: parseGradeScaleEntries(group.gradeScaleJson),
@@ -965,6 +953,7 @@ class GroupDetailScreen extends ConsumerWidget {
             colorHex: result.colorHex,
             gradeScale: result.gradeScale,
             gradeCategories: result.gradeCategories,
+            schoolYearId: Value(result.schoolYearId),
           );
     } catch (e, st) {
       developer.log(
@@ -1084,17 +1073,23 @@ class GroupDetailScreen extends ConsumerWidget {
 class _TimeframesCard extends ConsumerWidget {
   const _TimeframesCard({
     required this.groupId,
+    required this.schoolYearId,
     required this.archived,
     required this.gradeScaleEntries,
   });
 
   final int groupId;
+  final int? schoolYearId;
   final bool archived;
   final List<GradeScaleEntry> gradeScaleEntries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final timeframesValue = ref.watch(groupTimeframesProvider(groupId));
+    final schoolYearId = this.schoolYearId;
+    final schoolYear = schoolYearId == null
+        ? null
+        : ref.watch(schoolYearProvider(schoolYearId)).asData?.value;
 
     return Card(
       child: Padding(
@@ -1105,46 +1100,80 @@ class _TimeframesCard extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'timeframes'.tr(),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                if (!archived)
-                  FilledButton.tonal(
-                    onPressed: () => _addTimeframe(context, ref, groupId),
-                    child: Text('add_timeframe'.tr()),
-                  ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.medium),
-            timeframesValue.when(
-              data: (timeframes) => timeframes.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.large,
-                        ),
-                        child: Text(
-                          'no_timeframes'.tr(),
-                          style: Theme.of(context).textTheme.bodyMedium
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'timeframes'.tr(),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      if (schoolYear != null)
+                        Text(
+                          'school_year_name'.tr(
+                            namedArgs: {'year': schoolYear.label},
+                          ),
+                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
                                 color: Theme.of(
                                   context,
                                 ).colorScheme.onSurfaceVariant,
                               ),
                         ),
-                      ),
-                    )
-                  : _TimeframesTable(
-                      timeframes: timeframes,
-                      allTimeframes: timeframes,
-                      gradeScaleEntries: gradeScaleEntries,
-                      archived: archived,
-                    ),
-              error: (e, s) => const AppErrorText(),
-              loading: () => const Center(child: CircularProgressIndicator()),
+                    ],
+                  ),
+                ),
+                if (!archived && schoolYear != null)
+                  FilledButton.tonal(
+                    onPressed: () => _addTimeframe(context, ref, schoolYear),
+                    child: Text('add_timeframe'.tr()),
+                  ),
+              ],
             ),
+            const SizedBox(height: AppSpacing.medium),
+            if (schoolYearId == null)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.large,
+                  ),
+                  child: Text(
+                    'group_without_school_year'.tr(),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              )
+            else
+              timeframesValue.when(
+                data: (timeframes) => timeframes.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.large,
+                          ),
+                          child: Text(
+                            'no_timeframes'.tr(),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                      )
+                    : _TimeframesTable(
+                        groupId: groupId,
+                        timeframes: timeframes,
+                        allTimeframes: timeframes,
+                        gradeScaleEntries: gradeScaleEntries,
+                        archived: archived,
+                      ),
+                error: (e, s) => const AppErrorText(),
+                loading: () => const Center(child: CircularProgressIndicator()),
+              ),
           ],
         ),
       ),
@@ -1154,16 +1183,18 @@ class _TimeframesCard extends ConsumerWidget {
   Future<void> _addTimeframe(
     BuildContext context,
     WidgetRef ref,
-    int groupId,
+    SchoolYear schoolYear,
   ) async {
     final result = await showTimeframeEditorSheet(
       context: context,
-      groupId: groupId,
+      schoolYear: schoolYear,
       timeframeRepository: ref.read(timeframeRepositoryProvider),
     );
     if (result != null) {
-      await ref.read(timeframeRepositoryProvider).saveTimeframe(
-            groupId: groupId,
+      await ref
+          .read(timeframeRepositoryProvider)
+          .saveTimeframe(
+            schoolYearId: schoolYear.id,
             label: result.label,
             startDate: result.startDate,
             endDate: result.endDate,
@@ -1174,12 +1205,14 @@ class _TimeframesCard extends ConsumerWidget {
 
 class _TimeframesTable extends ConsumerWidget {
   const _TimeframesTable({
+    required this.groupId,
     required this.timeframes,
     required this.allTimeframes,
     required this.gradeScaleEntries,
     required this.archived,
   });
 
+  final int groupId;
   final List<Timeframe> timeframes;
   final List<Timeframe> allTimeframes;
   final List<GradeScaleEntry> gradeScaleEntries;
@@ -1205,10 +1238,10 @@ class _TimeframesTable extends ConsumerWidget {
     return [
       for (final t in all)
         if (t.id != target.id &&
-            t.startDate
-                .isBefore(target.endDate.add(const Duration(days: 1))) &&
-            t.endDate
-                .isAfter(target.startDate.subtract(const Duration(days: 1))))
+            t.startDate.isBefore(target.endDate.add(const Duration(days: 1))) &&
+            t.endDate.isAfter(
+              target.startDate.subtract(const Duration(days: 1)),
+            ))
           t,
     ];
   }
@@ -1229,7 +1262,7 @@ class _TimeframesTable extends ConsumerWidget {
 
   Widget _buildRow(BuildContext context, WidgetRef ref, Timeframe timeframe) {
     final params = (
-      groupId: timeframe.groupId,
+      groupId: groupId,
       startDate: timeframe.startDate,
       endDate: timeframe.endDate,
     );
@@ -1278,12 +1311,16 @@ class _TimeframesTable extends ConsumerWidget {
                   ),
                   if (hasOverlap)
                     Tooltip(
-                      message: 'overlaps_with'.tr(namedArgs: {
-                        'timeframes': overlaps
-                            .map((t) =>
-                                '${t.label} (${formatShortDate(t.startDate)} – ${formatShortDate(t.endDate)})')
-                            .join(', '),
-                      }),
+                      message: 'overlaps_with'.tr(
+                        namedArgs: {
+                          'timeframes': overlaps
+                              .map(
+                                (t) =>
+                                    '${t.label} (${formatShortDate(t.startDate)} – ${formatShortDate(t.endDate)})',
+                              )
+                              .join(', '),
+                        },
+                      ),
                       child: Icon(
                         Icons.warning_amber_outlined,
                         color: Theme.of(context).colorScheme.error,
@@ -1359,7 +1396,8 @@ class _TimeframesTable extends ConsumerWidget {
   ) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => TimeframeGradesScreen(timeframe: timeframe),
+        builder: (context) =>
+            TimeframeGradesScreen(timeframe: timeframe, groupId: groupId),
       ),
     );
   }
