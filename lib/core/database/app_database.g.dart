@@ -3145,6 +3145,480 @@ class HomeworkLogsTableCompanion
   }
 }
 
+class $LessonSlotsTableTable extends LessonSlotsTable
+    with TableInfo<$LessonSlotsTableTable, LessonSlotsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LessonSlotsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES groups_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _weekdayMeta = const VerificationMeta(
+    'weekday',
+  );
+  @override
+  late final GeneratedColumn<int> weekday = GeneratedColumn<int>(
+    'weekday',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _periodStartMeta = const VerificationMeta(
+    'periodStart',
+  );
+  @override
+  late final GeneratedColumn<int> periodStart = GeneratedColumn<int>(
+    'period_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _periodEndMeta = const VerificationMeta(
+    'periodEnd',
+  );
+  @override
+  late final GeneratedColumn<int> periodEnd = GeneratedColumn<int>(
+    'period_end',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('sonstige-mitarbeit'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    groupId,
+    weekday,
+    periodStart,
+    periodEnd,
+    categoryId,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'lesson_slots_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LessonSlotsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('weekday')) {
+      context.handle(
+        _weekdayMeta,
+        weekday.isAcceptableOrUnknown(data['weekday']!, _weekdayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weekdayMeta);
+    }
+    if (data.containsKey('period_start')) {
+      context.handle(
+        _periodStartMeta,
+        periodStart.isAcceptableOrUnknown(
+          data['period_start']!,
+          _periodStartMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_periodStartMeta);
+    }
+    if (data.containsKey('period_end')) {
+      context.handle(
+        _periodEndMeta,
+        periodEnd.isAcceptableOrUnknown(data['period_end']!, _periodEndMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_periodEndMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {groupId, weekday, periodStart},
+  ];
+  @override
+  LessonSlotsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LessonSlotsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}group_id'],
+      )!,
+      weekday: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}weekday'],
+      )!,
+      periodStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_start'],
+      )!,
+      periodEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_end'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LessonSlotsTableTable createAlias(String alias) {
+    return $LessonSlotsTableTable(attachedDatabase, alias);
+  }
+}
+
+class LessonSlotsTableData extends DataClass
+    implements Insertable<LessonSlotsTableData> {
+  final int id;
+  final int groupId;
+
+  /// ISO weekday, [DateTime.monday] (1) through [DateTime.sunday] (7).
+  final int weekday;
+
+  /// First school period of the slot, 1-based.
+  final int periodStart;
+
+  /// Last school period of the slot, inclusive. Equals [periodStart] for a
+  /// slot that is a single period long.
+  final int periodEnd;
+
+  /// Grade category that lessons planned from this slot default to.
+  final String categoryId;
+  final DateTime createdAt;
+  const LessonSlotsTableData({
+    required this.id,
+    required this.groupId,
+    required this.weekday,
+    required this.periodStart,
+    required this.periodEnd,
+    required this.categoryId,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['group_id'] = Variable<int>(groupId);
+    map['weekday'] = Variable<int>(weekday);
+    map['period_start'] = Variable<int>(periodStart);
+    map['period_end'] = Variable<int>(periodEnd);
+    map['category_id'] = Variable<String>(categoryId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LessonSlotsTableCompanion toCompanion(bool nullToAbsent) {
+    return LessonSlotsTableCompanion(
+      id: Value(id),
+      groupId: Value(groupId),
+      weekday: Value(weekday),
+      periodStart: Value(periodStart),
+      periodEnd: Value(periodEnd),
+      categoryId: Value(categoryId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LessonSlotsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LessonSlotsTableData(
+      id: serializer.fromJson<int>(json['id']),
+      groupId: serializer.fromJson<int>(json['groupId']),
+      weekday: serializer.fromJson<int>(json['weekday']),
+      periodStart: serializer.fromJson<int>(json['periodStart']),
+      periodEnd: serializer.fromJson<int>(json['periodEnd']),
+      categoryId: serializer.fromJson<String>(json['categoryId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'groupId': serializer.toJson<int>(groupId),
+      'weekday': serializer.toJson<int>(weekday),
+      'periodStart': serializer.toJson<int>(periodStart),
+      'periodEnd': serializer.toJson<int>(periodEnd),
+      'categoryId': serializer.toJson<String>(categoryId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LessonSlotsTableData copyWith({
+    int? id,
+    int? groupId,
+    int? weekday,
+    int? periodStart,
+    int? periodEnd,
+    String? categoryId,
+    DateTime? createdAt,
+  }) => LessonSlotsTableData(
+    id: id ?? this.id,
+    groupId: groupId ?? this.groupId,
+    weekday: weekday ?? this.weekday,
+    periodStart: periodStart ?? this.periodStart,
+    periodEnd: periodEnd ?? this.periodEnd,
+    categoryId: categoryId ?? this.categoryId,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  LessonSlotsTableData copyWithCompanion(LessonSlotsTableCompanion data) {
+    return LessonSlotsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      weekday: data.weekday.present ? data.weekday.value : this.weekday,
+      periodStart: data.periodStart.present
+          ? data.periodStart.value
+          : this.periodStart,
+      periodEnd: data.periodEnd.present ? data.periodEnd.value : this.periodEnd,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LessonSlotsTableData(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('weekday: $weekday, ')
+          ..write('periodStart: $periodStart, ')
+          ..write('periodEnd: $periodEnd, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    groupId,
+    weekday,
+    periodStart,
+    periodEnd,
+    categoryId,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LessonSlotsTableData &&
+          other.id == this.id &&
+          other.groupId == this.groupId &&
+          other.weekday == this.weekday &&
+          other.periodStart == this.periodStart &&
+          other.periodEnd == this.periodEnd &&
+          other.categoryId == this.categoryId &&
+          other.createdAt == this.createdAt);
+}
+
+class LessonSlotsTableCompanion extends UpdateCompanion<LessonSlotsTableData> {
+  final Value<int> id;
+  final Value<int> groupId;
+  final Value<int> weekday;
+  final Value<int> periodStart;
+  final Value<int> periodEnd;
+  final Value<String> categoryId;
+  final Value<DateTime> createdAt;
+  const LessonSlotsTableCompanion({
+    this.id = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.weekday = const Value.absent(),
+    this.periodStart = const Value.absent(),
+    this.periodEnd = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  LessonSlotsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int groupId,
+    required int weekday,
+    required int periodStart,
+    required int periodEnd,
+    this.categoryId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : groupId = Value(groupId),
+       weekday = Value(weekday),
+       periodStart = Value(periodStart),
+       periodEnd = Value(periodEnd);
+  static Insertable<LessonSlotsTableData> custom({
+    Expression<int>? id,
+    Expression<int>? groupId,
+    Expression<int>? weekday,
+    Expression<int>? periodStart,
+    Expression<int>? periodEnd,
+    Expression<String>? categoryId,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (groupId != null) 'group_id': groupId,
+      if (weekday != null) 'weekday': weekday,
+      if (periodStart != null) 'period_start': periodStart,
+      if (periodEnd != null) 'period_end': periodEnd,
+      if (categoryId != null) 'category_id': categoryId,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  LessonSlotsTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? groupId,
+    Value<int>? weekday,
+    Value<int>? periodStart,
+    Value<int>? periodEnd,
+    Value<String>? categoryId,
+    Value<DateTime>? createdAt,
+  }) {
+    return LessonSlotsTableCompanion(
+      id: id ?? this.id,
+      groupId: groupId ?? this.groupId,
+      weekday: weekday ?? this.weekday,
+      periodStart: periodStart ?? this.periodStart,
+      periodEnd: periodEnd ?? this.periodEnd,
+      categoryId: categoryId ?? this.categoryId,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<int>(groupId.value);
+    }
+    if (weekday.present) {
+      map['weekday'] = Variable<int>(weekday.value);
+    }
+    if (periodStart.present) {
+      map['period_start'] = Variable<int>(periodStart.value);
+    }
+    if (periodEnd.present) {
+      map['period_end'] = Variable<int>(periodEnd.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LessonSlotsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('weekday: $weekday, ')
+          ..write('periodStart: $periodStart, ')
+          ..write('periodEnd: $periodEnd, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ListsTableTable extends ListsTable
     with TableInfo<$ListsTableTable, Checklist> {
   @override
@@ -5465,6 +5939,30 @@ class $SessionsTableTable extends SessionsTable
     requiredDuringInsert: false,
     defaultValue: const Constant('Sonstige Mitarbeit'),
   );
+  static const VerificationMeta _periodStartMeta = const VerificationMeta(
+    'periodStart',
+  );
+  @override
+  late final GeneratedColumn<int> periodStart = GeneratedColumn<int>(
+    'period_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _periodEndMeta = const VerificationMeta(
+    'periodEnd',
+  );
+  @override
+  late final GeneratedColumn<int> periodEnd = GeneratedColumn<int>(
+    'period_end',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -5486,6 +5984,8 @@ class $SessionsTableTable extends SessionsTable
     description,
     categoryId,
     categoryName,
+    periodStart,
+    periodEnd,
     createdAt,
   ];
   @override
@@ -5551,6 +6051,21 @@ class $SessionsTableTable extends SessionsTable
         ),
       );
     }
+    if (data.containsKey('period_start')) {
+      context.handle(
+        _periodStartMeta,
+        periodStart.isAcceptableOrUnknown(
+          data['period_start']!,
+          _periodStartMeta,
+        ),
+      );
+    }
+    if (data.containsKey('period_end')) {
+      context.handle(
+        _periodEndMeta,
+        periodEnd.isAcceptableOrUnknown(data['period_end']!, _periodEndMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -5564,7 +6079,7 @@ class $SessionsTableTable extends SessionsTable
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
   List<Set<GeneratedColumn>> get uniqueKeys => [
-    {groupId, date, categoryId},
+    {groupId, date, categoryId, periodStart},
   ];
   @override
   SessionsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
@@ -5598,6 +6113,14 @@ class $SessionsTableTable extends SessionsTable
         DriftSqlType.string,
         data['${effectivePrefix}category_name'],
       )!,
+      periodStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_start'],
+      )!,
+      periodEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_end'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -5620,6 +6143,15 @@ class SessionsTableData extends DataClass
   final String? description;
   final String categoryId;
   final String categoryName;
+
+  /// First school period of the lesson, 1-based, or 0 when the lesson is not
+  /// tied to a period. Lessons planned from a group's weekly schedule carry
+  /// the periods of the slot they came from.
+  final int periodStart;
+
+  /// Last school period of the lesson, inclusive. Equals [periodStart] for a
+  /// single-period lesson, 0 when [periodStart] is 0.
+  final int periodEnd;
   final DateTime createdAt;
   const SessionsTableData({
     required this.id,
@@ -5629,6 +6161,8 @@ class SessionsTableData extends DataClass
     this.description,
     required this.categoryId,
     required this.categoryName,
+    required this.periodStart,
+    required this.periodEnd,
     required this.createdAt,
   });
   @override
@@ -5643,6 +6177,8 @@ class SessionsTableData extends DataClass
     }
     map['category_id'] = Variable<String>(categoryId);
     map['category_name'] = Variable<String>(categoryName);
+    map['period_start'] = Variable<int>(periodStart);
+    map['period_end'] = Variable<int>(periodEnd);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -5658,6 +6194,8 @@ class SessionsTableData extends DataClass
           : Value(description),
       categoryId: Value(categoryId),
       categoryName: Value(categoryName),
+      periodStart: Value(periodStart),
+      periodEnd: Value(periodEnd),
       createdAt: Value(createdAt),
     );
   }
@@ -5675,6 +6213,8 @@ class SessionsTableData extends DataClass
       description: serializer.fromJson<String?>(json['description']),
       categoryId: serializer.fromJson<String>(json['categoryId']),
       categoryName: serializer.fromJson<String>(json['categoryName']),
+      periodStart: serializer.fromJson<int>(json['periodStart']),
+      periodEnd: serializer.fromJson<int>(json['periodEnd']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -5689,6 +6229,8 @@ class SessionsTableData extends DataClass
       'description': serializer.toJson<String?>(description),
       'categoryId': serializer.toJson<String>(categoryId),
       'categoryName': serializer.toJson<String>(categoryName),
+      'periodStart': serializer.toJson<int>(periodStart),
+      'periodEnd': serializer.toJson<int>(periodEnd),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -5701,6 +6243,8 @@ class SessionsTableData extends DataClass
     Value<String?> description = const Value.absent(),
     String? categoryId,
     String? categoryName,
+    int? periodStart,
+    int? periodEnd,
     DateTime? createdAt,
   }) => SessionsTableData(
     id: id ?? this.id,
@@ -5710,6 +6254,8 @@ class SessionsTableData extends DataClass
     description: description.present ? description.value : this.description,
     categoryId: categoryId ?? this.categoryId,
     categoryName: categoryName ?? this.categoryName,
+    periodStart: periodStart ?? this.periodStart,
+    periodEnd: periodEnd ?? this.periodEnd,
     createdAt: createdAt ?? this.createdAt,
   );
   SessionsTableData copyWithCompanion(SessionsTableCompanion data) {
@@ -5727,6 +6273,10 @@ class SessionsTableData extends DataClass
       categoryName: data.categoryName.present
           ? data.categoryName.value
           : this.categoryName,
+      periodStart: data.periodStart.present
+          ? data.periodStart.value
+          : this.periodStart,
+      periodEnd: data.periodEnd.present ? data.periodEnd.value : this.periodEnd,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -5741,6 +6291,8 @@ class SessionsTableData extends DataClass
           ..write('description: $description, ')
           ..write('categoryId: $categoryId, ')
           ..write('categoryName: $categoryName, ')
+          ..write('periodStart: $periodStart, ')
+          ..write('periodEnd: $periodEnd, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -5755,6 +6307,8 @@ class SessionsTableData extends DataClass
     description,
     categoryId,
     categoryName,
+    periodStart,
+    periodEnd,
     createdAt,
   );
   @override
@@ -5768,6 +6322,8 @@ class SessionsTableData extends DataClass
           other.description == this.description &&
           other.categoryId == this.categoryId &&
           other.categoryName == this.categoryName &&
+          other.periodStart == this.periodStart &&
+          other.periodEnd == this.periodEnd &&
           other.createdAt == this.createdAt);
 }
 
@@ -5779,6 +6335,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   final Value<String?> description;
   final Value<String> categoryId;
   final Value<String> categoryName;
+  final Value<int> periodStart;
+  final Value<int> periodEnd;
   final Value<DateTime> createdAt;
   const SessionsTableCompanion({
     this.id = const Value.absent(),
@@ -5788,6 +6346,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.description = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.categoryName = const Value.absent(),
+    this.periodStart = const Value.absent(),
+    this.periodEnd = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   SessionsTableCompanion.insert({
@@ -5798,6 +6358,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.description = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.categoryName = const Value.absent(),
+    this.periodStart = const Value.absent(),
+    this.periodEnd = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : groupId = Value(groupId),
        date = Value(date),
@@ -5810,6 +6372,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Expression<String>? description,
     Expression<String>? categoryId,
     Expression<String>? categoryName,
+    Expression<int>? periodStart,
+    Expression<int>? periodEnd,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -5820,6 +6384,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       if (description != null) 'description': description,
       if (categoryId != null) 'category_id': categoryId,
       if (categoryName != null) 'category_name': categoryName,
+      if (periodStart != null) 'period_start': periodStart,
+      if (periodEnd != null) 'period_end': periodEnd,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -5832,6 +6398,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Value<String?>? description,
     Value<String>? categoryId,
     Value<String>? categoryName,
+    Value<int>? periodStart,
+    Value<int>? periodEnd,
     Value<DateTime>? createdAt,
   }) {
     return SessionsTableCompanion(
@@ -5842,6 +6410,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       description: description ?? this.description,
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
+      periodStart: periodStart ?? this.periodStart,
+      periodEnd: periodEnd ?? this.periodEnd,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -5870,6 +6440,12 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     if (categoryName.present) {
       map['category_name'] = Variable<String>(categoryName.value);
     }
+    if (periodStart.present) {
+      map['period_start'] = Variable<int>(periodStart.value);
+    }
+    if (periodEnd.present) {
+      map['period_end'] = Variable<int>(periodEnd.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -5886,6 +6462,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
           ..write('description: $description, ')
           ..write('categoryId: $categoryId, ')
           ..write('categoryName: $categoryName, ')
+          ..write('periodStart: $periodStart, ')
+          ..write('periodEnd: $periodEnd, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -6637,6 +7215,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $MaterialLogsTableTable(this);
   late final $HomeworkLogsTableTable homeworkLogsTable =
       $HomeworkLogsTableTable(this);
+  late final $LessonSlotsTableTable lessonSlotsTable = $LessonSlotsTableTable(
+    this,
+  );
   late final $ListsTableTable listsTable = $ListsTableTable(this);
   late final $ListItemsTableTable listItemsTable = $ListItemsTableTable(this);
   late final $NotesTableTable notesTable = $NotesTableTable(this);
@@ -6662,6 +7243,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     gradeEntriesTable,
     materialLogsTable,
     homeworkLogsTable,
+    lessonSlotsTable,
     listsTable,
     listItemsTable,
     notesTable,
@@ -6714,6 +7296,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('homework_logs_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'groups_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('lesson_slots_table', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -7309,6 +7898,29 @@ final class $$GroupsTableTableReferences
     );
   }
 
+  static MultiTypedResultKey<$LessonSlotsTableTable, List<LessonSlotsTableData>>
+  _lessonSlotsTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.lessonSlotsTable,
+    aliasName: $_aliasNameGenerator(
+      db.groupsTable.id,
+      db.lessonSlotsTable.groupId,
+    ),
+  );
+
+  $$LessonSlotsTableTableProcessedTableManager get lessonSlotsTableRefs {
+    final manager = $$LessonSlotsTableTableTableManager(
+      $_db,
+      $_db.lessonSlotsTable,
+    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _lessonSlotsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<$ListsTableTable, List<Checklist>>
   _listsTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.listsTable,
@@ -7474,6 +8086,31 @@ class $$GroupsTableTableFilterComposer
           }) => $$StudentsTableTableFilterComposer(
             $db: $db,
             $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> lessonSlotsTableRefs(
+    Expression<bool> Function($$LessonSlotsTableTableFilterComposer f) f,
+  ) {
+    final $$LessonSlotsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.lessonSlotsTable,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LessonSlotsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.lessonSlotsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -7736,6 +8373,31 @@ class $$GroupsTableTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> lessonSlotsTableRefs<T extends Object>(
+    Expression<T> Function($$LessonSlotsTableTableAnnotationComposer a) f,
+  ) {
+    final $$LessonSlotsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.lessonSlotsTable,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LessonSlotsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.lessonSlotsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> listsTableRefs<T extends Object>(
     Expression<T> Function($$ListsTableTableAnnotationComposer a) f,
   ) {
@@ -7854,6 +8516,7 @@ class $$GroupsTableTableTableManager
           PrefetchHooks Function({
             bool schoolYearId,
             bool studentsTableRefs,
+            bool lessonSlotsTableRefs,
             bool listsTableRefs,
             bool notesTableRefs,
             bool seatingPlansTableRefs,
@@ -7923,6 +8586,7 @@ class $$GroupsTableTableTableManager
               ({
                 schoolYearId = false,
                 studentsTableRefs = false,
+                lessonSlotsTableRefs = false,
                 listsTableRefs = false,
                 notesTableRefs = false,
                 seatingPlansTableRefs = false,
@@ -7932,6 +8596,7 @@ class $$GroupsTableTableTableManager
                   db: db,
                   explicitlyWatchedTables: [
                     if (studentsTableRefs) db.studentsTable,
+                    if (lessonSlotsTableRefs) db.lessonSlotsTable,
                     if (listsTableRefs) db.listsTable,
                     if (notesTableRefs) db.notesTable,
                     if (seatingPlansTableRefs) db.seatingPlansTable,
@@ -7988,6 +8653,27 @@ class $$GroupsTableTableTableManager
                                 table,
                                 p0,
                               ).studentsTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.groupId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (lessonSlotsTableRefs)
+                        await $_getPrefetchedData<
+                          GroupsTableData,
+                          $GroupsTableTable,
+                          LessonSlotsTableData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$GroupsTableTableReferences
+                              ._lessonSlotsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$GroupsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).lessonSlotsTableRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.groupId == item.id,
@@ -8101,6 +8787,7 @@ typedef $$GroupsTableTableProcessedTableManager =
       PrefetchHooks Function({
         bool schoolYearId,
         bool studentsTableRefs,
+        bool lessonSlotsTableRefs,
         bool listsTableRefs,
         bool notesTableRefs,
         bool seatingPlansTableRefs,
@@ -10749,6 +11436,374 @@ typedef $$HomeworkLogsTableTableProcessedTableManager =
       HomeworkLogsTableData,
       PrefetchHooks Function({bool studentId})
     >;
+typedef $$LessonSlotsTableTableCreateCompanionBuilder =
+    LessonSlotsTableCompanion Function({
+      Value<int> id,
+      required int groupId,
+      required int weekday,
+      required int periodStart,
+      required int periodEnd,
+      Value<String> categoryId,
+      Value<DateTime> createdAt,
+    });
+typedef $$LessonSlotsTableTableUpdateCompanionBuilder =
+    LessonSlotsTableCompanion Function({
+      Value<int> id,
+      Value<int> groupId,
+      Value<int> weekday,
+      Value<int> periodStart,
+      Value<int> periodEnd,
+      Value<String> categoryId,
+      Value<DateTime> createdAt,
+    });
+
+final class $$LessonSlotsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $LessonSlotsTableTable,
+          LessonSlotsTableData
+        > {
+  $$LessonSlotsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $GroupsTableTable _groupIdTable(_$AppDatabase db) =>
+      db.groupsTable.createAlias(
+        $_aliasNameGenerator(db.lessonSlotsTable.groupId, db.groupsTable.id),
+      );
+
+  $$GroupsTableTableProcessedTableManager get groupId {
+    final $_column = $_itemColumn<int>('group_id')!;
+
+    final manager = $$GroupsTableTableTableManager(
+      $_db,
+      $_db.groupsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$LessonSlotsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LessonSlotsTableTable> {
+  $$LessonSlotsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get weekday => $composableBuilder(
+    column: $table.weekday,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get periodEnd => $composableBuilder(
+    column: $table.periodEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$GroupsTableTableFilterComposer get groupId {
+    final $$GroupsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LessonSlotsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LessonSlotsTableTable> {
+  $$LessonSlotsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get weekday => $composableBuilder(
+    column: $table.weekday,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get periodEnd => $composableBuilder(
+    column: $table.periodEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$GroupsTableTableOrderingComposer get groupId {
+    final $$GroupsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LessonSlotsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LessonSlotsTableTable> {
+  $$LessonSlotsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get weekday =>
+      $composableBuilder(column: $table.weekday, builder: (column) => column);
+
+  GeneratedColumn<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get periodEnd =>
+      $composableBuilder(column: $table.periodEnd, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$GroupsTableTableAnnotationComposer get groupId {
+    final $$GroupsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.groupsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.groupsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LessonSlotsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LessonSlotsTableTable,
+          LessonSlotsTableData,
+          $$LessonSlotsTableTableFilterComposer,
+          $$LessonSlotsTableTableOrderingComposer,
+          $$LessonSlotsTableTableAnnotationComposer,
+          $$LessonSlotsTableTableCreateCompanionBuilder,
+          $$LessonSlotsTableTableUpdateCompanionBuilder,
+          (LessonSlotsTableData, $$LessonSlotsTableTableReferences),
+          LessonSlotsTableData,
+          PrefetchHooks Function({bool groupId})
+        > {
+  $$LessonSlotsTableTableTableManager(
+    _$AppDatabase db,
+    $LessonSlotsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LessonSlotsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LessonSlotsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LessonSlotsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> groupId = const Value.absent(),
+                Value<int> weekday = const Value.absent(),
+                Value<int> periodStart = const Value.absent(),
+                Value<int> periodEnd = const Value.absent(),
+                Value<String> categoryId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => LessonSlotsTableCompanion(
+                id: id,
+                groupId: groupId,
+                weekday: weekday,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
+                categoryId: categoryId,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int groupId,
+                required int weekday,
+                required int periodStart,
+                required int periodEnd,
+                Value<String> categoryId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => LessonSlotsTableCompanion.insert(
+                id: id,
+                groupId: groupId,
+                weekday: weekday,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
+                categoryId: categoryId,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$LessonSlotsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({groupId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (groupId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.groupId,
+                                referencedTable:
+                                    $$LessonSlotsTableTableReferences
+                                        ._groupIdTable(db),
+                                referencedColumn:
+                                    $$LessonSlotsTableTableReferences
+                                        ._groupIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$LessonSlotsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LessonSlotsTableTable,
+      LessonSlotsTableData,
+      $$LessonSlotsTableTableFilterComposer,
+      $$LessonSlotsTableTableOrderingComposer,
+      $$LessonSlotsTableTableAnnotationComposer,
+      $$LessonSlotsTableTableCreateCompanionBuilder,
+      $$LessonSlotsTableTableUpdateCompanionBuilder,
+      (LessonSlotsTableData, $$LessonSlotsTableTableReferences),
+      LessonSlotsTableData,
+      PrefetchHooks Function({bool groupId})
+    >;
 typedef $$ListsTableTableCreateCompanionBuilder =
     ListsTableCompanion Function({
       Value<int> id,
@@ -13005,6 +14060,8 @@ typedef $$SessionsTableTableCreateCompanionBuilder =
       Value<String?> description,
       Value<String> categoryId,
       Value<String> categoryName,
+      Value<int> periodStart,
+      Value<int> periodEnd,
       Value<DateTime> createdAt,
     });
 typedef $$SessionsTableTableUpdateCompanionBuilder =
@@ -13016,6 +14073,8 @@ typedef $$SessionsTableTableUpdateCompanionBuilder =
       Value<String?> description,
       Value<String> categoryId,
       Value<String> categoryName,
+      Value<int> periodStart,
+      Value<int> periodEnd,
       Value<DateTime> createdAt,
     });
 
@@ -13087,6 +14146,16 @@ class $$SessionsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get periodEnd => $composableBuilder(
+    column: $table.periodEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -13155,6 +14224,16 @@ class $$SessionsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get periodEnd => $composableBuilder(
+    column: $table.periodEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -13216,6 +14295,14 @@ class $$SessionsTableTableAnnotationComposer
     column: $table.categoryName,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get periodEnd =>
+      $composableBuilder(column: $table.periodEnd, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -13279,6 +14366,8 @@ class $$SessionsTableTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<String> categoryId = const Value.absent(),
                 Value<String> categoryName = const Value.absent(),
+                Value<int> periodStart = const Value.absent(),
+                Value<int> periodEnd = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SessionsTableCompanion(
                 id: id,
@@ -13288,6 +14377,8 @@ class $$SessionsTableTableTableManager
                 description: description,
                 categoryId: categoryId,
                 categoryName: categoryName,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -13299,6 +14390,8 @@ class $$SessionsTableTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<String> categoryId = const Value.absent(),
                 Value<String> categoryName = const Value.absent(),
+                Value<int> periodStart = const Value.absent(),
+                Value<int> periodEnd = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SessionsTableCompanion.insert(
                 id: id,
@@ -13308,6 +14401,8 @@ class $$SessionsTableTableTableManager
                 description: description,
                 categoryId: categoryId,
                 categoryName: categoryName,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -14259,6 +15354,8 @@ class $AppDatabaseManager {
       $$MaterialLogsTableTableTableManager(_db, _db.materialLogsTable);
   $$HomeworkLogsTableTableTableManager get homeworkLogsTable =>
       $$HomeworkLogsTableTableTableManager(_db, _db.homeworkLogsTable);
+  $$LessonSlotsTableTableTableManager get lessonSlotsTable =>
+      $$LessonSlotsTableTableTableManager(_db, _db.lessonSlotsTable);
   $$ListsTableTableTableManager get listsTable =>
       $$ListsTableTableTableManager(_db, _db.listsTable);
   $$ListItemsTableTableTableManager get listItemsTable =>

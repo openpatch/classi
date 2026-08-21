@@ -119,7 +119,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                 onPressed: () async {
                   await ref
                       .read(sessionRepositoryProvider)
-                      .upsertSession(
+                      .upsertSessionForDate(
                         groupId: widget.groupId,
                         date: _selectedDate,
                         categoryId: selectedCategory.id,
@@ -440,7 +440,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     // First try to restore from an existing session record.
     final session = await ref
         .read(sessionRepositoryProvider)
-        .getSession(
+        .sessionForDate(
           groupId: widget.groupId,
           date: targetDate,
           categoryId: targetCategoryId,

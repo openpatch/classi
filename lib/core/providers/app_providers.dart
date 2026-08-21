@@ -17,6 +17,7 @@ import '../../features/lessons/lesson_repository.dart';
 import '../../features/material_tracking/material_repository.dart';
 import '../../features/notes/note_repository.dart';
 import '../../features/seating_plan/seating_plan_repository.dart';
+import '../../features/schedule/lesson_slot_repository.dart';
 import '../../features/sessions/session_repository.dart';
 import '../../features/settings/grade_system_controller.dart';
 import '../../features/settings/student_sort_controller.dart';
@@ -197,6 +198,41 @@ final seatingPlanRepositoryProvider = Provider<SeatingPlanRepository>(
 final sessionRepositoryProvider = Provider<SessionRepository>(
   (ref) => SessionRepository(ref.watch(databaseProvider)),
 );
+
+final lessonSlotRepositoryProvider = Provider<LessonSlotRepository>(
+  (ref) => LessonSlotRepository(ref.watch(databaseProvider)),
+);
+
+/// A group's weekly timetable: the weekdays and periods its lessons normally
+/// fall on, used to propose the next lesson date.
+final groupLessonSlotsProvider = StreamProvider.autoDispose
+    .family<List<LessonSlot>, int>(
+      (ref, groupId) =>
+          ref.watch(lessonSlotRepositoryProvider).watchSlots(groupId),
+    );
+
+/// Every group's timetable at once, keyed by group id, for the Today
+/// dashboard, which shows all active groups side by side.
+final lessonSlotsByGroupProvider =
+    StreamProvider.autoDispose<Map<int, List<LessonSlot>>>(
+      (ref) => ref.watch(lessonSlotRepositoryProvider).watchSlotsByGroup(),
+    );
+
+/// Every lesson a group holds, newest first.
+final groupSessionsProvider = StreamProvider.autoDispose
+    .family<List<Session>, int>(
+      (ref, groupId) =>
+          ref.watch(sessionRepositoryProvider).watchSessionsForGroup(groupId),
+    );
+
+/// The sessions a group already holds on one date, so a screen can tell a
+/// planned lesson apart from one that is only in the timetable so far.
+final groupSessionsOnDateProvider = StreamProvider.autoDispose
+    .family<List<Session>, (int, DateTime)>(
+      (ref, args) => ref
+          .watch(sessionRepositoryProvider)
+          .watchSessionsOnDate(groupId: args.$1, date: args.$2),
+    );
 
 final groupExportServiceProvider = Provider<GroupExportService>(
   (ref) => GroupExportService(ref.watch(databaseProvider)),

@@ -7,6 +7,7 @@ import 'tables/attendance_logs_table.dart';
 import 'tables/grade_entries_table.dart';
 import 'tables/groups_table.dart';
 import 'tables/homework_logs_table.dart';
+import 'tables/lesson_slots_table.dart';
 import 'tables/list_items_table.dart';
 import 'tables/lists_table.dart';
 import 'tables/material_logs_table.dart';
@@ -30,6 +31,7 @@ typedef AttendanceLog = AttendanceLogsTableData;
 typedef Session = SessionsTableData;
 typedef SchoolYear = SchoolYearsTableData;
 typedef Timeframe = TimeframesTableData;
+typedef LessonSlot = LessonSlotsTableData;
 typedef TimeframeGrade = TimeframeGradesTableData;
 
 @DriftDatabase(
@@ -40,6 +42,7 @@ typedef TimeframeGrade = TimeframeGradesTableData;
     GradeEntriesTable,
     MaterialLogsTable,
     HomeworkLogsTable,
+    LessonSlotsTable,
     ListsTable,
     ListItemsTable,
     NotesTable,
@@ -70,7 +73,7 @@ class AppDatabase extends _$AppDatabase {
   final String databasePath;
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -219,6 +222,20 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 23) {
         await _migrateTimeframesToSchoolYears(migrator);
+      }
+      if (from < 24) {
+        await migrator.createTable(lessonSlotsTable);
+        // Sessions gained the period they are held in, and the unique key
+        // grew to include it so a group can hold two lessons on one day.
+        // A unique key is part of the CREATE TABLE statement, so the table
+        // has to be rewritten instead of just extended.
+        // ignore: experimental_member_use
+        await migrator.alterTable(
+          TableMigration(
+            sessionsTable,
+            newColumns: [sessionsTable.periodStart, sessionsTable.periodEnd],
+          ),
+        );
       }
     },
   );
