@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.13.0] - 2026-08-21
+
+### Features
+
+- *(timeframes)* Define timeframes per school year instead of per group
+
+
 ## [1.12.1] - 2026-08-05
 
 ### Bug Fixes
