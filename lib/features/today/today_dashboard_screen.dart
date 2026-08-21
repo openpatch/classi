@@ -9,7 +9,10 @@ import '../../shared/utils/grade_categories.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../core/database/app_database.dart';
 import '../lessons/lesson_support.dart';
+import '../schedule/lesson_schedule.dart';
+import '../schedule/lesson_schedule_editor_sheet.dart';
 import 'today_repository.dart';
 
 /// Landing screen after unlock: every active group's status for a chosen
@@ -41,6 +44,9 @@ class _TodayDashboardScreenState extends ConsumerState<TodayDashboardScreen> {
     final today = normalizeLessonDate(DateTime.now());
     final isToday = _selectedDate == today;
     final overviewValue = ref.watch(todayOverviewProvider(_selectedDate));
+    final slotsByGroup =
+        ref.watch(lessonSlotsByGroupProvider).value ??
+        const <int, List<LessonSlot>>{};
 
     return Scaffold(
       appBar: AppBar(
@@ -107,6 +113,13 @@ class _TodayDashboardScreenState extends ConsumerState<TodayDashboardScreen> {
                 for (final overview in overviews) ...[
                   _TodayGroupCard(
                     overview: overview,
+                    date: _selectedDate,
+                    slots: [
+                      for (final slot
+                          in slotsByGroup[overview.group.id] ??
+                              const <LessonSlot>[])
+                        LessonSlotDraft.fromSlot(slot),
+                    ],
                     onOpenLesson: () => _openLesson(overview.group.id),
                   ),
                   const SizedBox(height: AppSpacing.medium),
@@ -150,9 +163,21 @@ class _TodayDashboardScreenState extends ConsumerState<TodayDashboardScreen> {
 }
 
 class _TodayGroupCard extends StatelessWidget {
-  const _TodayGroupCard({required this.overview, required this.onOpenLesson});
+  const _TodayGroupCard({
+    required this.overview,
+    required this.date,
+    required this.slots,
+    required this.onOpenLesson,
+  });
 
   final TodayGroupOverview overview;
+
+  /// The date the dashboard is showing, which the schedule is read against.
+  final DateTime date;
+
+  /// The group's weekly timetable, empty when it has none saved.
+  final List<LessonSlotDraft> slots;
+
   final VoidCallback onOpenLesson;
 
   @override
@@ -160,6 +185,18 @@ class _TodayGroupCard extends StatelessWidget {
     final group = overview.group;
     final groupColor = colorFromHex(group.colorHex);
     final colorScheme = Theme.of(context).colorScheme;
+
+    // The periods the timetable puts this group in on the shown date, and —
+    // when it has none that day — the next date it does, so a teacher can see
+    // at a glance which groups are due and which are not.
+    final todaysPeriods = [
+      for (final slot in slots)
+        if (slot.weekday == date.weekday)
+          formatPeriodRange(slot.periodStart, slot.periodEnd),
+    ]..removeWhere((periods) => periods.isEmpty);
+    final nextLesson = todaysPeriods.isNotEmpty
+        ? null
+        : upcomingLessons(slots, from: addDays(date, 1)).firstOrNull;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -184,12 +221,33 @@ class _TodayGroupCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
+                  if (todaysPeriods.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.small),
+                      child: _TodayStatChip(
+                        icon: Icons.schedule_outlined,
+                        label: 'periods_short'.tr(
+                          namedArgs: {'periods': todaysPeriods.join(', ')},
+                        ),
+                      ),
+                    ),
                   Icon(
                     Icons.chevron_right,
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
+              if (nextLesson != null) ...[
+                const SizedBox(height: AppSpacing.small),
+                Text(
+                  'next_lesson_on'.tr(
+                    namedArgs: {'date': _formatNextLesson(context, nextLesson)},
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.medium),
               if (overview.hasActivity)
                 Wrap(
@@ -248,6 +306,13 @@ class _TodayGroupCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatNextLesson(BuildContext context, PlannedLesson lesson) {
+  final weekday = shortWeekdayName(context, lesson.date.weekday);
+  final date = MaterialLocalizations.of(context).formatMediumDate(lesson.date);
+  final periods = formatPeriodRange(lesson.periodStart, lesson.periodEnd);
+  return periods.isEmpty ? '$weekday, $date' : '$weekday, $date · $periods';
 }
 
 class _TodayStatChip extends StatelessWidget {

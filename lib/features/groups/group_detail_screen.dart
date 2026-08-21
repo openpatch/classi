@@ -33,6 +33,10 @@ import '../lessons/lesson_support.dart';
 import '../lessons/lesson_widgets.dart';
 import '../notes/note_editor.dart';
 import '../notes/note_links.dart';
+import '../schedule/lesson_planning.dart';
+import '../schedule/lesson_schedule.dart';
+import '../schedule/lesson_schedule_editor_sheet.dart';
+import '../schedule/lesson_schedule_providers.dart';
 import '../seating_plan/seating_plan_grid.dart';
 import '../seating_plan/seating_plan_selector_sheet.dart';
 import '../students/student_batch_create_sheet.dart';
@@ -365,6 +369,13 @@ class GroupDetailScreen extends ConsumerWidget {
                     schoolYearId: group.schoolYearId,
                     archived: archived,
                     gradeScaleEntries: gradeScaleEntries,
+                  ),
+                  const SizedBox(height: AppSpacing.large),
+                  _LessonScheduleCard(
+                    groupId: group.id,
+                    schoolYearId: group.schoolYearId,
+                    categories: categories,
+                    archived: archived,
                   ),
                   const SizedBox(height: AppSpacing.large),
                   _LessonCalendarCard(
@@ -967,40 +978,20 @@ class GroupDetailScreen extends ConsumerWidget {
     }
   }
 
+  /// Plans a lesson, pre-filled from the group's weekly schedule (or the
+  /// pattern inferred from its past lessons) so the common case is one tap.
   Future<void> _addSession(
     BuildContext context,
     WidgetRef ref,
     int groupId,
     List<GradeCategory> categories,
-  ) async {
-    final result = await showSessionFormSheet(
+  ) {
+    return planNextLesson(
       context: context,
-      gradeCategories: categories,
-      title: 'add_session'.tr(),
+      ref: ref,
+      groupId: groupId,
+      categories: categories,
     );
-    if (result == null) return;
-
-    try {
-      await ref
-          .read(sessionRepositoryProvider)
-          .upsertSession(
-            groupId: groupId,
-            date: result.date,
-            categoryId: result.categoryId,
-            categoryName: result.categoryName,
-            label: result.label,
-            description: result.description,
-          );
-    } catch (e, st) {
-      developer.log(
-        'Failed to add session',
-        name: 'classi.group_detail',
-        level: 1000,
-        error: e,
-        stackTrace: st,
-      );
-      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
-    }
   }
 
   Future<void> _editSession(
@@ -1015,6 +1006,8 @@ class GroupDetailScreen extends ConsumerWidget {
       initialLabel: session.label,
       initialDescription: session.description,
       initialCategoryId: session.categoryId,
+      initialPeriodStart: session.periodStart,
+      initialPeriodEnd: session.periodEnd,
       title: 'edit_session'.tr(),
     );
     if (result == null) return;
@@ -1026,6 +1019,8 @@ class GroupDetailScreen extends ConsumerWidget {
             id: session.id,
             label: result.label,
             description: result.description,
+            periodStart: result.periodStart,
+            periodEnd: result.periodEnd,
           );
     } catch (e, st) {
       developer.log(
@@ -1461,6 +1456,151 @@ class _TimeframesTableCell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The group's weekly timetable and the quick ways to act on it: plan the
+/// next lesson it calls for, or fill a whole term from it in one go.
+///
+/// A group that has no timetable saved still gets suggestions, inferred from
+/// the weekdays and periods its past lessons fell on; the card says so, and
+/// offers to turn the guess into a real schedule.
+class _LessonScheduleCard extends ConsumerWidget {
+  const _LessonScheduleCard({
+    required this.groupId,
+    required this.schoolYearId,
+    required this.categories,
+    required this.archived,
+  });
+
+  final int groupId;
+  final int? schoolYearId;
+  final List<GradeCategory> categories;
+  final bool archived;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheduleValue = ref.watch(groupScheduleProvider(groupId));
+    final hasSavedSchedule = ref.watch(groupHasSavedScheduleProvider(groupId));
+    final slots = scheduleValue.value ?? const <LessonSlotDraft>[];
+    final nextLesson = ref
+        .watch(upcomingLessonSuggestionsProvider(groupId))
+        .value
+        ?.firstOrNull;
+
+    return Card(
+      child: Padding(
+        padding: appCardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'lesson_schedule'.tr(),
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                if (!archived)
+                  IconButton(
+                    onPressed: () => editLessonSchedule(
+                      context: context,
+                      ref: ref,
+                      groupId: groupId,
+                      categories: categories,
+                    ),
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'edit_lesson_schedule'.tr(),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.small),
+            if (slots.isEmpty)
+              Text(
+                'no_lesson_schedule_yet'.tr(),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            else ...[
+              Wrap(
+                spacing: AppSpacing.small,
+                runSpacing: AppSpacing.small,
+                children: [
+                  for (final slot in slots)
+                    Chip(
+                      avatar: const Icon(Icons.schedule_outlined, size: 18),
+                      label: Text(formatSlot(context, slot)),
+                    ),
+                ],
+              ),
+              if (!hasSavedSchedule) ...[
+                const SizedBox(height: AppSpacing.small),
+                Text(
+                  'lesson_schedule_inferred'.tr(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+            if (nextLesson != null) ...[
+              const SizedBox(height: AppSpacing.medium),
+              Text(
+                // What the button below will propose — the lesson after the
+                // last one planned, not simply the next one on the calendar.
+                'next_to_plan'.tr(
+                  namedArgs: {
+                    'date': _formatPlannedLesson(context, nextLesson),
+                  },
+                ),
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+            if (!archived) ...[
+              const SizedBox(height: AppSpacing.large),
+              Wrap(
+                spacing: AppSpacing.small,
+                runSpacing: AppSpacing.small,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: () => planNextLesson(
+                      context: context,
+                      ref: ref,
+                      groupId: groupId,
+                      categories: categories,
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: Text('plan_next_lesson'.tr()),
+                  ),
+                  if (slots.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: () => fillTermWithLessons(
+                        context: context,
+                        ref: ref,
+                        groupId: groupId,
+                        schoolYearId: schoolYearId,
+                        categories: categories,
+                      ),
+                      icon: const Icon(Icons.event_repeat_outlined),
+                      label: Text('fill_term'.tr()),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatPlannedLesson(BuildContext context, PlannedLesson lesson) {
+  final weekday = weekdayName(context, lesson.date.weekday);
+  final date = MaterialLocalizations.of(context).formatMediumDate(lesson.date);
+  final periods = formatPeriodRange(lesson.periodStart, lesson.periodEnd);
+  return periods.isEmpty ? '$weekday, $date' : '$weekday, $date · $periods';
 }
 
 class _LessonCalendarCard extends ConsumerStatefulWidget {
@@ -2738,6 +2878,7 @@ class _SessionsTable extends StatelessWidget {
   Widget _buildRow(BuildContext context, SessionSummary summary) {
     final session = summary.session;
     final locale = context.locale.toLanguageTag();
+    final periods = formatPeriodRange(session.periodStart, session.periodEnd);
 
     return InkWell(
       onTap: () => context.push(
@@ -2753,10 +2894,25 @@ class _SessionsTable extends StatelessWidget {
           children: [
             _SessionsTableCell(
               flex: 2,
-              child: Text(
-                DateFormat.yMMMd(locale).format(session.date),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    DateFormat.yMMMd(locale).format(session.date),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (periods.isNotEmpty)
+                    Text(
+                      'periods_short'.tr(namedArgs: {'periods': periods}),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
               ),
             ),
             _SessionsTableCell(

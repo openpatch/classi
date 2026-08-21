@@ -66,12 +66,39 @@ class SessionRepository {
   Stream<List<Session>> watchSessionsForGroup(int groupId) {
     return (_database.select(_database.sessionsTable)
           ..where((t) => t.groupId.equals(groupId))
-          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.date),
+            (t) => OrderingTerm.asc(t.periodStart),
+          ]))
         .watch();
   }
 
-  /// Returns the session for [groupId], [date] and [categoryId], if one exists.
+  /// Returns the session for [groupId], [date], [categoryId] and
+  /// [periodStart], if one exists. A group can hold several lessons on one
+  /// day, so the period is part of what identifies a session; pass 0 for a
+  /// lesson that is not tied to a period.
   Future<Session?> getSession({
+    required int groupId,
+    required DateTime date,
+    required String categoryId,
+    int periodStart = 0,
+  }) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return (_database.select(_database.sessionsTable)
+          ..where((t) => t.groupId.equals(groupId))
+          ..where((t) => t.date.equals(normalizedDate))
+          ..where((t) => t.categoryId.equals(categoryId))
+          ..where((t) => t.periodStart.equals(periodStart)))
+        .getSingleOrNull();
+  }
+
+  /// The lesson a group holds on [date] for [categoryId], whichever period it
+  /// sits in; the earliest one when the day holds several.
+  ///
+  /// Lesson mode works a day at a time — attendance, homework and material are
+  /// all kept per day — so it looks a lesson up by date alone and must not
+  /// miss one that was planned into a period.
+  Future<Session?> sessionForDate({
     required int groupId,
     required DateTime date,
     required String categoryId,
@@ -80,8 +107,33 @@ class SessionRepository {
     return (_database.select(_database.sessionsTable)
           ..where((t) => t.groupId.equals(groupId))
           ..where((t) => t.date.equals(normalizedDate))
-          ..where((t) => t.categoryId.equals(categoryId)))
+          ..where((t) => t.categoryId.equals(categoryId))
+          ..orderBy([(t) => OrderingTerm.asc(t.periodStart)])
+          ..limit(1))
         .getSingleOrNull();
+  }
+
+  /// Every session of a group, newest first. Used to infer the group's weekly
+  /// pattern from the lessons it already holds.
+  Future<List<Session>> sessionsForGroup(int groupId) {
+    return (_database.select(_database.sessionsTable)
+          ..where((t) => t.groupId.equals(groupId))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .get();
+  }
+
+  /// Watches the sessions of a group on [date], ordered by period, so a screen
+  /// can tell which of the day's planned lessons are already on the books.
+  Stream<List<Session>> watchSessionsOnDate({
+    required int groupId,
+    required DateTime date,
+  }) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return (_database.select(_database.sessionsTable)
+          ..where((t) => t.groupId.equals(groupId))
+          ..where((t) => t.date.equals(normalizedDate))
+          ..orderBy([(t) => OrderingTerm.asc(t.periodStart)]))
+        .watch();
   }
 
   /// Watches sessions for [groupId] enriched with attendance, homework,
@@ -145,8 +197,8 @@ class SessionRepository {
   // CRUD
   // ---------------------------------------------------------------------------
 
-  /// Creates a session or returns the existing one for the (group, date,
-  /// category) combination. Returns the session id.
+  /// Creates a session or updates the existing one for the (group, date,
+  /// category, period) combination.
   Future<Session> upsertSession({
     required int groupId,
     required DateTime date,
@@ -154,12 +206,19 @@ class SessionRepository {
     required String categoryName,
     String label = '',
     String? description,
+    int periodStart = 0,
+    int periodEnd = 0,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedEnd = periodStart <= 0
+        ? 0
+        : (periodEnd < periodStart ? periodStart : periodEnd);
+    final normalizedStart = periodStart <= 0 ? 0 : periodStart;
     final existing = await getSession(
       groupId: groupId,
       date: normalizedDate,
       categoryId: categoryId,
+      periodStart: normalizedStart,
     );
     if (existing != null) {
       await (_database.update(_database.sessionsTable)
@@ -168,9 +227,14 @@ class SessionRepository {
             SessionsTableCompanion(
               label: Value(label),
               categoryName: Value(categoryName),
+              periodEnd: Value(normalizedEnd),
             ),
           );
-      return existing.copyWith(label: label, categoryName: categoryName);
+      return existing.copyWith(
+        label: label,
+        categoryName: categoryName,
+        periodEnd: normalizedEnd,
+      );
     }
 
     final id = await _database.into(_database.sessionsTable).insert(
@@ -181,6 +245,8 @@ class SessionRepository {
         categoryId: Value(categoryId),
         categoryName: Value(categoryName),
         description: Value(description),
+        periodStart: Value(normalizedStart),
+        periodEnd: Value(normalizedEnd),
       ),
     );
 
@@ -189,19 +255,114 @@ class SessionRepository {
         .getSingle();
   }
 
+  /// Records the lesson held on [date], attaching to the one already planned
+  /// for that date and category whatever period it sits in, rather than
+  /// adding a second lesson beside it. Used by lesson mode, which is a
+  /// per-day view; [upsertSession] is the period-aware counterpart used when
+  /// planning.
+  Future<Session> upsertSessionForDate({
+    required int groupId,
+    required DateTime date,
+    required String categoryId,
+    required String categoryName,
+    String label = '',
+  }) async {
+    final existing = await sessionForDate(
+      groupId: groupId,
+      date: date,
+      categoryId: categoryId,
+    );
+    return upsertSession(
+      groupId: groupId,
+      date: date,
+      categoryId: categoryId,
+      categoryName: categoryName,
+      label: label,
+      periodStart: existing?.periodStart ?? 0,
+      periodEnd: existing?.periodEnd ?? 0,
+    );
+  }
+
   Future<void> updateSession({
     required int id,
     required String label,
     required String? description,
+    int? periodStart,
+    int? periodEnd,
   }) {
+    final normalizedStart = periodStart == null || periodStart <= 0
+        ? 0
+        : periodStart;
+    final normalizedEnd = normalizedStart == 0
+        ? 0
+        : ((periodEnd ?? normalizedStart) < normalizedStart
+              ? normalizedStart
+              : periodEnd ?? normalizedStart);
+
     return (_database.update(_database.sessionsTable)
           ..where((t) => t.id.equals(id)))
         .write(
           SessionsTableCompanion(
             label: Value(label),
             description: Value(description),
+            periodStart: periodStart == null
+                ? const Value.absent()
+                : Value(normalizedStart),
+            periodEnd: periodStart == null
+                ? const Value.absent()
+                : Value(normalizedEnd),
           ),
         );
+  }
+
+  /// Creates every lesson in [lessons] that does not exist yet and returns how
+  /// many were added. Lessons already on the books are left untouched, so
+  /// filling a term twice is harmless and never overwrites what was recorded.
+  Future<int> planLessons({
+    required int groupId,
+    required List<
+      ({
+        DateTime date,
+        int periodStart,
+        int periodEnd,
+        String categoryId,
+        String categoryName,
+        String label,
+      })
+    >
+    lessons,
+  }) async {
+    var created = 0;
+    await _database.transaction(() async {
+      for (final lesson in lessons) {
+        final normalizedDate = DateTime(
+          lesson.date.year,
+          lesson.date.month,
+          lesson.date.day,
+        );
+        final existing = await getSession(
+          groupId: groupId,
+          date: normalizedDate,
+          categoryId: lesson.categoryId,
+          periodStart: lesson.periodStart,
+        );
+        if (existing != null) continue;
+
+        await _database.into(_database.sessionsTable).insert(
+          SessionsTableCompanion.insert(
+            groupId: groupId,
+            date: normalizedDate,
+            label: lesson.label,
+            categoryId: Value(lesson.categoryId),
+            categoryName: Value(lesson.categoryName),
+            periodStart: Value(lesson.periodStart),
+            periodEnd: Value(lesson.periodEnd),
+          ),
+        );
+        created++;
+      }
+    });
+    return created;
   }
 
   Future<void> deleteSession(int id) {
@@ -225,6 +386,8 @@ class SessionRepository {
         s.description,
         s.category_id,
         s.category_name,
+        s.period_start,
+        s.period_end,
         s.created_at,
         (SELECT COUNT(*) FROM students_table WHERE group_id = s.group_id)
           AS total_students,
@@ -255,7 +418,7 @@ class SessionRepository {
           AS material_done_count
       FROM sessions_table s
       WHERE s.group_id = ?
-      ORDER BY s.date DESC
+      ORDER BY s.date DESC, s.period_start ASC
       ''',
       variables: [Variable.withInt(groupId)],
       readsFrom: {
@@ -336,6 +499,8 @@ class SessionRepository {
       description: row.readNullable<String>('description'),
       categoryId: categoryId,
       categoryName: row.read<String>('category_name'),
+      periodStart: row.read<int>('period_start'),
+      periodEnd: row.read<int>('period_end'),
       createdAt: DateTime.fromMillisecondsSinceEpoch(
         row.read<int>('created_at') * 1000,
       ),

@@ -40,6 +40,22 @@ AppDatabase openLegacyDatabase(void Function(Database db) seed) {
             created_at INTEGER NOT NULL
           );
         ''');
+        // Present in every real version 22 database (added in version 17),
+        // and rewritten by the version 24 migration that adds lesson periods.
+        db.execute('''
+          CREATE TABLE sessions_table (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            group_id INTEGER NOT NULL REFERENCES groups_table (id)
+              ON DELETE CASCADE,
+            date INTEGER NOT NULL,
+            label TEXT NOT NULL,
+            description TEXT NULL,
+            category_id TEXT NOT NULL DEFAULT 'sonstige-mitarbeit',
+            category_name TEXT NOT NULL DEFAULT 'Sonstige Mitarbeit',
+            created_at INTEGER NOT NULL,
+            UNIQUE (group_id, date, category_id)
+          );
+        ''');
         db.execute('''
           CREATE TABLE timeframe_grades_table (
             id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
