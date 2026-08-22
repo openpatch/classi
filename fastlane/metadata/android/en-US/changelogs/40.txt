@@ -1,0 +1,5 @@
+Features
+
+- Plan lessons from a group's weekly schedule
+
+
