@@ -377,7 +377,7 @@ class StudentDetailScreen extends ConsumerWidget {
             stackTrace: st,
           );
           if (context.mounted) {
-            showErrorSnackBar(context, 'generic_error'.tr());
+            showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
           }
         }
       },
@@ -414,7 +414,7 @@ class StudentDetailScreen extends ConsumerWidget {
         error: e,
         stackTrace: st,
       );
-      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
     }
   }
 }

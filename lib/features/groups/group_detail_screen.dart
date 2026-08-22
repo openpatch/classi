@@ -509,7 +509,7 @@ class GroupDetailScreen extends ConsumerWidget {
         error: e,
         stackTrace: st,
       );
-      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
     }
   }
 

@@ -523,7 +523,7 @@ class _ChangePassphraseFormState extends ConsumerState<_ChangePassphraseForm> {
         stackTrace: st,
       );
       if (!mounted) return;
-      showErrorSnackBar(context, 'generic_error'.tr());
+      showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

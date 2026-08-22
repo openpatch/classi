@@ -151,7 +151,14 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         error: e,
         stackTrace: st,
       );
-      if (mounted) showErrorSnackBar(context, 'error_loading_database'.tr());
+      if (mounted) {
+        showErrorSnackBar(
+          context, 
+          'error_loading_database'.tr(),
+          error: e,
+          stackTrace: st,
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

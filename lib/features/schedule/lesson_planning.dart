@@ -109,7 +109,7 @@ Future<void> planNextLesson({
       error: e,
       stackTrace: st,
     );
-    if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
   }
 }
 
@@ -152,7 +152,7 @@ Future<void> editLessonSchedule({
       error: e,
       stackTrace: st,
     );
-    if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
   }
 }
 
@@ -227,7 +227,7 @@ Future<void> fillTermWithLessons({
       error: e,
       stackTrace: st,
     );
-    if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
+    if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
   }
 }
 
