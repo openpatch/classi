@@ -1,0 +1,5 @@
+Features
+
+- Report stacktrace via email when clicking the error toast
+
+
