@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - *(lessons)* Plan lessons from a group's weekly schedule
+- Report stacktrace via email when clicking the error toast
 
 
 ## [1.13.0] - 2026-08-21
