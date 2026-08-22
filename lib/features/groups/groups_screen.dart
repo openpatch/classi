@@ -138,7 +138,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen>
         stackTrace: st,
       );
       if (!mounted) return;
-      showErrorSnackBar(context, 'generic_error'.tr());
+      showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
     }
   }
 }
@@ -288,7 +288,7 @@ class _GroupsList extends ConsumerWidget {
               stackTrace: st,
             );
             if (context.mounted) {
-              showErrorSnackBar(context, 'generic_error'.tr());
+              showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
             }
           }
         }
@@ -336,7 +336,7 @@ class _GroupsList extends ConsumerWidget {
               stackTrace: st,
             );
             if (context.mounted) {
-              showErrorSnackBar(context, 'generic_error'.tr());
+              showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
             }
           }
         }
@@ -360,7 +360,7 @@ class _GroupsList extends ConsumerWidget {
               stackTrace: st,
             );
             if (context.mounted) {
-              showErrorSnackBar(context, 'generic_error'.tr());
+              showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
             }
           }
         }
@@ -377,7 +377,7 @@ class _GroupsList extends ConsumerWidget {
             stackTrace: st,
           );
           if (context.mounted) {
-            showErrorSnackBar(context, 'generic_error'.tr());
+            showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
           }
         }
         return;
@@ -399,7 +399,7 @@ class _GroupsList extends ConsumerWidget {
               stackTrace: st,
             );
             if (context.mounted) {
-              showErrorSnackBar(context, 'generic_error'.tr());
+              showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
             }
           }
         }

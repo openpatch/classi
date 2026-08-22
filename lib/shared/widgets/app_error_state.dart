@@ -1,17 +1,57 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'empty_state.dart';
 
 /// Shows a [SnackBar] styled with the theme's error color.
-void showErrorSnackBar(BuildContext context, String message) {
+void showErrorSnackBar(BuildContext context, String message, {
+  Object? error,
+  StackTrace? stackTrace,
+  String supportEmail = "classi@openpatch.org"
+}) {
   final colorScheme = Theme.of(context).colorScheme;
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text(message, style: TextStyle(color: colorScheme.onError)),
       backgroundColor: colorScheme.error,
+      content: Text(
+        message, 
+        style: TextStyle(color: colorScheme.onError),
+      ),
+      action: stackTrace != null
+          ? SnackBarAction(
+              label: 'Report',
+              textColor: colorScheme.onError,
+              onPressed: () => _sendErrorEmail(
+                email: supportEmail,
+                message: message,
+                error: error,
+                stackTrace: stackTrace,
+              ),
+            )
+          : null,
     ),
   );
+}
+
+Future<void> _sendErrorEmail({
+  required String email,
+  required String message,
+  Object? error,
+  StackTrace? stackTrace,
+}) async {
+  final subject = Uri.encodeComponent('App Error Report: $message');
+  final body = Uri.encodeComponent(
+    'Error Details:\n$message\n\n'
+    '${error != null ? "Exception:\n$error\n\n" : ""}'
+    'Stack Trace:\n$stackTrace',
+  );
+
+  final Uri mailUri = Uri.parse('mailto:$email?subject=$subject&body=$body');
+
+  if (await canLaunchUrl(mailUri)) {
+    await launchUrl(mailUri);
+  }
 }
 
 class AppErrorState extends StatelessWidget {
