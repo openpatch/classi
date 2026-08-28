@@ -8,11 +8,13 @@ import 'package:avatar_maker/src/core/services/facial_hairs_service.dart';
 import 'package:avatar_maker/src/core/services/hair_service.dart';
 import 'package:avatar_maker/src/core/services/options_service.dart';
 import 'package:avatar_maker/src/core/services/outfit_service.dart';
-import 'package:flutter/widgets.dart';
+import '../avatar/avatar_maker_config.dart';
 
-const Locale avatarPreviewLocale = Locale('en');
 final NonPersistentAvatarMakerController _avatarPreviewSeedController =
-    NonPersistentAvatarMakerController(locale: avatarPreviewLocale);
+    NonPersistentAvatarMakerController(
+      locale: avatarMakerLocale,
+      customizedPropertyCategories: avatarMakerHiddenCosmeticCategories,
+    );
 
 final RegExp _filterElementPattern = RegExp(
   r'<filter\b[\s\S]*?<\/filter>',
@@ -44,7 +46,7 @@ String? avatarSvgFromJson(String? avatarJson) {
         )..addAll(
           OptionsService.jsonDecodeSelectedOptions(
             _avatarPreviewSeedController.propertyCategories,
-            avatarJson,
+            normalizeAvatarJson(avatarJson),
           ),
         );
 

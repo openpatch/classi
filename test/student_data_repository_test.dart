@@ -9,6 +9,8 @@ import 'package:classi/features/lists/list_repository.dart';
 import 'package:classi/features/material_tracking/material_repository.dart';
 import 'package:classi/features/students/student_repository.dart';
 import 'package:classi/features/students/student_sorting.dart';
+import 'package:classi/shared/avatar/avatar_code.dart';
+import 'package:classi/shared/utils/avatar_preview.dart';
 import 'package:classi/shared/utils/grade_categories.dart';
 import 'package:classi/shared/utils/formatting.dart';
 import 'package:drift/native.dart';
@@ -64,6 +66,31 @@ void main() {
         .watchStudent(studentId)
         .first;
     expect(clearedStudent?.avatarJson, isNull);
+  });
+
+  test('an avatar decoded from a designer code renders', () async {
+    final groupId = await groupRepository.createGroup(
+      name: '9C',
+      gradeScale: defaultGradeScaleEntries,
+    );
+    final studentId = await studentRepository.addStudent(
+      groupId: groupId,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+    );
+
+    final designerJson = AvatarCode.decode(
+      AvatarCode.encode('{"HairColor":"Brown","SkinColor":"Black"}'),
+    );
+
+    await studentRepository.updateAvatar(
+      id: studentId,
+      avatarJson: designerJson,
+    );
+
+    final saved = await studentRepository.watchStudent(studentId).first;
+    expect(saved?.avatarJson, designerJson);
+    expect(avatarSvgFromJson(saved?.avatarJson), isNotNull);
   });
 
   test('students can be added in a batch', () async {
