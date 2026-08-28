@@ -57,11 +57,24 @@ jobs:
           VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
           sed -i "s/^X-AppImage-Version=.*/X-AppImage-Version=${VERSION}/" linux/org.openpatch.classi.desktop
 
-      - name: Commit CHANGELOG.md, pubspec.yaml and version code
+      # App stores (Flathub, GNOME Software, KDE Discover) show the newest
+      # <release> description as "What's New", so without this the store would
+      # keep showing the notes of whichever release last had them added by hand.
+      - name: Add the release to the AppStream metainfo
+        run: |
+          set -e
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          python3 tool/add_metainfo_release.py "$VERSION" release-body.md \
+            linux/packaging/org.openpatch.classi.metainfo.xml
+
+      - name: Commit CHANGELOG.md, pubspec.yaml, version code and metainfo
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore(release): bump version to ${{ github.ref_name }}"
-          file_pattern: CHANGELOG.md pubspec.yaml version_code.txt linux/org.openpatch.classi.desktop
+          file_pattern: >-
+            CHANGELOG.md pubspec.yaml version_code.txt
+            linux/org.openpatch.classi.desktop
+            linux/packaging/org.openpatch.classi.metainfo.xml
 
       # The tag is what triggers this workflow, so it necessarily points at a
       # commit made *before* the version bump above — which means the tag never
