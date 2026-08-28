@@ -321,7 +321,7 @@ void main() {
   });
 
   test(
-    'absence tracking clears material and homework for the same date',
+    'marking a student absent keeps their material and homework records',
     () async {
       final groupId = await groupRepository.createGroup(
         name: '9A',
@@ -355,13 +355,19 @@ void main() {
         )..where((table) => table.studentId.equals(studentId))).get(),
         hasLength(1),
       );
+      // Absence used to hard-delete both logs, so a mis-tap destroyed records
+      // that undoing the absence could not bring back. The lesson UI already
+      // disables the material and homework cells for an absent student, so the
+      // values only need to be held, not erased.
       expect(
-        await materialRepository.watchStudentLogs(studentId).first,
-        isEmpty,
+        (await materialRepository.watchStudentLogs(studentId).first).single
+            .hadMaterial,
+        isTrue,
       );
       expect(
-        await homeworkRepository.watchStudentLogs(studentId).first,
-        isEmpty,
+        (await homeworkRepository.watchStudentLogs(studentId).first).single
+            .hadHomework,
+        isFalse,
       );
 
       await attendanceRepository.clearAbsence(
