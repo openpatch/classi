@@ -1,8 +1,10 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:drift/drift.dart';
 
 import 'cipher_opener.dart';
+import 'database_indexes.dart';
 import 'tables/attendance_logs_table.dart';
 import 'tables/grade_entries_table.dart';
 import 'tables/groups_table.dart';
@@ -72,13 +74,27 @@ class AppDatabase extends _$AppDatabase {
 
   final String databasePath;
 
+  /// Whether this open call created the schema, i.e. the library is brand new.
+  ///
+  /// Lets the session controller finish seeding with values that need the app's
+  /// locale (timeframe labels), which the database layer has no business
+  /// reaching for.
+  bool wasCreated = false;
+
+  /// The schema version this build of the app writes.
+  ///
+  /// Exposed statically so callers can compare it against the version on disk
+  /// before opening (and therefore migrating) a library.
+  static const int currentSchemaVersion = 25;
+
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => currentSchemaVersion;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) async {
       await migrator.createAll();
+      await _createIndexes();
 
       // Start a fresh library off with the school year we are in, so groups
       // and timeframes have somewhere to live right away.
@@ -90,6 +106,7 @@ class AppDatabase extends _$AppDatabase {
           endDate: DateTime(startYear + 1, 7, 31),
         ),
       );
+      wasCreated = true;
     },
     onUpgrade: (migrator, from, to) async {
       if (from < 2) {
@@ -237,8 +254,35 @@ class AppDatabase extends _$AppDatabase {
           ),
         );
       }
+      if (from < 25) {
+        // The database had no indexes at all until here, so every lookup by
+        // group, student or date was a full table scan. Purely additive.
+        await _createIndexes();
+      }
     },
   );
+
+  /// Creates every index in [databaseIndexStatements].
+  ///
+  /// Shared by `onCreate` and the version 25 migration step so a fresh library
+  /// and a migrated one end up with exactly the same indexes.
+  ///
+  /// A failure is logged and skipped rather than propagated: an index is an
+  /// optimization, and letting one abort the migration would leave a teacher
+  /// unable to open their library over a query plan.
+  Future<void> _createIndexes() async {
+    for (final statement in databaseIndexStatements) {
+      try {
+        await customStatement(statement);
+      } on Object catch (error) {
+        developer.log(
+          'Skipped an index: $statement',
+          name: 'classi.database',
+          error: error,
+        );
+      }
+    }
+  }
 
   /// A school year runs from August 1st until July 31st of the following year.
   /// Returns the calendar year the school year containing [date] started in.
