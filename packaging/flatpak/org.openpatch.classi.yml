@@ -1,0 +1,127 @@
+# Flatpak manifest for Classi.
+#
+# This is the *development* manifest: it builds from the local checkout and
+# expects network access, so `flatpak-builder` can be run against it directly
+# while iterating (see packaging/flatpak/README.md).
+#
+# The Flathub manifest is generated from this one by flatpak-flutter, which
+# pins the Flutter SDK and turns every pub dependency into a declared source so
+# the build works with no network at all. Keep the two in step: anything added
+# here that reaches the network must become a declared source there.
+app-id: org.openpatch.classi
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: classi
+
+# Flutter's Linux build invokes CMake with CC=clang / CXX=clang++ hard-coded
+# (flutter_tools/lib/src/linux/build_linux.dart), and the base freedesktop SDK
+# only ships gcc. The environment cannot override it, so clang has to be there.
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.llvm20
+
+finish-args:
+  # Display and input.
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+
+  # WebDAV backup and restore to a server the teacher configures.
+  - --share=network
+
+  # flutter_secure_storage keeps the WebDAV password and the passphrase saved
+  # for biometric unlock in the Secret Service.
+  - --talk-name=org.freedesktop.secrets
+
+  # Libraries live in ~/Documents/Classi by default (path_provider's
+  # application documents directory). Without this the app cannot create or
+  # reopen its own default library, and users coming from the AppImage would
+  # not find their existing one.
+  #
+  # Libraries in other folders are reached through the file chooser portal, so
+  # no broader filesystem access is needed.
+  - --filesystem=xdg-documents
+
+modules:
+  - name: classi
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/llvm20/bin:/run/build/classi/flutter/bin
+      prepend-ld-library-path: /usr/lib/sdk/llvm20/lib
+      env:
+        PUB_CACHE: /run/build/classi/.pub-cache
+      # DEVELOPMENT ONLY — Flathub builds have no network and this is rejected
+      # there. It is here so the packaging can be iterated on locally without
+      # first generating the full offline source list; the Flathub manifest
+      # produced by flatpak-flutter drops it and declares the Flutter SDK and
+      # every pub package as sources instead.
+      build-args:
+        - --share=network
+    build-commands:
+      # Build sqlite3mc from the amalgamation instead of downloading the
+      # prebuilt library the sqlite3 package would otherwise fetch. Flathub
+      # builds offline and from source, so the download is both impossible and
+      # not allowed. tool/check_cipher_compat.sh verifies the two builds agree
+      # on the encrypted on-disk format.
+      - mkdir -p third_party/sqlite3mc
+      - cp -a sqlite3mc/. third_party/sqlite3mc/
+      - grep -q '^      source: sqlite3mc$' pubspec.yaml
+      - >-
+        sed -i 's|^      source: sqlite3mc$|      source: source\n      path:
+        third_party/sqlite3mc/sqlite3mc_amalgamation.c|' pubspec.yaml
+
+      - flutter config --no-analytics --enable-linux-desktop
+      - flutter pub get
+      # Flathub delivers updates, so the in-app updater is compiled out.
+      - >-
+        flutter build linux --release
+        --dart-define=CLASSI_DISABLE_SELF_UPDATE=true
+
+      # Install the bundle. Everything Flutter emits goes under /app/classi and
+      # the launcher is a symlink, which is what `command: classi` resolves to.
+      - mkdir -p /app/classi /app/bin
+      - cp -a build/linux/*/release/bundle/. /app/classi/
+      - ln -sf /app/classi/classi /app/bin/classi
+
+      # Desktop entry: the icon has to be named after the app ID for Flatpak to
+      # find it, and the AppImage-only keys are meaningless here.
+      - install -Dm644 linux/org.openpatch.classi.desktop
+        /app/share/applications/org.openpatch.classi.desktop
+      - >-
+        sed -i -e 's|^Icon=.*|Icon=org.openpatch.classi|'
+        -e 's|^Exec=.*|Exec=classi|' -e '/^X-AppImage-/d'
+        /app/share/applications/org.openpatch.classi.desktop
+
+      - install -Dm644 linux/packaging/org.openpatch.classi.metainfo.xml
+        /app/share/metainfo/org.openpatch.classi.metainfo.xml
+      - install -Dm644 fastlane/metadata/android/en-US/images/icon.png
+        /app/share/icons/hicolor/512x512/apps/org.openpatch.classi.png
+      - install -Dm644 LICENSE
+        /app/share/licenses/org.openpatch.classi/LICENSE
+
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - build
+          - dist
+          - .dart_tool
+          - .git
+          - third_party
+
+      # Built from source rather than downloaded at build time; see the
+      # build-commands above. Pinned to the version the sqlite3 Dart package
+      # ships prebuilt, so both builds produce the same on-disk format.
+      - type: archive
+        archive-type: zip
+        url: https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.5.0/sqlite3mc-2.5.0-sqlite-3.53.4-amalgamation.zip
+        sha256: cd3a598b667dea206b6c5319d4ecb9d687ee40565f9fd2ba280d0c2f93790f58
+        dest: sqlite3mc
+
+      # Development only. flatpak-flutter replaces this with a pinned SDK
+      # module plus the generated pubspec-sources.json for the Flathub build.
+      - type: git
+        url: https://github.com/flutter/flutter.git
+        tag: 3.41.7
+        dest: flutter

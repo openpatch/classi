@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Fetched by tool/fetch_sqlite3mc.sh for source builds of sqlite3mc.
+/third_party/sqlite3mc/
+
+# flatpak-builder working directories.
+/packaging/flatpak/.flatpak-builder/
+/packaging/flatpak/build/
+/packaging/flatpak/repo/

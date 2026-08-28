@@ -54,7 +54,7 @@ class _ClassiAppState extends ConsumerState<ClassiApp> {
         routerConfig: router,
         builder: (context, child) {
           final routedChild = child ?? const SizedBox.shrink();
-          return isDesktopPlatform
+          return supportsSelfUpdate
               ? AppUpdater(child: routedChild)
               : routedChild;
         },

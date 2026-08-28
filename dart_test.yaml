@@ -1,0 +1,6 @@
+# The cipher-compat check needs two builds of sqlite3mc and an explicit
+# database path, so it is excluded from the normal suite and driven by
+# tool/check_cipher_compat.sh instead.
+tags:
+  cipher-compat:
+    skip: "Run tool/check_cipher_compat.sh instead."

@@ -16,9 +16,23 @@ const _owner = 'openpatch';
 const _repo = 'classi';
 const _apiBase = 'https://api.github.com/repos/$_owner/$_repo/releases';
 
-/// Whether the current platform supports desktop auto-updates.
+/// Whether the current platform is a desktop one.
 bool get isDesktopPlatform =>
     Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+
+/// Set at build time by packaging that owns updates itself.
+///
+/// Flatpak, and Linux distribution packages generally, update through their
+/// own store — an app that downloads and swaps its own binary would at best do
+/// nothing inside the sandbox and at worst fight the package manager. Flathub
+/// rejects apps that self-update, so those builds pass
+/// `--dart-define=CLASSI_DISABLE_SELF_UPDATE=true`.
+const bool selfUpdateDisabled = bool.fromEnvironment(
+  'CLASSI_DISABLE_SELF_UPDATE',
+);
+
+/// Whether this build may check for and install its own updates.
+bool get supportsSelfUpdate => isDesktopPlatform && !selfUpdateDisabled;
 
 /// Wraps [child] with [UpdatWindowManager] on desktop platforms
 /// (Linux, macOS, Windows) to provide automatic update notifications.
