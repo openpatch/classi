@@ -72,9 +72,22 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   Future<void> _loadDefaultPath() async {
-    // Do not pre-populate the folder so the user must explicitly choose where
-    // to store their data.  Only pre-fill the library name with a sensible
-    // default so the name field is not blank.
+    // On platforms that allow a custom location, do not pre-populate the folder
+    // so the user must explicitly choose where to store their data.  On Android
+    // the location is fixed to the app-specific storage directory, so resolve
+    // and display it instead of showing a picker.
+    if (!DatabasePathService.supportsCustomLibraryFolder) {
+      final directory = await ref
+          .read(databasePathServiceProvider)
+          .defaultLibrariesDirectory();
+      if (!mounted) return;
+      setState(() {
+        _selectedFolder = directory;
+        _nameController.text = _defaultLibraryName;
+      });
+      return;
+    }
+
     if (!mounted) return;
     setState(() {
       _selectedFolder = null;
@@ -109,9 +122,14 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   Future<void> _onNext() async {
     switch (_currentStep) {
       case 0:
-        final folderMissing = _selectedFolder == null;
-        setState(() => _folderError = folderMissing);
-        if (folderMissing) return;
+        if (DatabasePathService.supportsCustomLibraryFolder) {
+          final folderMissing = _selectedFolder == null;
+          setState(() => _folderError = folderMissing);
+          if (folderMissing) return;
+        } else if (_selectedFolder == null) {
+          // The fixed storage location has not resolved yet; wait for it.
+          return;
+        }
         if (_locationFormKey.currentState!.validate()) {
           setState(() => _currentStep = 1);
         }
@@ -143,6 +161,22 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       } else {
         showErrorSnackBar(context, 'error_loading_database'.tr());
       }
+    } on FileSystemException catch (e, st) {
+      developer.log(
+        'Failed to create database: storage location not writable',
+        name: 'classi.setup',
+        level: 1000,
+        error: e,
+        stackTrace: st,
+      );
+      if (mounted) {
+        showErrorSnackBar(
+          context,
+          'library_folder_not_writable'.tr(),
+          error: e,
+          stackTrace: st,
+        );
+      }
     } catch (e, st) {
       developer.log(
         'Failed to create database',
@@ -153,7 +187,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       );
       if (mounted) {
         showErrorSnackBar(
-          context, 
+          context,
           'error_loading_database'.tr(),
           error: e,
           stackTrace: st,
@@ -364,6 +398,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           selectedFolder: _selectedFolder,
           databasePath: _databasePath,
           isSaving: _isSaving,
+          canChooseFolder: DatabasePathService.supportsCustomLibraryFolder,
           onPickFolder: _pickFolder,
           onChanged: () => setState(() {}),
           folderError: _folderError,
@@ -446,6 +481,7 @@ class _LibraryStep extends StatelessWidget {
     required this.selectedFolder,
     required this.databasePath,
     required this.isSaving,
+    required this.canChooseFolder,
     required this.onPickFolder,
     required this.onChanged,
     required this.folderError,
@@ -456,6 +492,7 @@ class _LibraryStep extends StatelessWidget {
   final String? selectedFolder;
   final String databasePath;
   final bool isSaving;
+  final bool canChooseFolder;
   final VoidCallback onPickFolder;
   final VoidCallback onChanged;
   final bool folderError;
@@ -468,37 +505,47 @@ class _LibraryStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('setup_library_intro'.tr()),
+          Text(
+            canChooseFolder
+                ? 'setup_library_intro'.tr()
+                : 'setup_library_intro_fixed'.tr(),
+          ),
           const SizedBox(height: 16),
           Text(
             'database_folder'.tr(),
             style: Theme.of(context).textTheme.labelSmall,
           ),
           const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  selectedFolder ?? 'no_folder_selected'.tr(),
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: selectedFolder == null
-                        ? colorScheme.onSurfaceVariant
-                        : null,
-                    fontStyle: selectedFolder == null
-                        ? FontStyle.italic
-                        : FontStyle.normal,
+          if (canChooseFolder)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    selectedFolder ?? 'no_folder_selected'.tr(),
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: selectedFolder == null
+                          ? colorScheme.onSurfaceVariant
+                          : null,
+                      fontStyle: selectedFolder == null
+                          ? FontStyle.italic
+                          : FontStyle.normal,
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                tooltip: 'choose_library_folder'.tr(),
-                onPressed: isSaving ? null : onPickFolder,
-                icon: const Icon(Icons.folder_open_outlined),
-              ),
-            ],
-          ),
-          if (folderError) ...[
+                IconButton(
+                  tooltip: 'choose_library_folder'.tr(),
+                  onPressed: isSaving ? null : onPickFolder,
+                  icon: const Icon(Icons.folder_open_outlined),
+                ),
+              ],
+            )
+          else
+            Text(
+              selectedFolder ?? '',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          if (folderError && canChooseFolder) ...[
             const SizedBox(height: 4),
             Text(
               'library_folder_required'.tr(),

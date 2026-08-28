@@ -101,12 +101,25 @@ Future<void> _openExistingDatabase({
   required WidgetRef ref,
 }) async {
   final session = ref.read(appSessionProvider);
-  session.suspendBackgroundLock();
   String? path;
-  try {
-    path = await FilePicker.getDirectoryPath();
-  } finally {
-    session.resumeBackgroundLock();
+  if (DatabasePathService.supportsCustomLibraryFolder) {
+    session.suspendBackgroundLock();
+    try {
+      path = await FilePicker.getDirectoryPath();
+    } finally {
+      session.resumeBackgroundLock();
+    }
+  } else {
+    final libraries = await ref
+        .read(databasePathServiceProvider)
+        .listLibraryPackages();
+    if (!context.mounted) {
+      return;
+    }
+    path = await _showLibraryPickerDialog(
+      context: context,
+      libraries: libraries,
+    );
   }
   if (path == null || !context.mounted) {
     return;
@@ -200,6 +213,39 @@ Future<void> _restoreFromWebDavDatabase({
     destinationPath: databasePath,
     createNew: !overwrite,
     selectedBackup: backup,
+  );
+}
+
+Future<String?> _showLibraryPickerDialog({
+  required BuildContext context,
+  required List<String> libraries,
+}) {
+  return showDialog<String>(
+    context: context,
+    builder: (context) {
+      if (libraries.isEmpty) {
+        return AlertDialog(
+          title: Text('open_existing_database'.tr()),
+          content: Text('no_libraries_found'.tr()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('cancel'.tr()),
+            ),
+          ],
+        );
+      }
+      return SimpleDialog(
+        title: Text('open_existing_database'.tr()),
+        children: [
+          for (final library in libraries)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(library),
+              child: Text(p.basename(library)),
+            ),
+        ],
+      );
+    },
   );
 }
 
@@ -305,22 +351,28 @@ class _CreateDatabaseDialogState extends State<_CreateDatabaseDialog> {
             style: Theme.of(context).textTheme.labelSmall,
           ),
           const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _selectedFolder,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
+          if (DatabasePathService.supportsCustomLibraryFolder)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _selectedFolder,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ),
-              ),
-              IconButton(
-                tooltip: 'choose_library_folder'.tr(),
-                onPressed: _chooseFolder,
-                icon: const Icon(Icons.folder_open_outlined),
-              ),
-            ],
-          ),
+                IconButton(
+                  tooltip: 'choose_library_folder'.tr(),
+                  onPressed: _chooseFolder,
+                  icon: const Icon(Icons.folder_open_outlined),
+                ),
+              ],
+            )
+          else
+            Text(
+              _selectedFolder,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           const SizedBox(height: 16),
           TextField(
             controller: _nameController,
