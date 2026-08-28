@@ -28,6 +28,7 @@ class TimetableLesson {
     required this.periodEnd,
     required this.categoryId,
     required this.categoryName,
+    required this.label,
     required this.planned,
   });
 
@@ -44,6 +45,10 @@ class TimetableLesson {
   final int periodEnd;
   final String categoryId;
   final String categoryName;
+
+  /// The label of the session covering this slot, empty when the slot is
+  /// unplanned or the session carries no label.
+  final String label;
 
   /// Whether a session already exists for this slot in the shown week.
   final bool planned;
@@ -115,6 +120,7 @@ WeeklyTimetable buildWeeklyTimetable({
           : slot.periodEnd;
       final daySessions =
           sessionsByGroupDate[group.id]?[date] ?? const <Session>[];
+      final covering = _coveringSession(daySessions, slot);
       lessons.add(
         TimetableLesson(
           groupId: group.id,
@@ -126,7 +132,8 @@ WeeklyTimetable buildWeeklyTimetable({
           periodEnd: periodEnd,
           categoryId: slot.categoryId,
           categoryName: group.categoryNames[slot.categoryId] ?? slot.categoryId,
-          planned: daySessions.any((session) => _covers(session, slot)),
+          label: covering?.label ?? '',
+          planned: covering != null,
         ),
       );
     }
@@ -155,17 +162,27 @@ WeeklyTimetable buildWeeklyTimetable({
   );
 }
 
-/// Whether [session] covers [slot]: their period blocks overlap, or the
-/// session carries no period at all, in which case sharing the date is taken
-/// as covering the slot.
-bool _covers(Session session, LessonSlotDraft slot) {
-  if (session.periodStart <= 0) return true;
-  final sessionEnd = session.periodEnd < session.periodStart
-      ? session.periodStart
-      : session.periodEnd;
+/// The session in [daySessions] that covers [slot]: one whose period block
+/// overlaps the slot's, or — failing that — one that carries no period at all,
+/// in which case sharing the date is taken as covering the slot. Returns null
+/// when nothing covers it.
+Session? _coveringSession(List<Session> daySessions, LessonSlotDraft slot) {
   final slotEnd =
       slot.periodEnd < slot.periodStart ? slot.periodStart : slot.periodEnd;
-  return session.periodStart <= slotEnd && slot.periodStart <= sessionEnd;
+  Session? periodless;
+  for (final session in daySessions) {
+    if (session.periodStart <= 0) {
+      periodless ??= session;
+      continue;
+    }
+    final sessionEnd = session.periodEnd < session.periodStart
+        ? session.periodStart
+        : session.periodEnd;
+    if (session.periodStart <= slotEnd && slot.periodStart <= sessionEnd) {
+      return session;
+    }
+  }
+  return periodless;
 }
 
 /// Monday of the week [date] falls in, at midnight local time.

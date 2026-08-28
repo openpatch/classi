@@ -14,6 +14,7 @@ TimetableLesson _lesson({
   required int periodStart,
   required int periodEnd,
   required bool planned,
+  String label = '',
 }) {
   return TimetableLesson(
     groupId: groupId,
@@ -25,6 +26,7 @@ TimetableLesson _lesson({
     periodEnd: periodEnd,
     categoryId: 'sonstige-mitarbeit',
     categoryName: 'Sonstige Mitarbeit',
+    label: label,
     planned: planned,
   );
 }
@@ -63,40 +65,53 @@ void main() {
     await EasyLocalization.ensureInitialized();
   });
 
-  testWidgets('renders the grid and offers to plan an unplanned lesson', (
+  testWidgets('shows labels, adapts to width, and plans an unplanned lesson', (
     tester,
   ) async {
-    await _pumpScreen(
-      tester,
-      WeeklyTimetable(
-        weekStart: DateTime(2026, 8, 24),
-        weekdays: const [1, 2, 3, 4, 5],
-        periodCount: 6,
-        lessons: [
-          _lesson(
-            groupId: 1,
-            name: 'Alpha',
-            weekday: DateTime.monday,
-            periodStart: 1,
-            periodEnd: 2,
-            planned: true,
-          ),
-          _lesson(
-            groupId: 2,
-            name: 'Beta',
-            weekday: DateTime.wednesday,
-            periodStart: 3,
-            periodEnd: 4,
-            planned: false,
-          ),
-        ],
-      ),
+    final timetable = WeeklyTimetable(
+      weekStart: DateTime(2026, 8, 24),
+      weekdays: const [1, 2, 3, 4, 5],
+      periodCount: 6,
+      lessons: [
+        _lesson(
+          groupId: 1,
+          name: 'Alpha',
+          weekday: DateTime.monday,
+          periodStart: 1,
+          periodEnd: 2,
+          planned: true,
+          label: 'Fractions test',
+        ),
+        _lesson(
+          groupId: 2,
+          name: 'Beta',
+          weekday: DateTime.wednesday,
+          periodStart: 3,
+          periodEnd: 4,
+          planned: false,
+        ),
+      ],
     );
+
+    // Wide: the grid, with the planned lesson's label on its block.
+    tester.view.physicalSize = const Size(1100, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpScreen(tester, timetable);
 
     expect(find.text('Timetable'), findsOneWidget);
     expect(find.text('Alpha'), findsOneWidget);
-    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('Fractions test'), findsOneWidget);
     expect(find.textContaining('not planned yet'), findsOneWidget);
+
+    // Narrow: the same week as a per-day agenda.
+    tester.view.physicalSize = const Size(400, 1600);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Wednesday'), findsOneWidget);
+    expect(find.text('Fractions test'), findsOneWidget);
 
     await tester.tap(find.text('Beta'));
     await tester.pumpAndSettle();

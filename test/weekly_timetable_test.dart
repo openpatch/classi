@@ -44,12 +44,13 @@ Session _session({
   required DateTime date,
   int periodStart = 0,
   int periodEnd = 0,
+  String label = '',
 }) {
   return Session(
     id: date.millisecondsSinceEpoch ~/ 1000 + periodStart,
     groupId: groupId,
     date: date,
-    label: '',
+    label: label,
     categoryId: 'sonstige-mitarbeit',
     categoryName: 'Sonstige Mitarbeit',
     periodStart: periodStart,
@@ -191,6 +192,35 @@ void main() {
         timetable.lessons.map((l) => (l.weekday, l.periodStart, l.groupName)),
         [(_monday, 1, 'A'), (_monday, 1, 'Z'), (_wednesday, 1, 'B')],
       );
+    });
+
+    test('carries the covering session label onto a planned lesson', () {
+      final timetable = buildWeeklyTimetable(
+        weekStart: _weekMonday,
+        groups: [
+          _group(
+            slots: [
+              _slot(weekday: _monday, periodStart: 1, periodEnd: 2),
+              _slot(weekday: _wednesday, periodStart: 1, periodEnd: 2),
+            ],
+          ),
+        ],
+        sessions: [
+          _session(
+            date: _weekMonday,
+            periodStart: 1,
+            periodEnd: 2,
+            label: 'Fractions test',
+          ),
+        ],
+      );
+
+      final monday = timetable.lessons.firstWhere((l) => l.weekday == _monday);
+      final wednesday = timetable.lessons.firstWhere(
+        (l) => l.weekday == _wednesday,
+      );
+      expect(monday.label, 'Fractions test');
+      expect(wednesday.label, isEmpty);
     });
 
     test('carries the category display name from the group', () {

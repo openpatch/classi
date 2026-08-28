@@ -359,6 +359,7 @@
   "timetable_empty_hint": "Set the weekdays and periods a group meets on in its weekly schedule to see the week laid out here.",
   "timetable_unplanned_count": "{count} lessons this week are not planned yet",
   "timetable_no_period": "No fixed period",
+  "timetable_no_lessons_day": "No lessons",
   "planned": "Planned",
   "not_planned": "Not planned",
   "plan_lesson": "Plan lesson",

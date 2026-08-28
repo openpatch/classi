@@ -359,6 +359,7 @@
   "timetable_empty_hint": "Lege im Wochenplan einer Gruppe fest, an welchen Wochentagen und Stunden sie Unterricht hat, um die Woche hier zu sehen.",
   "timetable_unplanned_count": "{count} Stunden dieser Woche sind noch nicht geplant",
   "timetable_no_period": "Ohne feste Stunde",
+  "timetable_no_lessons_day": "Kein Unterricht",
   "planned": "Geplant",
   "not_planned": "Nicht geplant",
   "plan_lesson": "Stunde planen",
