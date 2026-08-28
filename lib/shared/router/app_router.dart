@@ -20,7 +20,6 @@ import '../../features/setup/setup_screen.dart';
 import '../../features/setup/unlock_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../features/students/student_summary_screen.dart';
-import '../../features/today/today_dashboard_screen.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/startup_screen.dart';
 
@@ -79,7 +78,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 return from;
               }
             }
-            return '/today';
+            return '/timetable';
           }
           return null;
         case AppSessionStatus.error:
@@ -110,11 +109,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/today',
-            builder: (context, state) => TodayDashboardScreen(
-              initialDate: parseLessonDateOrToday(
-                state.uri.queryParameters['date'],
-              ),
-            ),
+            redirect: (context, state) => '/timetable',
           ),
           GoRoute(
             path: '/timetable',

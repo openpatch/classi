@@ -24,7 +24,6 @@ import '../../features/settings/student_sort_controller.dart';
 import '../../features/settings/theme_controller.dart';
 import '../../features/students/student_repository.dart';
 import '../../features/students/student_sorting.dart';
-import '../../features/today/today_repository.dart';
 import '../database/app_database.dart';
 import '../security/biometric_service.dart';
 import '../security/key_service.dart';
@@ -211,8 +210,8 @@ final groupLessonSlotsProvider = StreamProvider.autoDispose
           ref.watch(lessonSlotRepositoryProvider).watchSlots(groupId),
     );
 
-/// Every group's timetable at once, keyed by group id, for the Today
-/// dashboard, which shows all active groups side by side.
+/// Every group's timetable at once, keyed by group id, for the weekly
+/// timetable, which shows all active groups side by side.
 final lessonSlotsByGroupProvider =
     StreamProvider.autoDispose<Map<int, List<LessonSlot>>>(
       (ref) => ref.watch(lessonSlotRepositoryProvider).watchSlotsByGroup(),
@@ -237,16 +236,6 @@ final groupSessionsOnDateProvider = StreamProvider.autoDispose
 final groupExportServiceProvider = Provider<GroupExportService>(
   (ref) => GroupExportService(ref.watch(databaseProvider)),
 );
-
-final todayRepositoryProvider = Provider<TodayRepository>(
-  (ref) => TodayRepository(ref.watch(databaseProvider)),
-);
-
-final todayOverviewProvider = StreamProvider.autoDispose
-    .family<List<TodayGroupOverview>, DateTime>(
-      (ref, date) =>
-          ref.watch(todayRepositoryProvider).watchTodayOverview(date),
-    );
 
 final schoolYearRepositoryProvider = Provider<SchoolYearRepository>(
   (ref) => SchoolYearRepository(ref.watch(databaseProvider)),

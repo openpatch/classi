@@ -182,7 +182,7 @@ class _RecoverAccessScreenState extends ConsumerState<RecoverAccessScreen> {
       if (!mounted || !success) {
         return;
       }
-      context.go('/today');
+      context.go('/timetable');
     } finally {
       if (mounted) {
         setState(() => _isRecovering = false);
