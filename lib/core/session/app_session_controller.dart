@@ -8,6 +8,8 @@ import 'package:path/path.dart' as p;
 import 'package:webdav_client/webdav_client.dart' as webdav;
 
 import '../database/app_database.dart';
+import '../database/library_seed.dart';
+import '../database/schema_version_probe.dart';
 import '../security/biometric_service.dart';
 import '../security/key_service.dart';
 import '../security/security_preferences_service.dart';
@@ -78,6 +80,7 @@ class AppSessionController extends ChangeNotifier {
   DateTime? _openedAt;
   bool _isBusy = false;
   bool _disposed = false;
+  bool _integrityWarning = false;
   bool _lockOnBackground = true;
   int _backgroundLockSuspendCount = 0;
   bool _biometricEnabled = false;
@@ -123,6 +126,12 @@ class AppSessionController extends ChangeNotifier {
   String? get databasePath => _databasePath;
   AppSessionErrorCode? get errorCode => _errorCode;
   String? get errorMessage => _errorCode?.translationKey;
+
+  /// `true` when `PRAGMA quick_check` reported damage while opening.
+  ///
+  /// Advisory only — the library still opens. The UI surfaces it so a teacher
+  /// can restore a backup before the damage spreads.
+  bool get hasIntegrityWarning => _integrityWarning;
   bool get lockOnBackground => _lockOnBackground;
   bool get biometricEnabled => _biometricEnabled;
   Duration get inactivityTimeout => _inactivityTimeout;
@@ -935,12 +944,95 @@ class AppSessionController extends ChangeNotifier {
       dbFile: file,
       passphrase: passphrase,
     );
+
+    await _copyLibraryAsideIfMigrationPending(file: file, key: databaseKey);
+
     final database = AppDatabase.open(dbFile: file, databaseKey: databaseKey);
     await database.customSelect('SELECT 1').getSingle();
     await database.checkpointAndTruncate();
+    _integrityWarning = !await _passesQuickCheck(database);
+
+    if (database.wasCreated) {
+      try {
+        await seedNewLibrary(database);
+      } on Object catch (error, stackTrace) {
+        // A library that opens without default timeframes is usable; one that
+        // refuses to open because seeding failed is not.
+        developer.log(
+          'Could not seed the new library',
+          name: 'classi.session',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
     _openedAt = await database.lastModified();
     _database = database;
     _currentPassphrase = passphrase;
+  }
+
+  /// Takes an untouched copy of the library when opening it would run a schema
+  /// migration.
+  ///
+  /// Migrations rewrite tables in place and there is no undo; without this the
+  /// only copy of a teacher's data is the one being migrated. Any failure here
+  /// is logged and ignored — refusing to open a library because the safety net
+  /// could not be set up would be worse than opening it without one.
+  Future<void> _copyLibraryAsideIfMigrationPending({
+    required File file,
+    required String key,
+  }) async {
+    try {
+      final onDiskVersion = await readOnDiskSchemaVersion(
+        dbFile: file,
+        databaseKey: key,
+      );
+      // 0 means a brand-new file, null means "could not tell".
+      if (onDiskVersion == null ||
+          onDiskVersion == 0 ||
+          onDiskVersion >= AppDatabase.currentSchemaVersion) {
+        return;
+      }
+
+      final copy = await _databasePathService.createSafetyCopy(
+        reason: 'pre-v${AppDatabase.currentSchemaVersion}',
+      );
+      developer.log(
+        'Copied library aside before migrating from schema version '
+        '$onDiskVersion: $copy',
+        name: 'classi.session',
+      );
+    } on Object catch (error, stackTrace) {
+      developer.log(
+        'Could not copy the library aside before migrating',
+        name: 'classi.session',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Runs `PRAGMA quick_check` and reports whether the database looks intact.
+  ///
+  /// Deliberately non-blocking: a damaged page should warn the teacher so they
+  /// can restore a backup, not lock them out of data that is still mostly
+  /// readable.
+  Future<bool> _passesQuickCheck(AppDatabase database) async {
+    try {
+      final rows = await database.customSelect('PRAGMA quick_check;').get();
+      if (rows.isEmpty) return true;
+      final first = rows.first.data.values.first;
+      return first is String && first.toLowerCase() == 'ok';
+    } on Object catch (error, stackTrace) {
+      developer.log(
+        'Integrity quick_check failed to run',
+        name: 'classi.session',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return true;
+    }
   }
 
   Future<void> _closeDatabase() async {
@@ -956,6 +1048,7 @@ class AppSessionController extends ChangeNotifier {
     final database = _database;
     _database = null;
     _currentPassphrase = null;
+    _integrityWarning = false;
     return database;
   }
 

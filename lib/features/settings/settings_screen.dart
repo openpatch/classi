@@ -93,7 +93,7 @@ class SettingsScreen extends ConsumerWidget {
                 title: Text('manage_school_years'.tr()),
                 subtitle: Text('school_years_hint'.tr()),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/settings/school-years'),
+                onTap: () => context.push('/years'),
               ),
             ),
             const SizedBox(height: 16),

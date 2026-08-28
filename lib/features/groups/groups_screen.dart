@@ -17,11 +17,15 @@ import '../../shared/widgets/empty_state.dart';
 import 'group_form.dart';
 
 final activeGroupsProvider = StreamProvider.autoDispose<List<Group>>(
-  (ref) => ref.watch(groupRepositoryProvider).watchActiveGroups(),
+  (ref) => ref
+      .watch(groupRepositoryProvider)
+      .watchActiveGroups(schoolYearId: ref.watch(activeSchoolYearIdProvider)),
 );
 
 final archivedGroupsProvider = StreamProvider.autoDispose<List<Group>>(
-  (ref) => ref.watch(groupRepositoryProvider).watchArchivedGroups(),
+  (ref) => ref
+      .watch(groupRepositoryProvider)
+      .watchArchivedGroups(schoolYearId: ref.watch(activeSchoolYearIdProvider)),
 );
 
 final groupStudentCountsProvider = StreamProvider.autoDispose<Map<int, int>>(
