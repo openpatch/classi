@@ -1,6 +1,6 @@
 Classi ist eine lokal-erste App für Lehrkräfte. Alle Klassen-Daten bleiben auf deinem Gerät, verschlüsselt und unter deiner Kontrolle — kein Cloud-Konto erforderlich.
 
-Deine Daten werden in verschlüsselten .classi-Bibliotheken gespeichert, die du selbst platzierst (z. B. in Dokumente). Eine portable .classi-Backup-Datei kann automatisch exportiert werden, sobald die App sperrt oder du die Bibliothek wechselst — so ist die Synchronisation zwischen Geräten einfach möglich.
+Deine Daten werden in verschlüsselten .classi-Bibliotheken im App-eigenen Speicher abgelegt. Eine portable .classi-Backup-Datei kann automatisch auf einen WebDAV-Server exportiert werden, sobald die App sperrt oder du die Bibliothek wechselst — so ist die Synchronisation zwischen Geräten einfach möglich.
 
 <b>Funktionen</b>
 • Gruppen und Schüler:innenlisten mit Archivieren, Klonen und Massenanlage

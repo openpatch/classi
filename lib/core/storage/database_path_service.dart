@@ -16,6 +16,13 @@ const List<String> _sidecars = [
 ];
 
 class DatabasePathService {
+  /// Whether the user may store libraries in a folder of their choosing.
+  ///
+  /// Android's scoped storage forbids raw file access to arbitrary folders in
+  /// shared storage, so on Android libraries always live in the app-specific
+  /// external storage directory and the folder picker is hidden.
+  static bool get supportsCustomLibraryFolder => !Platform.isAndroid;
+
   Future<File> getDatabaseFile() async {
     final selectedPath = await getCurrentDatabasePath();
     final databaseFilePath = databaseFilePathFor(selectedPath);
@@ -59,8 +66,36 @@ class DatabasePathService {
   }
 
   Future<String> defaultLibrariesDirectory() async {
+    if (Platform.isAndroid) {
+      // Scoped storage blocks raw file access to user-chosen folders in shared
+      // storage, so libraries live in the app-specific external directory
+      // (falling back to internal storage if external is unavailable).
+      final externalDirectory = await getExternalStorageDirectory();
+      final baseDirectory =
+          externalDirectory ?? await getApplicationDocumentsDirectory();
+      return p.join(baseDirectory.path, 'Classi');
+    }
     final documentsDirectory = await getApplicationDocumentsDirectory();
     return p.join(documentsDirectory.path, 'Classi');
+  }
+
+  /// Lists the `.classi` library packages that live in the default libraries
+  /// directory, sorted by path.  Used on Android, where the SAF folder picker
+  /// cannot reach the app-specific storage directory.
+  Future<List<String>> listLibraryPackages() async {
+    final directory = Directory(await defaultLibrariesDirectory());
+    if (!await directory.exists()) {
+      return const <String>[];
+    }
+
+    final packages = <String>[];
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity is Directory && isPackagePath(entity.path)) {
+        packages.add(p.normalize(entity.path));
+      }
+    }
+    packages.sort();
+    return packages;
   }
 
   Future<String> createUniqueImportedDatabasePath(String preferredName) async {

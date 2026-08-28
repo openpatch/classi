@@ -31,18 +31,24 @@ and portable across devices.
 
 ## Data storage
 
-Classi stores your library in a `.classi` folder that you choose during the
-first-run setup. The setup wizard always requires an explicit folder selection
-so your data is never silently placed inside an app-private directory.
-Library-specific settings such as grade systems, sorting, theme, lock, and
-WebDAV backup configuration are stored inside that `.classi` folder too, so
-they move with the project instead of being kept as global app preferences.
+Classi stores your library in a `.classi` folder. Library-specific settings
+such as grade systems, sorting, theme, lock, and WebDAV backup configuration
+are stored inside that `.classi` folder too, so they move with the project
+instead of being kept as global app preferences.
+
+On **desktop**, the first-run setup requires an explicit folder selection so
+your data is never silently placed inside an app-private directory. On
+**Android**, scoped storage forbids raw file access to folders you pick in
+shared storage, so libraries are always created in Classi's app-specific
+storage directory (`Android/data/<package>/files/Classi`). This directory is
+removed when the app is uninstalled — configure a WebDAV backup to keep a
+restorable copy.
 
 **Recommended locations:**
 
 | Platform | Recommended folder |
 |---|---|
-| Android | A folder in shared storage such as *Documents* — **not** inside `Android/data/`, which is erased when the app is uninstalled |
+| Android | Fixed to Classi's app storage; use WebDAV backup for portability |
 | macOS (App Store) | `~/Documents/Classi` or another location outside `~/Library/Containers/` |
 | macOS / Windows / Linux | Any folder in your home directory or an accessible drive |
 
