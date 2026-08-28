@@ -29,7 +29,9 @@ final listDetailGroupProvider = StreamProvider.autoDispose.family<Group?, int>(
 );
 
 final listDetailGroupsProvider = StreamProvider.autoDispose<List<Group>>(
-  (ref) => ref.watch(groupRepositoryProvider).watchActiveGroups(),
+  (ref) => ref
+      .watch(groupRepositoryProvider)
+      .watchActiveGroups(schoolYearId: ref.watch(activeSchoolYearIdProvider)),
 );
 
 final listDetailStudentsProvider = StreamProvider.autoDispose

@@ -6,10 +6,13 @@ import '../../shared/utils/grade_categories.dart';
 import 'lesson_schedule.dart';
 import 'weekly_timetable.dart';
 
-/// Every active group, for the weekly timetable. Kept local so the schedule
-/// feature does not depend on the groups screen.
+/// Every active group of the school year being shown, for the weekly
+/// timetable. Kept local so the schedule feature does not depend on the groups
+/// screen.
 final _timetableGroupsProvider = StreamProvider.autoDispose<List<Group>>(
-  (ref) => ref.watch(groupRepositoryProvider).watchActiveGroups(),
+  (ref) => ref
+      .watch(groupRepositoryProvider)
+      .watchActiveGroups(schoolYearId: ref.watch(activeSchoolYearIdProvider)),
 );
 
 /// One week of sessions across all groups, keyed by that week's Monday.

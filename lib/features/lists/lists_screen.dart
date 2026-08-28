@@ -27,7 +27,9 @@ final archivedAllListsProvider = StreamProvider.autoDispose<List<Checklist>>(
 );
 
 final listsGroupsProvider = FutureProvider.autoDispose<List<Group>>(
-  (ref) => ref.watch(groupRepositoryProvider).allActiveGroups(),
+  (ref) => ref
+      .watch(groupRepositoryProvider)
+      .allActiveGroups(schoolYearId: ref.watch(activeSchoolYearIdProvider)),
 );
 
 final listsGroupProvider = StreamProvider.autoDispose.family<Group?, int>(

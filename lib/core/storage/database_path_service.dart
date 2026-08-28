@@ -160,6 +160,48 @@ class DatabasePathService {
     return artifactPathsFor(await getCurrentDatabasePath()).skip(1).toList();
   }
 
+  /// Copies the current library aside, returning the path of the copy.
+  ///
+  /// Used before a schema migration: migrations run in place and cannot be
+  /// rolled back, so the untouched copy is the only way back if one goes wrong.
+  /// The copy deliberately sits next to the library rather than inside it, so
+  /// it is neither picked up by [listLibraryPackages] (the name no longer ends
+  /// in `.classi`) nor swept into a backup archive.
+  ///
+  /// Returns `null` when there is nothing to copy. Copies are not pruned — a
+  /// schema migration happens a handful of times in a library's life, and a
+  /// safety net that deletes itself is not one.
+  Future<String?> createSafetyCopy({required String reason}) async {
+    final currentPath = await getCurrentDatabasePath();
+    final stamp = DateTime.now()
+        .toUtc()
+        .toIso8601String()
+        .replaceAll(RegExp(r'[:.]'), '-');
+    final targetPath = '$currentPath.$reason-$stamp';
+
+    if (isPackagePath(currentPath)) {
+      final source = Directory(currentPath);
+      if (!await source.exists()) {
+        return null;
+      }
+      await _copyDirectory(source, Directory(targetPath));
+      return targetPath;
+    }
+
+    final sourceFile = File(currentPath);
+    if (!await sourceFile.exists()) {
+      return null;
+    }
+    await sourceFile.copy(targetPath);
+    for (final ext in _sidecars) {
+      final sidecar = File('$currentPath$ext');
+      if (await sidecar.exists()) {
+        await sidecar.copy('$targetPath$ext');
+      }
+    }
+    return targetPath;
+  }
+
   static String normalizeDatabasePackageName(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {

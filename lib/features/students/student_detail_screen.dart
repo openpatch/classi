@@ -70,7 +70,9 @@ final studentAttendanceProvider = StreamProvider.autoDispose
     );
 
 final availableGroupsProvider = FutureProvider.autoDispose<List<Group>>(
-  (ref) => ref.watch(groupRepositoryProvider).allActiveGroups(),
+  (ref) => ref
+      .watch(groupRepositoryProvider)
+      .allActiveGroups(schoolYearId: ref.watch(activeSchoolYearIdProvider)),
 );
 
 final availableStudentsProvider = StreamProvider.autoDispose<List<Student>>(
