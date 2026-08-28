@@ -57,7 +57,13 @@ class SchoolYearsScreen extends ConsumerWidget {
                 96,
               ),
               children: [
-                for (final year in active) _SchoolYearCard(schoolYear: year),
+                // The app's card theme has no margin, so lists space their
+                // own cards. Separators rather than trailing gaps, to keep the
+                // spacing even where the archived section starts.
+                for (final (index, year) in active.indexed) ...[
+                  if (index > 0) const SizedBox(height: AppSpacing.medium),
+                  _SchoolYearCard(schoolYear: year),
+                ],
                 if (archived.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.large),
                   Text(
@@ -65,8 +71,10 @@ class SchoolYearsScreen extends ConsumerWidget {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: AppSpacing.small),
-                  for (final year in archived)
+                  for (final (index, year) in archived.indexed) ...[
+                    if (index > 0) const SizedBox(height: AppSpacing.medium),
                     _SchoolYearCard(schoolYear: year),
+                  ],
                 ],
               ],
             ),
@@ -166,7 +174,7 @@ class _SchoolYearCard extends ConsumerWidget {
             ),
           ],
         ),
-        onTap: () => context.push('/settings/school-years/${schoolYear.id}'),
+        onTap: () => context.push('/years/${schoolYear.id}'),
       ),
     );
   }

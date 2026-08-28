@@ -13,6 +13,7 @@ import '../../shared/widgets/content_constraints.dart';
 import '../groups/timeframe_editor_sheet.dart';
 import '../groups/timeframe_repository.dart';
 import 'school_year_repository.dart';
+import 'timeframe_coverage.dart';
 
 /// The timeframes of a single school year, plus the groups that share them.
 class SchoolYearDetailScreen extends ConsumerWidget {
@@ -133,6 +134,12 @@ class _TimeframesCard extends ConsumerWidget {
                           if (i < timeframes.length - 1)
                             const Divider(height: 1),
                         ],
+                        _CoverageNotice(
+                          coverage: TimeframeCoverage.of(
+                            schoolYear: schoolYear,
+                            timeframes: timeframes,
+                          ),
+                        ),
                       ],
                     ),
               error: (e, s) => const AppErrorText(),
@@ -271,6 +278,53 @@ class _GroupsCard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Points out that a year's timeframes leave a gap or spill past the year.
+///
+/// Deliberately an inline note rather than a blocking dialog: an unusual term
+/// structure is the teacher's business, and the app should only make sure it
+/// was not an accident.
+class _CoverageNotice extends StatelessWidget {
+  const _CoverageNotice({required this.coverage});
+
+  final TimeframeCoverage coverage;
+
+  @override
+  Widget build(BuildContext context) {
+    if (coverage.isComplete) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final messages = [
+      if (coverage.hasGap) 'timeframe_coverage_gap'.tr(),
+      if (coverage.reachesOutsideYear) 'timeframe_outside_school_year'.tr(),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.medium),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppSpacing.small),
+          Expanded(
+            child: Text(
+              messages.join('\n'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

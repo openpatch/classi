@@ -10,6 +10,7 @@ import '../../features/groups/group_export_service.dart';
 import '../../features/groups/group_repository.dart';
 import '../../features/groups/timeframe_grade_repository.dart';
 import '../../features/groups/timeframe_repository.dart';
+import '../../features/school_years/active_school_year_controller.dart';
 import '../../features/school_years/school_year_repository.dart';
 import '../../features/homework/homework_repository.dart';
 import '../../features/lists/list_repository.dart';
@@ -239,6 +240,36 @@ final groupExportServiceProvider = Provider<GroupExportService>(
 
 final schoolYearRepositoryProvider = Provider<SchoolYearRepository>(
   (ref) => SchoolYearRepository(ref.watch(databaseProvider)),
+);
+
+/// The school year every year-scoped screen reads from.
+///
+/// Re-initialized when the library changes, the same way the other
+/// settings-backed controllers are, since the choice is stored per library.
+final activeSchoolYearControllerProvider =
+    ChangeNotifierProvider<ActiveSchoolYearController>((ref) {
+      final controller = ActiveSchoolYearController(
+        projectSettingsStore: ref.watch(projectSettingsStoreProvider),
+        schoolYearRepository: ref.watch(schoolYearRepositoryProvider),
+      );
+      unawaited(controller.initialize());
+      ref.listen<String?>(selectedDatabasePathProvider, (previous, next) {
+        if (previous != next) {
+          unawaited(controller.initialize());
+        }
+      });
+      // Keep the switcher honest when years are added, archived or deleted.
+      ref.listen<AsyncValue<List<SchoolYear>>>(schoolYearsProvider, (_, _) {
+        unawaited(controller.refresh());
+      });
+      return controller;
+    });
+
+/// The active school year's id, or `null` while it is still resolving.
+///
+/// Year-scoped providers watch this so switching the year rebuilds them.
+final activeSchoolYearIdProvider = Provider<int?>(
+  (ref) => ref.watch(activeSchoolYearControllerProvider).activeSchoolYearId,
 );
 
 final schoolYearsProvider = StreamProvider.autoDispose<List<SchoolYear>>(
