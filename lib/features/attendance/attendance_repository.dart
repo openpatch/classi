@@ -126,14 +126,12 @@ class AttendanceRepository {
             .write(const AttendanceLogsTableCompanion(isAbsent: Value(true)));
       }
 
-      await (_database.delete(_database.materialLogsTable)
-            ..where((table) => table.studentId.equals(studentId))
-            ..where((table) => table.date.equals(normalizedDate)))
-          .go();
-      await (_database.delete(_database.homeworkLogsTable)
-            ..where((table) => table.studentId.equals(studentId))
-            ..where((table) => table.date.equals(normalizedDate)))
-          .go();
+      // Homework and material stay untouched. Marking a student absent used to
+      // hard-delete both logs for that day, so a mis-tap silently destroyed
+      // records that undoing the absence could not bring back. Absence and
+      // homework are independent facts: a student can be absent and still have
+      // handed work in, and the summaries already treat a missing row as
+      // "not recorded".
     });
   }
 
