@@ -226,21 +226,40 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/notes',
             builder: (context, state) => const NotesScreen(),
           ),
+          // School years moved out of Settings: the year scopes the whole app,
+          // so it belongs alongside the other top-level destinations rather
+          // than three taps deep in a preferences screen.
+          GoRoute(
+            path: '/years',
+            builder: (context, state) => const SchoolYearsScreen(),
+            routes: [
+              GoRoute(
+                path: ':schoolYearId',
+                builder: (_, state) => SchoolYearDetailScreen(
+                  schoolYearId: int.parse(
+                    state.pathParameters['schoolYearId']!,
+                  ),
+                ),
+              ),
+            ],
+          ),
           GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsScreen(),
             routes: [
+              // Kept so links and restored locations from older builds still
+              // land somewhere sensible.
               GoRoute(
                 path: 'school-years',
-                builder: (context, state) => const SchoolYearsScreen(),
+                redirect: (_, state) {
+                  final id = state.pathParameters['schoolYearId'];
+                  return id == null ? '/years' : '/years/$id';
+                },
                 routes: [
                   GoRoute(
                     path: ':schoolYearId',
-                    builder: (_, state) => SchoolYearDetailScreen(
-                      schoolYearId: int.parse(
-                        state.pathParameters['schoolYearId']!,
-                      ),
-                    ),
+                    redirect: (_, state) =>
+                        '/years/${state.pathParameters['schoolYearId']}',
                   ),
                 ],
               ),

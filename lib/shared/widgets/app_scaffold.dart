@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/app_providers.dart';
+import '../../features/school_years/school_year_switcher.dart';
+import 'library_health_banner.dart';
 
 class AppScaffold extends ConsumerWidget {
   const AppScaffold({required this.child, super.key});
@@ -74,6 +76,7 @@ class AppScaffold extends ConsumerWidget {
                     label: Text(destination.label.tr()),
                   ),
               ],
+              leading: SchoolYearSwitcher(extended: isExtended),
               trailing: const Expanded(
                 child: Align(
                   alignment: Alignment.bottomCenter,
@@ -85,16 +88,36 @@ class AppScaffold extends ConsumerWidget {
               ),
             ),
             const VerticalDivider(width: 1),
-            Expanded(child: child),
+            Expanded(
+              child: Column(
+                children: [
+                  const LibraryHealthBanner(),
+                  Expanded(child: child),
+                ],
+              ),
+            ),
           ],
         ),
       );
     } else {
+      // No AppBar here: every screen inside the shell brings its own, so the
+      // year switcher sits in a slim strip below them, the same way the backup
+      // indicator sits in one above the navigation bar.
       scaffold = Scaffold(
-        body: child,
+        body: Column(
+          children: [const LibraryHealthBanner(), Expanded(child: child)],
+        ),
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const Divider(height: 1),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                child: SchoolYearSwitcher(extended: true),
+              ),
+            ),
             const _BackupStatusIndicator(dense: false),
             NavigationBar(
               selectedIndex: selectedIndex,

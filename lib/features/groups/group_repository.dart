@@ -9,18 +9,34 @@ class GroupRepository {
 
   final AppDatabase _database;
 
-  Stream<List<Group>> watchActiveGroups() {
+  /// Groups of one school year, or every group when [schoolYearId] is null.
+  ///
+  /// Groups that were never assigned a school year are included in whichever
+  /// year is being shown. They predate the year becoming the app's frame, and
+  /// hiding a teacher's group behind a filter they did not know existed is
+  /// worse than showing it in the wrong year.
+  Stream<List<Group>> watchActiveGroups({int? schoolYearId}) {
     return (_database.select(_database.groupsTable)
           ..where((table) => table.archivedAt.isNull())
+          ..where((table) => _inSchoolYear(table, schoolYearId))
           ..orderBy([(table) => OrderingTerm.asc(table.name)]))
         .watch();
   }
 
-  Stream<List<Group>> watchArchivedGroups() {
+  Stream<List<Group>> watchArchivedGroups({int? schoolYearId}) {
     return (_database.select(_database.groupsTable)
           ..where((table) => table.archivedAt.isNotNull())
+          ..where((table) => _inSchoolYear(table, schoolYearId))
           ..orderBy([(table) => OrderingTerm.desc(table.archivedAt)]))
         .watch();
+  }
+
+  Expression<bool> _inSchoolYear($GroupsTableTable table, int? schoolYearId) {
+    if (schoolYearId == null) {
+      return const Constant(true);
+    }
+    return table.schoolYearId.equals(schoolYearId) |
+        table.schoolYearId.isNull();
   }
 
   Stream<Group?> watchGroup(int id) {
@@ -29,9 +45,10 @@ class GroupRepository {
     )..where((table) => table.id.equals(id))).watchSingleOrNull();
   }
 
-  Future<List<Group>> allActiveGroups() {
+  Future<List<Group>> allActiveGroups({int? schoolYearId}) {
     return (_database.select(_database.groupsTable)
           ..where((table) => table.archivedAt.isNull())
+          ..where((table) => _inSchoolYear(table, schoolYearId))
           ..orderBy([(table) => OrderingTerm.asc(table.name)]))
         .get();
   }
