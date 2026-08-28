@@ -1,0 +1,12 @@
+Bug Fixes
+
+- Store Android libraries in app storage
+
+
+Features
+
+- Add a weekly timetable view
+- Show lesson labels and a responsive timetable
+- Replace the Today dashboard with the weekly timetable
+
+
