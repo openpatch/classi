@@ -28,6 +28,12 @@ class AppScaffold extends ConsumerWidget {
         label: 'today',
       ),
       _NavigationItem(
+        path: '/timetable',
+        icon: Icons.calendar_view_week_outlined,
+        selectedIcon: Icons.calendar_view_week,
+        label: 'timetable',
+      ),
+      _NavigationItem(
         path: '/groups',
         icon: Icons.groups_outlined,
         selectedIcon: Icons.groups,
@@ -135,17 +141,20 @@ class AppScaffold extends ConsumerWidget {
 
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    if (location.startsWith('/groups') || location.startsWith('/students')) {
+    if (location.startsWith('/timetable')) {
       return 1;
     }
-    if (location.startsWith('/lists')) {
+    if (location.startsWith('/groups') || location.startsWith('/students')) {
       return 2;
     }
-    if (location.startsWith('/notes')) {
+    if (location.startsWith('/lists')) {
       return 3;
     }
-    if (location.startsWith('/settings')) {
+    if (location.startsWith('/notes')) {
       return 4;
+    }
+    if (location.startsWith('/settings')) {
+      return 5;
     }
     return 0;
   }

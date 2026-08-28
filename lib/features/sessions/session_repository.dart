@@ -136,6 +136,24 @@ class SessionRepository {
         .watch();
   }
 
+  /// Watches every group's sessions with a date in [start]–[end] inclusive,
+  /// ordered by date then period. Feeds the weekly timetable, which needs one
+  /// week of lessons across all groups at once.
+  Stream<List<Session>> watchSessionsInRange({
+    required DateTime start,
+    required DateTime end,
+  }) {
+    final from = DateTime(start.year, start.month, start.day);
+    final to = DateTime(end.year, end.month, end.day);
+    return (_database.select(_database.sessionsTable)
+          ..where((t) => t.date.isBetweenValues(from, to))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.date),
+            (t) => OrderingTerm.asc(t.periodStart),
+          ]))
+        .watch();
+  }
+
   /// Watches sessions for [groupId] enriched with attendance, homework,
   /// material, and grade statistics.
   Stream<List<SessionSummary>> watchGroupSessionSummaries(int groupId) {
