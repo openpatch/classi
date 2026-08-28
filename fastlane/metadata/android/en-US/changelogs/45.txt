@@ -1,5 +1,12 @@
+Bug Fixes
+
+- Move the release tag onto the commit it names
+
+
 Features
 
 - Package Classi as a Flatpak
+- Use desktop screenshots for the AppStream metainfo
+- Add each release to the AppStream metainfo automatically
 
 
