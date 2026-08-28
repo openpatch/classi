@@ -198,7 +198,7 @@ class _AppInfoSectionState extends ConsumerState<_AppInfoSection> {
           children: [
             if (info != null)
               SelectableText('${info.version}+${info.buildNumber}'),
-            if (isDesktopPlatform) ...[
+            if (supportsSelfUpdate) ...[
               const SizedBox(height: 12),
               Text(
                 'app_update_status_title'.tr(),

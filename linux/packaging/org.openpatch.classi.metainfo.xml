@@ -4,29 +4,99 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Classi</name>
-  <summary>
-    Local-first teacher desk for groups, grades, notes, and checklists
-  </summary>
+  <summary>Teacher desk for groups, grades, notes, and checklists</summary>
   <description>
     <p>
-      Classi is a local-first Flutter app for teachers. It stores groups,
-      students, grades, notes, checklists, and material tracking data in
-      encrypted .classi libraries.
+      Classi is a local-first app for teachers. It keeps groups, students,
+      grades, attendance, notes, checklists and material tracking in encrypted
+      libraries that stay on your own device.
     </p>
+    <p>Classi helps you:</p>
+    <ul>
+      <li>Plan a weekly timetable and run a lesson from it</li>
+      <li>Record attendance, homework, material and grades during class</li>
+      <li>Track grades per category with weighted averages, per school year</li>
+      <li>Keep notes and checklists for a group or a single student</li>
+      <li>Arrange seating plans</li>
+    </ul>
     <p>
-      Automatic backup and restore to a WebDAV server keeps data safe and
-      portable across devices.
+      Every library is encrypted with a passphrase you choose, and a recovery
+      key is issued when you set one up. Optional backup and restore to your own
+      WebDAV server keeps a library safe and portable between devices; there is
+      no Classi account and no Classi server.
     </p>
   </description>
   <launchable type="desktop-id">org.openpatch.classi.desktop</launchable>
   <developer id="org.openpatch">
     <name>OpenPatch</name>
   </developer>
-  <url type="homepage">https://github.com/openpatch/classi</url>
+  <url type="homepage">https://openpatch.org</url>
   <url type="bugtracker">https://github.com/openpatch/classi/issues</url>
+  <url type="vcs-browser">https://github.com/openpatch/classi</url>
   <categories>
     <category>Education</category>
+    <category>Office</category>
   </categories>
+  <keywords>
+    <keyword>teacher</keyword>
+    <keyword>school</keyword>
+    <keyword>grades</keyword>
+    <keyword>attendance</keyword>
+    <keyword>classroom</keyword>
+  </keywords>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">560</display_length>
+  </requires>
+  <branding>
+    <color type="primary" scheme_preference="light">#c7dcf7</color>
+    <color type="primary" scheme_preference="dark">#12314f</color>
+  </branding>
+  <content_rating type="oars-1.1"/>
+  <!--
+    TODO before submitting to Flathub: these are the Android phone screenshots,
+    used here only so the metainfo validates. Classi is listed as a desktop
+    app, so capture desktop-sized ones and point at those instead — reviewers
+    do notice portrait phone shots on a desktop listing.
+
+    The URLs must resolve over HTTPS (the linter fetches them) and must sit on
+    a tag, not a branch.
+  -->
+  <screenshots>
+    <screenshot type="default">
+      <caption>The weekly timetable</caption>
+      <image>https://raw.githubusercontent.com/openpatch/classi/v1.16.0/fastlane/metadata/android/en-US/images/phoneScreenshots/1.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Running a lesson: attendance, homework, material and grades</caption>
+      <image>https://raw.githubusercontent.com/openpatch/classi/v1.16.0/fastlane/metadata/android/en-US/images/phoneScreenshots/2.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A group and its students</caption>
+      <image>https://raw.githubusercontent.com/openpatch/classi/v1.16.0/fastlane/metadata/android/en-US/images/phoneScreenshots/3.png</image>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="1.16.0" date="2026-08-28">
+      <description>
+        <p>
+          The school year is now the frame the app works in: pick one in the
+          sidebar and groups, the timetable, notes and checklists follow it.
+        </p>
+        <ul>
+          <li>School years moved out of Settings into their own section</li>
+          <li>New libraries start with the current school year and two terms</li>
+          <li>Marking a student absent no longer clears their homework and material records</li>
+          <li>Libraries are copied aside before a database upgrade, and checked for damage when opened</li>
+          <li>Much faster on large libraries</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
   <provides>
     <binary>classi</binary>
   </provides>
