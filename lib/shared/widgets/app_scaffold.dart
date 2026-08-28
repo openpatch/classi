@@ -22,12 +22,6 @@ class AppScaffold extends ConsumerWidget {
     final selectedIndex = _selectedIndex(context);
     final destinations = [
       _NavigationItem(
-        path: '/today',
-        icon: Icons.today_outlined,
-        selectedIcon: Icons.today,
-        label: 'today',
-      ),
-      _NavigationItem(
         path: '/timetable',
         icon: Icons.calendar_view_week_outlined,
         selectedIcon: Icons.calendar_view_week,
@@ -141,20 +135,17 @@ class AppScaffold extends ConsumerWidget {
 
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    if (location.startsWith('/timetable')) {
+    if (location.startsWith('/groups') || location.startsWith('/students')) {
       return 1;
     }
-    if (location.startsWith('/groups') || location.startsWith('/students')) {
+    if (location.startsWith('/lists')) {
       return 2;
     }
-    if (location.startsWith('/lists')) {
+    if (location.startsWith('/notes')) {
       return 3;
     }
-    if (location.startsWith('/notes')) {
-      return 4;
-    }
     if (location.startsWith('/settings')) {
-      return 5;
+      return 4;
     }
     return 0;
   }
