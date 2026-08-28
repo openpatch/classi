@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.17.0] - 2026-08-28
+
+### Bug Fixes
+
+- *(attendance)* Keep homework and material when a student is marked absent
+
+
+### Documentation
+
+- Add the Classi 2.0 plan
+
+
+### Features
+
+- *(database)* Copy the library aside before migrating it
+- *(school-year)* Make the school year the frame the app works in
+
+
+### Performance
+
+- *(database)* Index every foreign key and date column
+
+
 ## [1.16.0] - 2026-08-28
 
 ### Features
