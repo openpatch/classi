@@ -113,7 +113,12 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
           appBar: AppBar(
             backgroundColor: groupColor,
             foregroundColor: appBarForeground,
-            title: AppBarTitle(title: 'lesson_mode'.tr(), subtitle: group.name),
+            title: AppBarTitle(
+              title: 'lesson_mode'.tr(),
+              subtitle: sessionLabel.isEmpty
+                  ? group.name
+                  : '${group.name} · $sessionLabel',
+            ),
             actions: [
               IconButton(
                 onPressed: () async {

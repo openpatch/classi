@@ -88,7 +88,11 @@ class _WeeklyTimetableScreenState extends ConsumerState<WeeklyTimetableScreen> {
     context.push(
       Uri(
         path: '/groups/${lesson.groupId}/lesson',
-        queryParameters: {'date': encodeLessonDate(lesson.date)},
+        queryParameters: {
+          'date': encodeLessonDate(lesson.date),
+          if (lesson.categoryId.isNotEmpty) 'category': lesson.categoryId,
+          if (lesson.label.isNotEmpty) 'session': lesson.label,
+        },
       ).toString(),
     );
   }
@@ -177,12 +181,7 @@ class _TimetableBody extends StatelessWidget {
       );
     }
 
-    final theme = Theme.of(context);
     final unplannedCount = timetable.unplanned.length;
-    final withoutPeriod = [
-      for (final lesson in timetable.lessons)
-        if (lesson.periodStart <= 0) lesson,
-    ];
 
     return ListView(
       padding: appScreenPadding,
@@ -195,27 +194,24 @@ class _TimetableBody extends StatelessWidget {
           _UnplannedBanner(count: unplannedCount),
         ],
         const SizedBox(height: AppSpacing.large),
-        _TimetableGrid(timetable: timetable, onPlan: onPlan, onOpen: onOpen),
-        if (withoutPeriod.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.large),
-          Text(
-            'timetable_no_period'.tr(),
-            style: theme.textTheme.labelLarge,
-          ),
-          const SizedBox(height: AppSpacing.small),
-          Wrap(
-            spacing: AppSpacing.small,
-            runSpacing: AppSpacing.small,
-            children: [
-              for (final lesson in withoutPeriod)
-                _LessonChip(
-                  lesson: lesson,
-                  onTap: () =>
-                      lesson.planned ? onOpen(lesson) : onPlan(lesson),
-                ),
-            ],
-          ),
-        ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // A five-to-seven column grid needs room to stay readable; below
+            // that a phone reads the week better as a per-day agenda.
+            if (constraints.maxWidth >= _gridMinWidth) {
+              return _TimetableGrid(
+                timetable: timetable,
+                onPlan: onPlan,
+                onOpen: onOpen,
+              );
+            }
+            return _TimetableAgenda(
+              timetable: timetable,
+              onPlan: onPlan,
+              onOpen: onOpen,
+            );
+          },
+        ),
       ],
     );
   }
@@ -241,12 +237,16 @@ class _WeekLabel extends StatelessWidget {
           color: theme.colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: AppSpacing.small),
-        Text(
-          '${materialLocalizations.formatMediumDate(start)}'
-          ' – '
-          '${materialLocalizations.formatMediumDate(end)}',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        Expanded(
+          child: Text(
+            '${materialLocalizations.formatMediumDate(start)}'
+            ' – '
+            '${materialLocalizations.formatMediumDate(end)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -353,11 +353,15 @@ class _UnplannedBanner extends StatelessWidget {
   }
 }
 
+/// Content width at or above which the week is shown as a grid rather than a
+/// per-day agenda.
+const double _gridMinWidth = 620;
+
 /// Layout constants for the grid, in logical pixels.
 const double _periodColumnWidth = 40;
 const double _rowHeight = 60;
 const double _headerHeight = 36;
-const double _minDayWidth = 108;
+const double _minDayWidth = 112;
 const double _blockGap = 3;
 
 class _TimetableGrid extends StatelessWidget {
@@ -377,15 +381,19 @@ class _TimetableGrid extends StatelessWidget {
     final weekdays = timetable.weekdays;
     final periodCount = timetable.periodCount;
     final gridHeight = _rowHeight * periodCount;
+    final withoutPeriod = [
+      for (final lesson in timetable.lessons)
+        if (lesson.periodStart <= 0) lesson,
+    ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final available = constraints.maxWidth - _periodColumnWidth;
         final dayWidth = math.max(_minDayWidth, available / weekdays.length);
-        final gridWidth = _periodColumnWidth + dayWidth * weekdays.length;
+        final daysWidth = dayWidth * weekdays.length;
 
-        final grid = SizedBox(
-          width: gridWidth,
+        final days = SizedBox(
+          width: daysWidth,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,43 +405,31 @@ class _TimetableGrid extends StatelessWidget {
               ),
               SizedBox(
                 height: gridHeight,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                width: daysWidth,
+                child: Stack(
                   children: [
-                    _PeriodColumn(periodCount: periodCount),
-                    SizedBox(
-                      width: dayWidth * weekdays.length,
-                      height: gridHeight,
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: CustomPaint(
-                              painter: _GridLinesPainter(
-                                columns: weekdays.length,
-                                rows: periodCount,
-                                color: theme.dividerColor,
-                              ),
-                            ),
-                          ),
-                          for (final placed in _placeLessons(
-                            timetable,
-                            dayWidth,
-                          ))
-                            Positioned(
-                              left: placed.left,
-                              top: placed.top,
-                              width: placed.width,
-                              height: placed.height,
-                              child: _LessonBlock(
-                                lesson: placed.lesson,
-                                onTap: () => placed.lesson.planned
-                                    ? onOpen(placed.lesson)
-                                    : onPlan(placed.lesson),
-                              ),
-                            ),
-                        ],
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _GridLinesPainter(
+                          columns: weekdays.length,
+                          rows: periodCount,
+                          color: theme.dividerColor,
+                        ),
                       ),
                     ),
+                    for (final placed in _placeLessons(timetable, dayWidth))
+                      Positioned(
+                        left: placed.left,
+                        top: placed.top,
+                        width: placed.width,
+                        height: placed.height,
+                        child: _LessonBlock(
+                          lesson: placed.lesson,
+                          onTap: () => placed.lesson.planned
+                              ? onOpen(placed.lesson)
+                              : onPlan(placed.lesson),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -441,9 +437,56 @@ class _TimetableGrid extends StatelessWidget {
           ),
         );
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: grid,
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: _headerHeight + gridHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // The period column stays pinned while the days scroll.
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        height: _headerHeight,
+                        width: _periodColumnWidth,
+                      ),
+                      _PeriodColumn(periodCount: periodCount),
+                    ],
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: days,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (withoutPeriod.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.large),
+              Text(
+                'timetable_no_period'.tr(),
+                style: theme.textTheme.labelLarge,
+              ),
+              const SizedBox(height: AppSpacing.small),
+              Wrap(
+                spacing: AppSpacing.small,
+                runSpacing: AppSpacing.small,
+                children: [
+                  for (final lesson in withoutPeriod)
+                    _LessonChip(
+                      lesson: lesson,
+                      onTap: () =>
+                          lesson.planned ? onOpen(lesson) : onPlan(lesson),
+                    ),
+                ],
+              ),
+            ],
+          ],
         );
       },
     );
@@ -537,15 +580,15 @@ class _HeaderRow extends StatelessWidget {
       height: _headerHeight,
       child: Row(
         children: [
-          const SizedBox(width: _periodColumnWidth),
           for (var i = 0; i < weekdays.length; i++)
             SizedBox(
               width: dayWidth,
               child: Center(
                 child: Text(
-                  shortWeekdayName(context, weekdays[i]),
+                  '${shortWeekdayName(context, weekdays[i])} '
+                  '${addDays(weekStart, weekdays[i] - 1).day}',
                   style: theme.textTheme.labelLarge?.copyWith(
-                    color: addDays(weekStart, i) == today
+                    color: addDays(weekStart, weekdays[i] - 1) == today
                         ? theme.colorScheme.primary
                         : theme.colorScheme.onSurfaceVariant,
                   ),
@@ -636,7 +679,11 @@ class _LessonBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final groupColor = colorFromHex(lesson.groupColorHex);
-    final periods = formatPeriodRange(lesson.periodStart, lesson.periodEnd);
+    // The block's row span already shows the periods, so the second line
+    // carries the lesson's label, falling back to its category.
+    final detail = lesson.label.isNotEmpty
+        ? lesson.label
+        : lesson.categoryName;
 
     final BoxDecoration decoration;
     if (lesson.planned) {
@@ -694,19 +741,206 @@ class _LessonBlock extends StatelessWidget {
                     ),
                 ],
               ),
-              const Spacer(),
-              Text(
-                periods.isEmpty
-                    ? lesson.categoryName
-                    : '$periods · ${lesson.categoryName}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(height: 2),
+              Flexible(
+                child: Text(
+                  detail,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: lesson.label.isNotEmpty
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimetableAgenda extends StatelessWidget {
+  const _TimetableAgenda({
+    required this.timetable,
+    required this.onPlan,
+    required this.onOpen,
+  });
+
+  final WeeklyTimetable timetable;
+  final void Function(TimetableLesson) onPlan;
+  final void Function(TimetableLesson) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final today = normalizeLessonDate(DateTime.now());
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final weekday in timetable.weekdays) ...[
+          _AgendaDayHeader(
+            weekday: weekday,
+            date: addDays(timetable.weekStart, weekday - 1),
+            isToday: addDays(timetable.weekStart, weekday - 1) == today,
+          ),
+          const SizedBox(height: AppSpacing.xSmall),
+          if (timetable.lessonsOn(weekday).isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 52,
+                bottom: AppSpacing.medium,
+              ),
+              child: Text(
+                'timetable_no_lessons_day'.tr(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            )
+          else
+            for (final lesson in timetable.lessonsOn(weekday))
+              _AgendaRow(
+                lesson: lesson,
+                onTap: () =>
+                    lesson.planned ? onOpen(lesson) : onPlan(lesson),
+              ),
+          const SizedBox(height: AppSpacing.medium),
+        ],
+      ],
+    );
+  }
+}
+
+class _AgendaDayHeader extends StatelessWidget {
+  const _AgendaDayHeader({
+    required this.weekday,
+    required this.date,
+    required this.isToday,
+  });
+
+  final int weekday;
+  final DateTime date;
+  final bool isToday;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = isToday
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurface;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xSmall),
+      child: Row(
+        children: [
+          Text(
+            weekdayName(context, weekday),
+            style: theme.textTheme.titleSmall?.copyWith(color: color),
+          ),
+          const SizedBox(width: AppSpacing.small),
+          Text(
+            MaterialLocalizations.of(context).formatMediumDate(date),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AgendaRow extends StatelessWidget {
+  const _AgendaRow({required this.lesson, required this.onTap});
+
+  final TimetableLesson lesson;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final groupColor = colorFromHex(lesson.groupColorHex);
+    final periods = formatPeriodRange(lesson.periodStart, lesson.periodEnd);
+    final detail = lesson.label.isNotEmpty
+        ? lesson.label
+        : lesson.categoryName;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.small),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.small),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              decoration: BoxDecoration(
+                color: groupColor.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(AppRadii.small / 2),
+              ),
+              child: Text(
+                periods.isEmpty ? '–' : periods,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelMedium,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.medium),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: groupColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xSmall),
+                      Expanded(
+                        child: Text(
+                          lesson.groupName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    detail,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: lesson.label.isNotEmpty
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.small),
+            Icon(
+              lesson.planned
+                  ? Icons.check_circle
+                  : Icons.add_circle_outline,
+              size: 20,
+              color: lesson.planned
+                  ? groupColor
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
       ),
     );
