@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.0] - 2026-08-28
+
+### Bug Fixes
+
+- *(setup)* Store Android libraries in app storage
+
+
+### Features
+
+- *(schedule)* Add a weekly timetable view
+- *(schedule)* Show lesson labels and a responsive timetable
+- Replace the Today dashboard with the weekly timetable
+
+
 ## [1.14.0] - 2026-08-21
 
 ### Features
