@@ -63,6 +63,40 @@ jobs:
           commit_message: "chore(release): bump version to ${{ github.ref_name }}"
           file_pattern: CHANGELOG.md pubspec.yaml version_code.txt linux/org.openpatch.classi.desktop
 
+      # The tag is what triggers this workflow, so it necessarily points at a
+      # commit made *before* the version bump above — which means the tag never
+      # contained the version it names. Every build job checks out `main`, so
+      # the artifacts were always right; only the tag was left behind.
+      #
+      # Move it onto the release commit, which is what was actually built and
+      # what packaging (Flathub) and `raw.githubusercontent.com` screenshot URLs
+      # resolve against.
+      #
+      # Force-pushing a tag is normally worth avoiding, but this one is seconds
+      # old and nothing has consumed it yet. Pushes made with GITHUB_TOKEN do
+      # not start new workflow runs, so this cannot re-trigger the release.
+      - name: Move the tag onto the release commit
+        run: |
+          set -e
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+
+          # Guard against silently relocating the tag onto something unrelated:
+          # after the bump, HEAD must carry the version the tag names.
+          if ! grep -q "^version: ${VERSION}+" pubspec.yaml; then
+            echo "ERROR: HEAD does not carry version ${VERSION}; refusing to move the tag." >&2
+            grep '^version:' pubspec.yaml >&2
+            exit 1
+          fi
+
+          if [ "$(git rev-parse HEAD)" = "$(git rev-parse "${{ github.ref_name }}" 2>/dev/null)" ]; then
+            echo "Tag already points at the release commit; nothing to do."
+            exit 0
+          fi
+
+          git tag -f "${{ github.ref_name }}"
+          git push -f origin "refs/tags/${{ github.ref_name }}"
+          echo "Moved ${{ github.ref_name }} to $(git rev-parse HEAD)"
+
   build-android:
     name: Build Android
     needs: [changelog]
