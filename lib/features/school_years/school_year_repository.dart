@@ -75,6 +75,64 @@ class SchoolYearRepository {
         );
   }
 
+  /// Gives a school year that has no timeframes yet two halves to start from.
+  ///
+  /// A year without timeframes leaves the timeframe-grades screen with nothing
+  /// to show and no obvious way in, so a new year is more useful with a default
+  /// structure than empty. Splitting at the midpoint of the year's own dates
+  /// keeps this correct for years that don't run August to July.
+  ///
+  /// Does nothing when the year already has timeframes, so it is safe to call
+  /// more than once and never overwrites what a teacher set up.
+  Future<void> seedDefaultTimeframes({
+    required int schoolYearId,
+    required String firstLabel,
+    required String secondLabel,
+  }) async {
+    final year = await getSchoolYear(schoolYearId);
+    if (year == null) return;
+
+    final existing =
+        await (_database.select(_database.timeframesTable)
+              ..where((table) => table.schoolYearId.equals(schoolYearId)))
+            .get();
+    if (existing.isNotEmpty) return;
+
+    // Adding a Duration to a local DateTime adds absolute time, so a span that
+    // crosses a daylight-saving change lands an hour off and leaves a stray
+    // 23:00 on the boundary. Truncate to a plain date, and step to the next day
+    // through the constructor rather than a Duration for the same reason.
+    final span = year.endDate.difference(year.startDate);
+    final rawMidpoint = year.startDate.add(span ~/ 2);
+    final midpoint = DateTime(
+      rawMidpoint.year,
+      rawMidpoint.month,
+      rawMidpoint.day,
+    );
+    final secondStart = DateTime(
+      midpoint.year,
+      midpoint.month,
+      midpoint.day + 1,
+    );
+
+    await _database.batch((batch) {
+      batch.insertAll(_database.timeframesTable, [
+        TimeframesTableCompanion.insert(
+          schoolYearId: schoolYearId,
+          label: firstLabel,
+          startDate: year.startDate,
+          endDate: midpoint,
+        ),
+        TimeframesTableCompanion.insert(
+          schoolYearId: schoolYearId,
+          label: secondLabel,
+          startDate: secondStart,
+          endDate: year.endDate,
+        ),
+      ]);
+    });
+  }
+
   Future<void> updateSchoolYear({
     required int id,
     required String label,
