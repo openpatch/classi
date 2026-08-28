@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.18.0] - 2026-08-28
+
+### Bug Fixes
+
+- *(ci)* Move the release tag onto the commit it names
+
+
+### Features
+
+- *(linux)* Use desktop screenshots for the AppStream metainfo
+- *(ci)* Add each release to the AppStream metainfo automatically
+
+
 ## [1.17.0] - 2026-08-28
 
 ### Bug Fixes
@@ -18,6 +31,7 @@ All notable changes to this project will be documented in this file.
 
 - *(database)* Copy the library aside before migrating it
 - *(school-year)* Make the school year the frame the app works in
+- *(linux)* Package Classi as a Flatpak
 
 
 ### Performance

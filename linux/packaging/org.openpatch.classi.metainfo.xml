@@ -83,6 +83,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.18.0" date="2026-08-28">
+      <description>
+        <ul>
+          <li>Move the release tag onto the commit it names</li>
+          <li>Package Classi as a Flatpak</li>
+          <li>Use desktop screenshots for the AppStream metainfo</li>
+          <li>Add each release to the AppStream metainfo automatically</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.16.0" date="2026-08-28">
       <description>
         <p>
