@@ -23,7 +23,8 @@ and portable across devices.
 - Grade entry, chart-based grade history, checklist management, note management,
   and material tracking
 - Avatar editing powered by `avatar_maker`, persisted per student in the local
-  database
+  database, plus a browser [Avatar Designer](#avatar-designer) that lets students
+  build their own avatar and hand you a short code
 - WebDAV backup with automatic upload on lock and automatic restore on startup
 - Configurable light, dark, and system theme
 - Auto-update for desktop platforms (macOS, Windows, Linux) via the `updat` package
@@ -64,6 +65,36 @@ credentials, and remote folder path in **Settings → Backups**. Once saved:
 
 You can also trigger a manual restore from the setup screen by choosing
 *Restore from WebDAV backup*.
+
+## Avatar Designer
+
+The Avatar Designer is a standalone Flutter web app (a second entry point in this
+repo, `lib/avatar_designer/`) that students open in a browser. They design an
+avatar with the same `avatar_maker` customizer used in the app, press **Create
+code**, and hand you a short code like `AV1-XXXX-XXXX-XX`. In Classi, open a
+student's avatar editor and choose **Enter code** to load and save it.
+
+The code encodes only the avatar selections (no personal data). It is tied to the
+`avatar_maker` version bundled here; a code made with a mismatched version is
+rejected with a clear message rather than applied incorrectly.
+
+Run it locally:
+
+```bash
+flutter run -d chrome -t lib/avatar_designer/main.dart
+```
+
+Build for hosting (served at `/classi/` on GitHub Pages):
+
+```bash
+flutter build web --release \
+  --target lib/avatar_designer/main.dart \
+  --base-href /classi/ \
+  --pwa-strategy=none
+```
+
+Pushes to `main` that touch the designer are published automatically by the
+`deploy-avatar-designer.yml` workflow (see [GitHub Actions](#github-actions)).
 
 ## Local development
 
@@ -112,11 +143,15 @@ expectations, and release hygiene.
 
 ## GitHub Actions
 
-Three workflows are included:
+Four workflows are included:
 
 - `ci.yml` — runs on every push to `main`/`master` and on pull requests. It
   installs dependencies, runs Drift code generation, analyzes the code, and
   executes the test suite.
+- `deploy-avatar-designer.yml` — on pushes to `main` that touch the
+  [Avatar Designer](#avatar-designer), builds the web app and deploys it to
+  GitHub Pages. Requires **Settings → Pages → Source: GitHub Actions** to be
+  enabled once.
 - `build-pr.yml` — triggered by posting a slash command as a comment on any pull
   request. Supported commands:
   - `/build android` — builds and uploads an APK
