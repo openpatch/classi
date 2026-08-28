@@ -1,0 +1,21 @@
+Bug Fixes
+
+- Keep homework and material when a student is marked absent
+
+
+Documentation
+
+- Add the Classi 2.0 plan
+
+
+Features
+
+- Copy the library aside before migrating it
+- Make the school year the frame the app works in
+
+
+Performance
+
+- Index every foreign key and date column
+
+
