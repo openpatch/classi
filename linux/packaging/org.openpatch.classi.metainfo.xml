@@ -58,26 +58,19 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <!--
-    TODO before submitting to Flathub: these are the Android phone screenshots,
-    used here only so the metainfo validates. Classi is listed as a desktop
-    app, so capture desktop-sized ones and point at those instead — reviewers
-    do notice portrait phone shots on a desktop listing.
-
-    The URLs must resolve over HTTPS (the linter fetches them) and must sit on
-    a tag, not a branch.
+    The URLs must resolve over HTTPS (Flathub fetches them) and must sit on a
+    tag, not a branch, so they cannot change under Flathub's feet. The tag
+    named here therefore has to exist before the Flathub PR is opened — update
+    it whenever the screenshots themselves change.
   -->
   <screenshots>
     <screenshot type="default">
-      <caption>The weekly timetable</caption>
-      <image>https://raw.githubusercontent.com/openpatch/classi/v1.16.0/fastlane/metadata/android/en-US/images/phoneScreenshots/1.png</image>
+      <caption>The weekly timetable, with lessons that still need planning</caption>
+      <image>https://raw.githubusercontent.com/openpatch/classi/v1.18.0/linux/packaging/screenshots/screen1.png</image>
     </screenshot>
     <screenshot>
-      <caption>Running a lesson: attendance, homework, material and grades</caption>
-      <image>https://raw.githubusercontent.com/openpatch/classi/v1.16.0/fastlane/metadata/android/en-US/images/phoneScreenshots/2.png</image>
-    </screenshot>
-    <screenshot>
-      <caption>A group and its students</caption>
-      <image>https://raw.githubusercontent.com/openpatch/classi/v1.16.0/fastlane/metadata/android/en-US/images/phoneScreenshots/3.png</image>
+      <caption>Grading systems, school years and library security</caption>
+      <image>https://raw.githubusercontent.com/openpatch/classi/v1.18.0/linux/packaging/screenshots/screen2.png</image>
     </screenshot>
   </screenshots>
   <releases>
