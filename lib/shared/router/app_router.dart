@@ -10,6 +10,7 @@ import '../../features/lessons/lesson_support.dart';
 import '../../features/lists/list_detail_screen.dart';
 import '../../features/lists/lists_screen.dart';
 import '../../features/notes/notes_screen.dart';
+import '../../features/schedule/weekly_timetable_screen.dart';
 import '../../features/school_years/school_year_detail_screen.dart';
 import '../../features/school_years/school_years_screen.dart';
 import '../../features/settings/settings_screen.dart';
@@ -114,6 +115,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 state.uri.queryParameters['date'],
               ),
             ),
+          ),
+          GoRoute(
+            path: '/timetable',
+            builder: (context, state) => const WeeklyTimetableScreen(),
           ),
           GoRoute(
             path: '/groups',
