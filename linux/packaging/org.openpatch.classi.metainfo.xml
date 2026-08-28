@@ -63,14 +63,23 @@
     named here therefore has to exist before the Flathub PR is opened — update
     it whenever the screenshots themselves change.
   -->
+  <!--
+    Ordered for the store, not by filename: the first screenshot is the one
+    shown on the app card, so it is the timetable rather than the unlock
+    screen.
+  -->
   <screenshots>
     <screenshot type="default">
       <caption>The weekly timetable, with lessons that still need planning</caption>
-      <image>https://raw.githubusercontent.com/openpatch/classi/v1.18.0/linux/packaging/screenshots/screen1.png</image>
+      <image>https://raw.githubusercontent.com/openpatch/classi/v1.18.0/linux/packaging/screenshots/2.png</image>
     </screenshot>
     <screenshot>
-      <caption>Grading systems, school years and library security</caption>
-      <image>https://raw.githubusercontent.com/openpatch/classi/v1.18.0/linux/packaging/screenshots/screen2.png</image>
+      <caption>Grade systems, school years and app settings</caption>
+      <image>https://raw.githubusercontent.com/openpatch/classi/v1.18.0/linux/packaging/screenshots/3.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Every library is encrypted and opened with a passphrase</caption>
+      <image>https://raw.githubusercontent.com/openpatch/classi/v1.18.0/linux/packaging/screenshots/1.png</image>
     </screenshot>
   </screenshots>
   <releases>
