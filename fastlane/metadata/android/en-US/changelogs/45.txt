@@ -1,0 +1,5 @@
+Features
+
+- Package Classi as a Flatpak
+
+
