@@ -69,10 +69,11 @@ You can also trigger a manual restore from the setup screen by choosing
 ## Avatar Designer
 
 The Avatar Designer is a standalone Flutter web app (a second entry point in this
-repo, `lib/avatar_designer/`) that students open in a browser. They design an
-avatar with the same `avatar_maker` customizer used in the app, press **Create
-code**, and hand you a short code like `AV1-XXXX-XXXX-XX`. In Classi, open a
-student's avatar editor and choose **Enter code** to load and save it.
+repo, `lib/avatar_designer/`) that students open in a browser at
+<https://classi.openpatch.org/avatar/>. They design an avatar with the same
+`avatar_maker` customizer used in the app, press **Create code**, and hand you a
+short code like `AV1-XXXX-XXXX-XX`. In Classi, open a student's avatar editor and
+choose **Enter code** to load and save it.
 
 The code encodes only the avatar selections (no personal data). It is tied to the
 `avatar_maker` version bundled here; a code made with a mismatched version is
@@ -84,17 +85,41 @@ Run it locally:
 flutter run -d chrome -t lib/avatar_designer/main.dart
 ```
 
-Build for hosting (served at `/classi/` on GitHub Pages):
+Build for hosting (served at `/avatar/` on classi.openpatch.org):
 
 ```bash
 flutter build web --release \
   --target lib/avatar_designer/main.dart \
-  --base-href /classi/ \
+  --base-href /avatar/ \
   --pwa-strategy=none
 ```
 
 Pushes to `main` that touch the designer are published automatically by the
-`deploy-avatar-designer.yml` workflow (see [GitHub Actions](#github-actions)).
+`deploy-site.yml` workflow (see [GitHub Actions](#github-actions)).
+
+## Website
+
+<https://classi.openpatch.org> is a static landing page kept in `site/`
+(`index.html`, `styles.css`, `main.js`, `CNAME`). It is bilingual: German is
+authored inline and English lives in `data-en*` attributes that `main.js` swaps
+in, defaulting to the browser language and remembering the choice. Direct
+download links and the version line are filled in at runtime from the GitHub
+releases API, so the page never has to be edited for a release; without that
+request every button still falls back to the releases page.
+
+`tool/build_site.sh [OUTDIR] [DESIGNER_BUILD_DIR]` assembles the deployable
+tree. It copies the logo and the screenshots from the places that already own
+them — `.github/logo.png`, the AppStream screenshots in
+`linux/packaging/screenshots/`, and the Play Store phone screenshots — so the
+site cannot drift from the store listings. Passing the designer build directory
+places it at `OUTDIR/avatar`.
+
+Preview it locally:
+
+```bash
+tool/build_site.sh build/site
+python3 -m http.server 8000 --directory build/site
+```
 
 ## Local development
 
@@ -148,10 +173,12 @@ Four workflows are included:
 - `ci.yml` — runs on every push to `main`/`master` and on pull requests. It
   installs dependencies, runs Drift code generation, analyzes the code, and
   executes the test suite.
-- `deploy-avatar-designer.yml` — on pushes to `main` that touch the
-  [Avatar Designer](#avatar-designer), builds the web app and deploys it to
-  GitHub Pages. Requires **Settings → Pages → Source: GitHub Actions** to be
-  enabled once.
+- `deploy-site.yml` — on pushes to `main` that touch the [website](#website) or
+  the [Avatar Designer](#avatar-designer), builds the designer, assembles the
+  site with `tool/build_site.sh` and deploys it to GitHub Pages as
+  classi.openpatch.org — the landing page at `/`, the designer at `/avatar/`.
+  Requires **Settings → Pages → Source: GitHub Actions** to be enabled once, and
+  a `CNAME` DNS record pointing `classi.openpatch.org` at `openpatch.github.io`.
 - `build-pr.yml` — triggered by posting a slash command as a comment on any pull
   request. Supported commands:
   - `/build android` — builds and uploads an APK
@@ -170,6 +197,10 @@ Four workflows are included:
   for Android (APK), Linux (AppImage), macOS (DMG), and Windows (EXE installer)
   using [Fastforge](https://fastforge.dev/), and publishes a GitHub Release with
   all artifacts attached.
+
+## Development support
+
+Classi is developed with support from Claude Opus 5.
 
 ## License
 

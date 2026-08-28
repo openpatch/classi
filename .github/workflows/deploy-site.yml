@@ -1,16 +1,24 @@
-name: Deploy Avatar Designer
+name: Deploy Site
+
+# Publishes classi.openpatch.org: the landing page at `/` and the Avatar
+# Designer at `/avatar/`.
 
 on:
   push:
     branches: [main]
     paths:
+      - 'site/**'
+      - 'tool/build_site.sh'
       - 'lib/avatar_designer/**'
       - 'lib/shared/avatar/**'
       - 'lib/features/avatar/avatar_helpers.dart'
       - 'web/**'
       - 'pubspec.yaml'
       - 'assets/translations/**'
-      - '.github/workflows/deploy-avatar-designer.yml'
+      - '.github/logo.png'
+      - 'linux/packaging/screenshots/**'
+      - 'fastlane/metadata/android/en-US/images/phoneScreenshots/**'
+      - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
 
 permissions:
@@ -41,17 +49,20 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build web
+      - name: Build the Avatar Designer
         run: >-
           flutter build web --release
           --target lib/avatar_designer/main.dart
-          --base-href /classi/
+          --base-href /avatar/
           --pwa-strategy=none
+
+      - name: Assemble the site
+        run: tool/build_site.sh build/site build/web
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build/web
+          path: build/site
 
       - name: Deploy to GitHub Pages
         id: deploy

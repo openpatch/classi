@@ -30,7 +30,7 @@
   <developer id="org.openpatch">
     <name>OpenPatch</name>
   </developer>
-  <url type="homepage">https://openpatch.org</url>
+  <url type="homepage">https://classi.openpatch.org</url>
   <url type="bugtracker">https://github.com/openpatch/classi/issues</url>
   <url type="vcs-browser">https://github.com/openpatch/classi</url>
   <categories>
