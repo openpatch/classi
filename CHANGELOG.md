@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.16.0] - 2026-08-28
+
+### Features
+
+- *(avatar)* Student-designed avatars via a browser companion app
+
+
+### Miscellaneous Tasks
+
+- Vendor dart and flutter agent skills
+
+
 ## [1.15.0] - 2026-08-28
 
 ### Bug Fixes
