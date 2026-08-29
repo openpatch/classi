@@ -1,0 +1,5 @@
+Documentation
+
+- Correct and refresh the store descriptions
+
+
