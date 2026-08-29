@@ -161,6 +161,49 @@ Or run all platforms at once using the project release config:
 fastforge release --name release
 ```
 
+## Store metadata
+
+`fastlane/metadata/android/` holds the store listing — title, descriptions,
+icon, phone screenshots and one release-notes file per version code
+(`en-US/changelogs/46.txt` belongs to the build whose `version_code.txt` said
+`46`). F-Droid reads this tree straight from the repository; the Play Store
+gets it from the `release.yml` workflow via `fastlane supply`.
+
+The tree is authored for F-Droid, which accepts anything. Google Play does not:
+release notes are capped at 500 characters, screenshots may not have an alpha
+channel, and their longest side may be at most twice the shortest — the
+1080x2424 phone screenshots here are 1:2.24 and would be rejected. Rather than
+degrade the F-Droid assets, `tool/prepare_play_metadata.py` writes a normalised
+copy that only Play sees:
+
+```bash
+python3 tool/prepare_play_metadata.py fastlane/metadata/android build/play-metadata
+```
+
+It trims release notes on a bullet boundary, drops the alpha channel and
+letterboxes screenshots by repeating their edge pixels (so padding continues
+the app bar instead of adding black bars), and fails loudly on anything
+hand-written that Play would reject, such as a title over 30 characters.
+
+Because the whole tree is uploaded on every release, the repository is the
+source of truth: edits made directly in the Play Console are overwritten on the
+next tag. To see what would be sent without committing anything to Play, add
+`--validate_only true`:
+
+```bash
+fastlane supply --package_name org.openpatch.classi \
+  --metadata_path build/play-metadata \
+  --skip_upload_aab true --skip_upload_apk true --skip_upload_changelogs true \
+  --json_key playstore-credentials.json --validate_only true
+```
+
+(Release notes are skipped there because they attach to a release that only
+exists once the bundle is uploaded.)
+
+German release notes fall back to `de-DE/changelogs/default.txt`, since the
+generated changelog is English only. Add `de-DE/changelogs/<version code>.txt`
+to give a release proper German notes.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, pull request
@@ -168,7 +211,7 @@ expectations, and release hygiene.
 
 ## GitHub Actions
 
-Four workflows are included:
+Five workflows are included:
 
 - `ci.yml` — runs on every push to `main`/`master` and on pull requests. It
   installs dependencies, runs Drift code generation, analyzes the code, and
@@ -192,11 +235,17 @@ Four workflows are included:
 
   Android PR builds use the application ID `org.openpatch.classi.pr` so they
   can be installed alongside the production app without overwriting it.
+- `changelog.yml` — on every push to `main`, regenerates the unreleased section
+  with `git-cliff` into `fastlane/metadata/android/en-US/changelogs/<next
+  version code>.txt` and commits it, so the next release already carries its
+  notes for both stores. See [Store metadata](#store-metadata).
 - `release.yml` — triggered by version tags (`v*`). It generates a changelog
   with `git-cliff`, commits an updated `CHANGELOG.md`, builds release artifacts
-  for Android (APK), Linux (AppImage), macOS (DMG), and Windows (EXE installer)
-  using [Fastforge](https://fastforge.dev/), and publishes a GitHub Release with
-  all artifacts attached.
+  for Android (APK and AAB), Linux (AppImage), macOS (DMG), and Windows (EXE
+  installer) using [Fastforge](https://fastforge.dev/), publishes a GitHub
+  Release with all artifacts attached, and uploads the AAB to the Play Store
+  production track together with the
+  [store metadata](#store-metadata) using `fastlane supply`.
 
 ## Development support
 
