@@ -312,31 +312,46 @@ jobs:
         run: |
           echo "${{ secrets.PLAYSTORE_CREDENTIALS_BASE64 }}" | base64 --decode > "${{ runner.temp }}/playstore-credentials.json"
 
-      - name: Set up Java
-        uses: actions/setup-java@v5
+      # `fastforge publish --targets playstore` only uploads the bundle and
+      # names the track release; it never sends release notes or the store
+      # listing, which is why the fastlane changelogs never reached Play.
+      # `fastlane supply` uploads the bundle *and* the metadata tree in one
+      # Play edit, so the listing can never drift from the binary it ships.
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
         with:
-          distribution: temurin
-          java-version: '17'
+          ruby-version: '3.3'
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.7'
-          cache: true
+      - name: Install fastlane
+        run: gem install fastlane -N -v 2.238.0
 
-      - name: Install Fastforge
-        run: dart pub global activate fastforge
+      - name: Install Pillow
+        run: pip install --disable-pip-version-check pillow
+
+      # The committed tree targets F-Droid, which has none of Play's limits on
+      # release-note length or screenshot aspect ratio. See the script.
+      - name: Prepare Play Store metadata
+        run: |
+          python3 tool/prepare_play_metadata.py \
+            fastlane/metadata/android \
+            "${{ runner.temp }}/play-metadata"
 
       - name: Publish to Play Store
-        env:
-          PLAYSTORE_CREDENTIALS: ${{ runner.temp }}/playstore-credentials.json
         run: |
+          set -e
           AAB_PATH=$(find artifacts/aab -name "*.aab" | head -1)
-          fastforge publish \
-            --path "$AAB_PATH" \
-            --targets playstore \
-            --playstore-package-name org.openpatch.classi \
-            --playstore-track production
+          if [ -z "$AAB_PATH" ]; then
+            echo "ERROR: no .aab found in artifacts/aab" >&2
+            exit 1
+          fi
+          fastlane supply \
+            --package_name org.openpatch.classi \
+            --aab "$AAB_PATH" \
+            --track production \
+            --release_status completed \
+            --json_key "${{ runner.temp }}/playstore-credentials.json" \
+            --metadata_path "${{ runner.temp }}/play-metadata" \
+            --sync_image_upload true
 
   release:
     name: Create GitHub Release
