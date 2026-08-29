@@ -1,0 +1,4 @@
+Fehlerbehebungen und Verbesserungen.
+
+Die vollständigen Änderungen dieser Version stehen unter
+https://github.com/openpatch/classi/releases
