@@ -83,6 +83,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.18.1" date="2026-08-29">
+      <description>
+        <ul>
+          <li>Update german website</li>
+          <li>Add the classi.openpatch.org landing page</li>
+          <li>Publish fastlane changelogs and screenshots to Play</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.18.0" date="2026-08-28">
       <description>
         <ul>

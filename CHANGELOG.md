@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.18.1] - 2026-08-29
+
+### Bug Fixes
+
+- Update german website
+
+
+### Features
+
+- *(site)* Add the classi.openpatch.org landing page
+- *(release)* Publish fastlane changelogs and screenshots to Play
+
+
 ## [1.18.0] - 2026-08-28
 
 ### Bug Fixes
