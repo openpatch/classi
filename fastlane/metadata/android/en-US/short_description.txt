@@ -1,1 +1,1 @@
-Local-first teacher app for groups, grades, notes, and checklists
+Local-first teacher app for groups, grades, attendance, and notes
