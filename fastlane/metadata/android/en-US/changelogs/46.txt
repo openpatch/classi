@@ -6,5 +6,6 @@ Bug Fixes
 Features
 
 - Add the classi.openpatch.org landing page
+- Publish fastlane changelogs and screenshots to Play
 
 
