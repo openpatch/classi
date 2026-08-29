@@ -1,17 +1,20 @@
 Classi is a local-first app for teachers. All your class data stays on your device, encrypted and under your control — no cloud account required.
 
-Your data is stored in encrypted .classi libraries kept in the app's own storage. A portable .classi-backup file can be exported automatically to a WebDAV server whenever the app locks or you switch libraries, making sync between devices straightforward.
+Your data is stored in encrypted .classi libraries kept in the app's own storage. A portable .classi-backup file can be exported automatically to a WebDAV server of your own whenever the app locks or you switch libraries, and imported again on your other devices, which keeps them in sync.
 
 <b>Features</b>
 • Groups and student lists with archive, clone, and batch creation
 • WebUntis class-list CSV import
 • Grade entry with configurable grading systems and chart-based history
+• Lesson mode for attendance, homework, and material checks
+• Weekly timetable and lesson planning across the school year
+• Seating plans for each group
 • Checklists with per-student links
 • Notes for groups and individual students
-• Homework and material tracking
+• Student-designed avatars
 • Biometric unlock (fingerprint / face) in addition to passphrase
-• Auto-export backups to a folder of your choice
+• Automatic backup export and import over WebDAV
 • English and German interface
 
 <b>Privacy</b>
-Classi stores all data locally on your device. No analytics, no tracking, no network access required.
+Classi stores all data locally on your device. No analytics, no tracking, no account. The only server Classi talks to is the WebDAV server you set up yourself.

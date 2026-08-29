@@ -1,17 +1,20 @@
-Classi ist eine lokal-erste App für Lehrkräfte. Alle Klassen-Daten bleiben auf deinem Gerät, verschlüsselt und unter deiner Kontrolle — kein Cloud-Konto erforderlich.
+Classi ist eine App für Lehrkräfte, die vollständig lokal arbeitet. Alle Klassendaten bleiben auf deinem Gerät, verschlüsselt und unter deiner Kontrolle — kein Cloud-Konto erforderlich.
 
-Deine Daten werden in verschlüsselten .classi-Bibliotheken im App-eigenen Speicher abgelegt. Eine portable .classi-Backup-Datei kann automatisch auf einen WebDAV-Server exportiert werden, sobald die App sperrt oder du die Bibliothek wechselst — so ist die Synchronisation zwischen Geräten einfach möglich.
+Deine Daten liegen in verschlüsselten .classi-Bibliotheken im App-eigenen Speicher. Eine portable .classi-backup-Datei kann automatisch auf einen eigenen WebDAV-Server exportiert werden, sobald die App gesperrt wird oder du die Bibliothek wechselst, und auf deinen anderen Geräten wieder eingelesen werden — so bleiben sie synchron.
 
 <b>Funktionen</b>
-• Gruppen und Schüler:innenlisten mit Archivieren, Klonen und Massenanlage
-• WebUntis-Klassenlisten-CSV-Import
-• Noteneingabe mit konfigurierbaren Notensystemen und Diagrammverlauf
-• Checklisten mit schüler:innen-bezogenen Verknüpfungen
+• Gruppen und Schüler:innenlisten mit Archivieren, Klonen und Anlegen mehrerer Schüler:innen auf einmal
+• Import von WebUntis-Klassenlisten als CSV
+• Noteneingabe mit konfigurierbaren Notensystemen und Notenverlauf als Diagramm
+• Unterrichtsmodus für Anwesenheit, Hausaufgaben und Material
+• Stundenplan und Unterrichtsplanung über das ganze Schuljahr
+• Sitzpläne für jede Gruppe
+• Checklisten mit Verknüpfungen zu einzelnen Schüler:innen
 • Notizen für Gruppen und einzelne Schüler:innen
-• Hausaufgaben- und Material-Tracking
+• Von Schüler:innen gestaltete Avatare
 • Biometrische Entsperrung (Fingerabdruck / Gesicht) zusätzlich zur Passphrase
-• Automatischer Backup-Export in einen frei wählbaren Ordner
+• Automatischer Backup-Export und -Import über WebDAV
 • Deutsche und englische Oberfläche
 
 <b>Datenschutz</b>
-Classi speichert alle Daten lokal auf deinem Gerät. Keine Analyse, kein Tracking, kein Internetzugriff notwendig.
+Classi speichert alle Daten lokal auf deinem Gerät. Keine Analysedaten, kein Tracking, kein Konto. Der einzige Server, mit dem Classi spricht, ist der WebDAV-Server, den du selbst einrichtest.
