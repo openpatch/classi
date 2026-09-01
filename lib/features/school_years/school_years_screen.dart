@@ -80,7 +80,9 @@ class SchoolYearsScreen extends ConsumerWidget {
             ),
           );
         },
-        error: (e, s) => const Center(child: AppErrorText()),
+        error: (error, stackTrace) => Center(
+          child: AppErrorText(error: error, stackTrace: stackTrace),
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
