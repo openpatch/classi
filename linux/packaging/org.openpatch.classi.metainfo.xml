@@ -83,6 +83,13 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.18.2" date="2026-08-29">
+      <description>
+        <ul>
+          <li>Correct and refresh the store descriptions</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.18.1" date="2026-08-29">
       <description>
         <ul>
