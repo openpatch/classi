@@ -83,6 +83,13 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.18.3" date="2026-09-01">
+      <description>
+        <ul>
+          <li>Let teachers report the error behind the error screen</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.18.2" date="2026-08-29">
       <description>
         <ul>
