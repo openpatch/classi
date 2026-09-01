@@ -2,16 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.18.3] - 2026-09-01
+
+### Features
+
+- *(errors)* Let teachers report the error behind the error screen
+
+
+## [1.18.2] - 2026-08-29
+
+### Documentation
+
+- *(metadata)* Correct and refresh the store descriptions
+
+
 ## [1.18.1] - 2026-08-29
 
 ### Bug Fixes
 
 - Update german website
-
-
-### Documentation
-
-- *(metadata)* Correct and refresh the store descriptions
 
 
 ### Features
@@ -29,6 +38,7 @@ All notable changes to this project will be documented in this file.
 
 ### Features
 
+- *(linux)* Package Classi as a Flatpak
 - *(linux)* Use desktop screenshots for the AppStream metainfo
 - *(ci)* Add each release to the AppStream metainfo automatically
 
@@ -49,7 +59,6 @@ All notable changes to this project will be documented in this file.
 
 - *(database)* Copy the library aside before migrating it
 - *(school-year)* Make the school year the frame the app works in
-- *(linux)* Package Classi as a Flatpak
 
 
 ### Performance
@@ -83,12 +92,18 @@ All notable changes to this project will be documented in this file.
 - Replace the Today dashboard with the weekly timetable
 
 
+## [1.14.1] - 2026-08-22
+
+### Features
+
+- Report stacktrace via email when clicking the error toast
+
+
 ## [1.14.0] - 2026-08-21
 
 ### Features
 
 - *(lessons)* Plan lessons from a group's weekly schedule
-- Report stacktrace via email when clicking the error toast
 
 
 ## [1.13.0] - 2026-08-21
@@ -236,6 +251,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- *(android)* Remove redundant edge-to-edge helper
 - *(database)* Make v12/v13 attendance migrations idempotent
 - *(seating-plan)* Prevent chip from snapping back on concurrent drag
 - *(seating-plan)* Fix UNIQUE constraint error and remove dark background
@@ -262,7 +278,6 @@ All notable changes to this project will be documented in this file.
 
 - Align grade table header with rows using Expanded columns
 - *(lessons)* Load grades reactively when category changes
-- *(android)* Remove redundant edge-to-edge helper
 
 
 ### Features
@@ -280,6 +295,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- *(linux)* Align AppImage app identity
 - *(webdav)* Avoid false newer-backup prompt
 
 
@@ -287,7 +303,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- *(linux)* Align AppImage app identity
+- *(backup)* Clear pending-import flag after restore and show restoring state
 - *(changelog)* Skip fastlane changelog commits and deduplicate entries
 - *(changelog)* Use unique filter for cleaner deduplication
 
@@ -299,7 +315,6 @@ All notable changes to this project will be documented in this file.
 - *(android)* Add INTERNET permission to release manifest
 - *(linux)* Close window when app is in lock mode
 - *(ci)* Remove [skip ci] from fastlane changelog commit
-- *(backup)* Clear pending-import flag after restore and show restoring state
 
 
 ## [1.4.1] - 2026-05-06
@@ -409,6 +424,18 @@ All notable changes to this project will be documented in this file.
 - Add playstore release
 
 
+## [1.2.0] - 2026-04-28
+
+### Bug Fixes
+
+- Address review issues in list screens and student selection sheet
+
+
+### Features
+
+- Better lists
+
+
 ## [1.1.9] - 2026-04-28
 
 ### Bug Fixes
@@ -419,14 +446,8 @@ All notable changes to this project will be documented in this file.
 
 ## [1.1.8] - 2026-04-28
 
-### Bug Fixes
-
-- Address review issues in list screens and student selection sheet
-
-
 ### Features
 
-- Better lists
 - *(students)* Add Lists tab to student detail screen
 
 
