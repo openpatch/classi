@@ -1,0 +1,5 @@
+Features
+
+- Let teachers report the error behind the error screen
+
+
