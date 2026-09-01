@@ -83,6 +83,13 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.18.4" date="2026-09-01">
+      <description>
+        <ul>
+          <li>Report the failure behind the inline error states too</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.18.3" date="2026-09-01">
       <description>
         <ul>
