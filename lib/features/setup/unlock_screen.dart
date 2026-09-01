@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/session/app_session_controller.dart';
 import '../../shared/widgets/app_error_state.dart';
+import '../../shared/widgets/session_error_report.dart';
 import 'auto_import_prompt_card.dart';
 import 'database_selection_sheet.dart';
 
@@ -311,6 +312,15 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                                     session.errorCode?.translationKey.tr() ??
                                     'generic_error'.tr(),
                               ),
+                              if (session.errorDetails != null) ...[
+                                const SizedBox(height: 8),
+                                ErrorReportDetails(
+                                  report: session.errorDetails!.toReport(
+                                    session.errorCode?.translationKey.tr() ??
+                                        'generic_error'.tr(),
+                                  ),
+                                ),
+                              ],
                             ],
                           ],
                         ),

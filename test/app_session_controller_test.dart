@@ -100,6 +100,36 @@ void main() {
     },
   );
 
+  test(
+    'a fatal startup failure keeps the underlying error for a report',
+    () async {
+      final failing = AppSessionController(
+        keyService: keyService,
+        databasePathService: _FailingDatabasePathService(),
+        securityPreferencesService: _securityPreferencesServiceFor(
+          _TestDatabasePathService('${tempDirectory.path}/unused.classi'),
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          _TestDatabasePathService('${tempDirectory.path}/unused.classi'),
+        ),
+        libraryBackupService: backupService,
+        biometricService: BiometricService(),
+      );
+      addTearDown(failing.dispose);
+
+      await failing.initialize();
+
+      expect(failing.status, AppSessionStatus.error);
+      expect(failing.errorCode, AppSessionErrorCode.errorLoadingDatabase);
+
+      final details = failing.errorDetails;
+      expect(details, isNotNull);
+      expect(details!.operation, 'initialize session');
+      expect('${details.error}', contains('no library path'));
+      expect(details.stackTrace, isNotNull);
+    },
+  );
+
   test('lock is idempotent: calling lock twice does not double-lock', () async {
     await controller.initialize();
     await controller.createDatabase('test');
@@ -838,6 +868,12 @@ class _TestDatabasePathService extends DatabasePathService {
   @override
   Future<String> defaultLibrariesDirectory() async =>
       Directory(_databasePath).parent.path;
+}
+
+class _FailingDatabasePathService extends DatabasePathService {
+  @override
+  Future<String> getCurrentDatabasePath() async =>
+      throw StateError('no library path');
 }
 
 class _TestKeyService extends KeyService {

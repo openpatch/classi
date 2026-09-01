@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/session/app_session_controller.dart';
 import 'app_error_state.dart';
+import 'session_error_report.dart';
 
 class StartupScreen extends ConsumerWidget {
   const StartupScreen({super.key});
@@ -16,11 +17,21 @@ class StartupScreen extends ConsumerWidget {
         session.errorCode?.translationKey.tr() ?? 'generic_error'.tr();
 
     if (session.status == AppSessionStatus.error) {
+      final details = session.errorDetails;
       return AppErrorScaffold(
         title: errorText,
-        action: FilledButton(
-          onPressed: () => ref.read(appSessionProvider).initialize(),
-          child: Text('retry'.tr()),
+        action: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton(
+              onPressed: () => ref.read(appSessionProvider).initialize(),
+              child: Text('retry'.tr()),
+            ),
+            if (details != null) ...[
+              const SizedBox(height: 12),
+              ErrorReportDetails(report: details.toReport(errorText)),
+            ],
+          ],
         ),
       );
     }

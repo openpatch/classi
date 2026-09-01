@@ -97,8 +97,38 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Retry'), findsOneWidget);
+      expect(find.text('Report error'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(
+        _buildTestScreen(
+          session: _FakeAppSessionController(
+            statusValue: AppSessionStatus.error,
+            errorCodeValue: AppSessionErrorCode.errorLoadingDatabase,
+            errorDetailsValue: AppSessionErrorDetails(
+              operation: 'initialize session',
+              error: StateError('library missing'),
+              stackTrace: StackTrace.fromString('#0 frame (file.dart:1:2)'),
+              occurredAt: DateTime.utc(2026, 1, 2, 3, 4, 5),
+            ),
+          ),
+          child: const StartupScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Report error'), findsOneWidget);
+      expect(find.text('Copy details'), findsOneWidget);
+
+      await tester.tap(find.text('Technical details'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('library missing'), findsOneWidget);
     },
   );
+
 }
 
 Widget _buildTestScreen({
@@ -127,6 +157,7 @@ class _FakeAppSessionController extends AppSessionController {
   _FakeAppSessionController({
     required this.statusValue,
     this.errorCodeValue,
+    this.errorDetailsValue,
     this.pendingRecoveryKeyValue,
     this.supportsRecoveryValue = false,
     this.currentDatabasePathValue = '/tmp/classi/test.classi',
@@ -141,6 +172,7 @@ class _FakeAppSessionController extends AppSessionController {
 
   final AppSessionStatus statusValue;
   final AppSessionErrorCode? errorCodeValue;
+  final AppSessionErrorDetails? errorDetailsValue;
   final String? pendingRecoveryKeyValue;
   final bool supportsRecoveryValue;
   final String currentDatabasePathValue;
@@ -150,6 +182,9 @@ class _FakeAppSessionController extends AppSessionController {
 
   @override
   AppSessionErrorCode? get errorCode => errorCodeValue;
+
+  @override
+  AppSessionErrorDetails? get errorDetails => errorDetailsValue;
 
   @override
   String? get errorMessage => errorCodeValue?.translationKey;
