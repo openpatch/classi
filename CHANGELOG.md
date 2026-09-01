@@ -9,6 +9,11 @@ All notable changes to this project will be documented in this file.
 - Update german website
 
 
+### Documentation
+
+- *(metadata)* Correct and refresh the store descriptions
+
+
 ### Features
 
 - *(site)* Add the classi.openpatch.org landing page
