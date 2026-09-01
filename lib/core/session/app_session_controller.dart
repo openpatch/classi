@@ -33,6 +33,23 @@ enum AppSessionErrorCode {
   final String translationKey;
 }
 
+/// The raw failure behind an [AppSessionErrorCode], kept so the error screen
+/// can offer to send it instead of leaving a dead end.
+class AppSessionErrorDetails {
+  const AppSessionErrorDetails({
+    required this.operation,
+    required this.error,
+    required this.stackTrace,
+    required this.occurredAt,
+  });
+
+  /// What the session was doing, e.g. `open the library`.
+  final String operation;
+  final Object error;
+  final StackTrace stackTrace;
+  final DateTime occurredAt;
+}
+
 enum WebDavSyncStatus {
   notConfigured('webdav_sync_not_configured'),
   disabled('webdav_sync_disabled'),
@@ -77,6 +94,7 @@ class AppSessionController extends ChangeNotifier {
   String? _databasePath;
   AppSessionStatus _status = AppSessionStatus.loading;
   AppSessionErrorCode? _errorCode;
+  AppSessionErrorDetails? _errorDetails;
   DateTime? _openedAt;
   bool _isBusy = false;
   bool _disposed = false;
@@ -126,6 +144,9 @@ class AppSessionController extends ChangeNotifier {
   String? get databasePath => _databasePath;
   AppSessionErrorCode? get errorCode => _errorCode;
   String? get errorMessage => _errorCode?.translationKey;
+
+  /// The last unexpected failure, for the "report this error" action.
+  AppSessionErrorDetails? get errorDetails => _errorDetails;
 
   /// `true` when `PRAGMA quick_check` reported damage while opening.
   ///
@@ -1506,6 +1527,7 @@ class AppSessionController extends ChangeNotifier {
   void _beginLoading() {
     _status = AppSessionStatus.loading;
     _errorCode = null;
+    _errorDetails = null;
     notifyListeners();
   }
 
@@ -1535,6 +1557,12 @@ class AppSessionController extends ChangeNotifier {
     required Object error,
     required StackTrace stackTrace,
   }) {
+    _errorDetails = AppSessionErrorDetails(
+      operation: operation,
+      error: error,
+      stackTrace: stackTrace,
+      occurredAt: DateTime.now(),
+    );
     developer.log(
       'Failed to $operation.',
       name: 'classi.session',
