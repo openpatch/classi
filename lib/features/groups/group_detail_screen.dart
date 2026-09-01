@@ -45,6 +45,10 @@ import '../sessions/session_form.dart';
 import '../sessions/session_repository.dart';
 import '../students/student_import_parser.dart';
 import '../students/student_sorting.dart';
+import '../attendance/attendance_repository.dart';
+import '../webuntis/webuntis_attendance_import_sheet.dart';
+import '../webuntis/webuntis_klasse_picker.dart';
+import '../webuntis/webuntis_student_import_sheet.dart';
 import 'group_form.dart';
 
 final groupProvider = StreamProvider.autoDispose.family<Group?, int>(
@@ -181,6 +185,8 @@ class GroupDetailScreen extends ConsumerWidget {
     final sessionSummariesValue = ref.watch(
       groupSessionSummariesProvider(groupId),
     );
+    final webUntisConnected =
+        ref.watch(webUntisConnectionProvider).value != null;
 
     return groupValue.when(
       data: (group) {
@@ -422,6 +428,12 @@ class GroupDetailScreen extends ConsumerWidget {
                           ? null
                           : () =>
                                 _importWebUntisStudents(context, ref, group.id),
+                      onSyncWebUntisStudents: archived || !webUntisConnected
+                          ? null
+                          : () => _syncWebUntisStudents(context, ref, group),
+                      onSyncWebUntisAttendance: archived || !webUntisConnected
+                          ? null
+                          : () => _syncWebUntisAttendance(context, ref, group),
                     ),
                     error: (error, _) => const AppErrorText(),
                     loading: () =>
@@ -611,6 +623,105 @@ class GroupDetailScreen extends ConsumerWidget {
         context,
       ).showSnackBar(SnackBar(content: Text('webuntis_import_failed'.tr())));
     }
+  }
+
+  /// Resolves which WebUntis class a group stands for, asking once and
+  /// remembering the answer on the group.
+  Future<int?> _resolveKlasseId(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    final linked = group.webuntisKlasseId;
+    if (linked != null) {
+      return linked;
+    }
+
+    final klasse = await showWebUntisKlassePicker(context: context);
+    if (klasse == null) {
+      return null;
+    }
+
+    await ref
+        .read(groupRepositoryProvider)
+        .setWebUntisKlasseId(groupId: group.id, klasseId: klasse.id);
+    return klasse.id;
+  }
+
+  Future<void> _syncWebUntisStudents(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    final klasseId = await _resolveKlasseId(context, ref, group);
+    if (klasseId == null || !context.mounted) {
+      return;
+    }
+
+    final result = await showWebUntisStudentImportSheet(
+      context: context,
+      groupId: group.id,
+      klasseId: klasseId,
+    );
+    if (result == null || !context.mounted) {
+      return;
+    }
+
+    _refreshStudentSection(ref, group.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'webuntis_students_imported'.tr(
+            namedArgs: {
+              'added': result.added.toString(),
+              'linked': result.linked.toString(),
+              'skipped': result.skipped.toString(),
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _syncWebUntisAttendance(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    final klasseId = await _resolveKlasseId(context, ref, group);
+    if (klasseId == null || !context.mounted) {
+      return;
+    }
+
+    final result = await showWebUntisAttendanceImportSheet(
+      context: context,
+      groupId: group.id,
+      klasseId: klasseId,
+    );
+    if (result == null || !context.mounted) {
+      return;
+    }
+
+    _showAttendanceImportResult(context, result);
+  }
+
+  void _showAttendanceImportResult(
+    BuildContext context,
+    AttendanceImportResult result,
+  ) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'webuntis_attendance_imported'.tr(
+            namedArgs: {
+              'created': result.created.toString(),
+              'updated': result.updated.toString(),
+              'skipped': result.skipped.toString(),
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   void _refreshStudentSection(WidgetRef ref, int groupId) {
@@ -2386,6 +2497,8 @@ class _StudentsSection extends ConsumerStatefulWidget {
     required this.onAddStudent,
     required this.onBatchCreateStudents,
     required this.onImportStudents,
+    required this.onSyncWebUntisStudents,
+    required this.onSyncWebUntisAttendance,
     required this.groupId,
   });
 
@@ -2398,6 +2511,8 @@ class _StudentsSection extends ConsumerStatefulWidget {
   final VoidCallback? onAddStudent;
   final VoidCallback? onBatchCreateStudents;
   final VoidCallback? onImportStudents;
+  final VoidCallback? onSyncWebUntisStudents;
+  final VoidCallback? onSyncWebUntisAttendance;
   final int groupId;
 
   @override
@@ -2533,6 +2648,18 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                       onPressed: widget.onImportStudents,
                       icon: const Icon(Icons.upload_file_outlined),
                       label: Text('import_webuntis'.tr()),
+                    ),
+                  if (widget.onSyncWebUntisStudents != null)
+                    OutlinedButton.icon(
+                      onPressed: widget.onSyncWebUntisStudents,
+                      icon: const Icon(Icons.cloud_download_outlined),
+                      label: Text('webuntis_import_students'.tr()),
+                    ),
+                  if (widget.onSyncWebUntisAttendance != null)
+                    OutlinedButton.icon(
+                      onPressed: widget.onSyncWebUntisAttendance,
+                      icon: const Icon(Icons.event_available_outlined),
+                      label: Text('webuntis_import_attendance'.tr()),
                     ),
                 ],
               ),

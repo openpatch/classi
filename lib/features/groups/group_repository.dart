@@ -59,6 +59,7 @@ class GroupRepository {
     required List<GradeScaleEntry> gradeScale,
     List<GradeCategory> gradeCategories = defaultGradeCategories,
     int? schoolYearId,
+    int? webuntisKlasseId,
   }) {
     return _database
         .into(_database.groupsTable)
@@ -69,8 +70,31 @@ class GroupRepository {
             colorHex: Value(normalizeColorHex(colorHex, fallback: '#FF1E88E5')),
             gradeScaleJson: Value(encodeGradeScaleEntries(gradeScale)),
             gradeCategoriesJson: Value(encodeGradeCategories(gradeCategories)),
+            webuntisKlasseId: Value(webuntisKlasseId),
           ),
         );
+  }
+
+  /// Links an existing group to a WebUntis class, so student and attendance
+  /// syncs know which register to read. Pass `null` to unlink.
+  Future<void> setWebUntisKlasseId({
+    required int groupId,
+    required int? klasseId,
+  }) {
+    return (_database.update(_database.groupsTable)
+          ..where((table) => table.id.equals(groupId)))
+        .write(GroupsTableCompanion(webuntisKlasseId: Value(klasseId)));
+  }
+
+  /// Which WebUntis classes are already represented by a group, keyed by the
+  /// WebUntis class id. Lets the import picker mark them instead of creating
+  /// a second group for the same class.
+  Future<Map<int, Group>> groupsByWebUntisKlasseId() async {
+    final groups = await (_database.select(
+      _database.groupsTable,
+    )..where((table) => table.webuntisKlasseId.isNotNull())).get();
+
+    return {for (final group in groups) ?group.webuntisKlasseId: group};
   }
 
   Future<void> updateGroup({

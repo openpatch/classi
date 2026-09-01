@@ -12,6 +12,10 @@ const List<String> databaseIndexStatements = [
   'CREATE INDEX IF NOT EXISTS idx_students_group_id '
       'ON students_table (group_id)',
 
+  // A WebUntis attendance sync looks students up by their WebUntis id.
+  'CREATE INDEX IF NOT EXISTS idx_students_webuntis_student_id '
+      'ON students_table (webuntis_student_id)',
+
   // Groups are listed per school year.
   'CREATE INDEX IF NOT EXISTS idx_groups_school_year_id '
       'ON groups_table (school_year_id)',

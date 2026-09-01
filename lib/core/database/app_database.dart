@@ -85,7 +85,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Exposed statically so callers can compare it against the version on disk
   /// before opening (and therefore migrating) a library.
-  static const int currentSchemaVersion = 25;
+  static const int currentSchemaVersion = 26;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -257,6 +257,16 @@ class AppDatabase extends _$AppDatabase {
       if (from < 25) {
         // The database had no indexes at all until here, so every lookup by
         // group, student or date was a full table scan. Purely additive.
+        await _createIndexes();
+      }
+      if (from < 26) {
+        // Groups and students remember where WebUntis imported them from, so
+        // a later roster or attendance sync matches on ids instead of names.
+        await migrator.addColumn(groupsTable, groupsTable.webuntisKlasseId);
+        await migrator.addColumn(
+          studentsTable,
+          studentsTable.webuntisStudentId,
+        );
         await _createIndexes();
       }
     },

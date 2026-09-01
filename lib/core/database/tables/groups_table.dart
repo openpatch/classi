@@ -27,4 +27,11 @@ class GroupsTable extends Table {
     #id,
     onDelete: KeyAction.setNull,
   )();
+
+  /// The id of the WebUntis class ("Klasse") this group was imported from.
+  ///
+  /// Kept so a later student or attendance sync knows which class register to
+  /// read without asking the teacher to pick it again. `null` for groups that
+  /// were created by hand.
+  IntColumn get webuntisKlasseId => integer().nullable()();
 }

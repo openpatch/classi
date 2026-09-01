@@ -19,7 +19,9 @@ and portable across devices.
 - SQLCipher-backed Drift database with passphrase setup and recovery key support
 - Adaptive navigation for groups, notes, and settings
 - Groups and students flow, including archive, unarchive, clone, and deletion
-- Batch student creation and WebUntis class-list import
+- Batch student creation, WebUntis CSV class-list import, and a live
+  [WebUntis connection](#webuntis) for importing classes, class lists, and
+  recorded absences
 - Grade entry, chart-based grade history, checklist management, note management,
   and material tracking
 - Avatar editing powered by `avatar_maker`, persisted per student in the local
@@ -65,6 +67,37 @@ credentials, and remote folder path in **Settings → Backups**. Once saved:
 
 You can also trigger a manual restore from the setup screen by choosing
 *Restore from WebDAV backup*.
+
+## WebUntis
+
+Classi can connect to your school's WebUntis and read from it. Connect an
+account under **Settings → WebUntis** with the server host (e.g.
+`mese.webuntis.com` — pasting the whole address works too), the school's login
+name, and your WebUntis credentials. Once connected:
+
+- **Import classes** from the groups screen: pick the classes you teach and
+  Classi creates a group for each in the active school year.
+- **Import students** from a group: Classi reads the class register of that
+  class's recent lessons. Students already in the group are matched by name and
+  keep their grades, notes, and avatars; they only gain their WebUntis id.
+- **Import attendance** from a group: pick a date range and Classi turns the
+  absences WebUntis recorded into attendance entries.
+
+The connection reads only — Classi never writes anything back to WebUntis.
+Your password is not stored: WebUntis exchanges it once for an app access
+secret, which is kept in the platform's secure storage alongside the WebDAV
+password. Server, school, and user name live in the `.classi` project, so they
+travel with the library.
+
+An attendance import never destroys your own records. Days you marked as
+present are left alone unless you turn on *Overwrite days marked present*, and
+an absence you recorded that WebUntis does not know about is never deleted in
+either mode.
+
+Two things depend on your school's WebUntis configuration: the account needs
+permission to open the class register, and the class needs lessons in the last
+few weeks for a class list to be read from. Classi says which of the two is
+missing rather than showing an empty list.
 
 ## Avatar Designer
 

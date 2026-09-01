@@ -186,6 +186,95 @@ class AttendanceRepository {
         .go();
   }
 
+  /// Writes absences read from WebUntis into the attendance log.
+  ///
+  /// The import never destroys what a teacher recorded themselves:
+  ///
+  /// * A day with no record yet is written as absent.
+  /// * A day already marked absent only has its excuse status corrected.
+  /// * A day the teacher marked *present* is left alone unless
+  ///   [overwriteExisting] is set, and is reported as skipped either way.
+  ///
+  /// An absence Classi holds but WebUntis does not know about is never
+  /// deleted, in both modes: WebUntis only sees the lessons it manages, and a
+  /// teacher's own record of a missing student is not evidence of an error.
+  Future<AttendanceImportResult> importAbsences({
+    required List<({int studentId, DateTime date, bool excused})> absences,
+    bool overwriteExisting = false,
+  }) async {
+    if (absences.isEmpty) {
+      return const AttendanceImportResult(
+        created: 0,
+        updated: 0,
+        unchanged: 0,
+        skipped: 0,
+      );
+    }
+
+    return _database.transaction(() async {
+      var created = 0;
+      var updated = 0;
+      var unchanged = 0;
+      var skipped = 0;
+
+      for (final absence in absences) {
+        final date = DateTime(
+          absence.date.year,
+          absence.date.month,
+          absence.date.day,
+        );
+
+        final existing =
+            await (_database.select(_database.attendanceLogsTable)
+                  ..where((table) => table.studentId.equals(absence.studentId))
+                  ..where((table) => table.date.equals(date)))
+                .getSingleOrNull();
+
+        if (existing == null) {
+          await _database
+              .into(_database.attendanceLogsTable)
+              .insert(
+                AttendanceLogsTableCompanion.insert(
+                  studentId: absence.studentId,
+                  date: date,
+                  isAbsent: const Value(true),
+                  isExcused: Value(absence.excused),
+                ),
+              );
+          created++;
+          continue;
+        }
+
+        if (!existing.isAbsent && !overwriteExisting) {
+          skipped++;
+          continue;
+        }
+
+        if (existing.isAbsent && existing.isExcused == absence.excused) {
+          unchanged++;
+          continue;
+        }
+
+        await (_database.update(
+          _database.attendanceLogsTable,
+        )..where((table) => table.id.equals(existing.id))).write(
+          AttendanceLogsTableCompanion(
+            isAbsent: const Value(true),
+            isExcused: Value(absence.excused),
+          ),
+        );
+        updated++;
+      }
+
+      return AttendanceImportResult(
+        created: created,
+        updated: updated,
+        unchanged: unchanged,
+        skipped: skipped,
+      );
+    });
+  }
+
   Stream<List<AttendanceLog>> watchAttendanceForStudentInDateRange(
     int studentId,
     DateTime startDate,
@@ -230,4 +319,32 @@ class AttendanceRepository {
       return result;
     });
   }
+}
+
+/// What an attendance import changed, so the UI can report it without
+/// guessing.
+class AttendanceImportResult {
+  const AttendanceImportResult({
+    required this.created,
+    required this.updated,
+    required this.unchanged,
+    required this.skipped,
+  });
+
+  /// Days that had no attendance record and are now marked absent.
+  final int created;
+
+  /// Days whose record changed, i.e. an excuse status that moved, or a day
+  /// flipped from present to absent while overwriting.
+  final int updated;
+
+  /// Days that already said exactly this.
+  final int unchanged;
+
+  /// Days the teacher had marked present and that were left untouched.
+  final int skipped;
+
+  int get total => created + updated + unchanged + skipped;
+
+  bool get changedAnything => created > 0 || updated > 0;
 }
