@@ -77,7 +77,8 @@ class _WeeklyTimetableScreenState extends ConsumerState<WeeklyTimetableScreen> {
             onPlan: _planLesson,
             onOpen: _openLesson,
           ),
-          error: (_, _) => const AppErrorState(),
+          error: (error, stackTrace) =>
+              AppErrorState(error: error, stackTrace: stackTrace),
           loading: () => const Center(child: CircularProgressIndicator()),
         ),
       ),

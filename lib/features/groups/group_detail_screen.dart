@@ -423,7 +423,8 @@ class GroupDetailScreen extends ConsumerWidget {
                           : () =>
                                 _importWebUntisStudents(context, ref, group.id),
                     ),
-                    error: (error, _) => const AppErrorText(),
+                    error: (error, stackTrace) =>
+                        AppErrorText(error: error, stackTrace: stackTrace),
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
                   ),
@@ -473,7 +474,8 @@ class GroupDetailScreen extends ConsumerWidget {
           ),
         );
       },
-      error: (error, _) => const AppErrorScaffold(),
+      error: (error, stackTrace) =>
+          AppErrorScaffold(error: error, stackTrace: stackTrace),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
@@ -1166,7 +1168,8 @@ class _TimeframesCard extends ConsumerWidget {
                         gradeScaleEntries: gradeScaleEntries,
                         archived: archived,
                       ),
-                error: (e, s) => const AppErrorText(),
+                error: (error, stackTrace) =>
+                    AppErrorText(error: error, stackTrace: stackTrace),
                 loading: () => const Center(child: CircularProgressIndicator()),
               ),
           ],
@@ -2834,7 +2837,8 @@ class _SessionsOverviewCard extends StatelessWidget {
                       onEdit: onEditSession,
                       onDelete: onDeleteSession,
                     ),
-              error: (e, s) => const AppErrorText(),
+              error: (error, stackTrace) =>
+                  AppErrorText(error: error, stackTrace: stackTrace),
               loading: () => const Center(child: CircularProgressIndicator()),
             ),
           ],

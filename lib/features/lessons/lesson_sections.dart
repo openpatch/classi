@@ -342,7 +342,8 @@ class LessonStudentNotesSheet extends ConsumerWidget {
                     ),
                   );
                 },
-                error: (error, _) => const AppErrorState(),
+                error: (error, stackTrace) =>
+                    AppErrorState(error: error, stackTrace: stackTrace),
                 loading: () => const Center(child: CircularProgressIndicator()),
               ),
             ),

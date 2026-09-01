@@ -223,12 +223,14 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
               ),
               );
             },
-            error: (error, _) => const AppErrorState(),
+            error: (error, stackTrace) =>
+                AppErrorState(error: error, stackTrace: stackTrace),
             loading: () => const Center(child: CircularProgressIndicator()),
           ),
         );
       },
-      error: (error, _) => const AppErrorScaffold(),
+      error: (error, stackTrace) =>
+          AppErrorScaffold(error: error, stackTrace: stackTrace),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
     );

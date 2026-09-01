@@ -93,8 +93,8 @@ class TimeframeGradesScreen extends ConsumerWidget {
       appBar: appBar,
       body: studentsValue.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) =>
-            AppErrorState(title: 'Error loading data', body: error.toString()),
+        error: (error, stackTrace) =>
+            AppErrorState(error: error, stackTrace: stackTrace),
         data: (students) {
           if (students.isEmpty) {
             return Center(child: Text('no_students_in_group'.tr()));

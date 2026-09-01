@@ -56,7 +56,9 @@ class SchoolYearDetailScreen extends ConsumerWidget {
             ),
           );
         },
-        error: (e, s) => const Center(child: AppErrorText()),
+        error: (error, stackTrace) => Center(
+          child: AppErrorText(error: error, stackTrace: stackTrace),
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
@@ -142,7 +144,8 @@ class _TimeframesCard extends ConsumerWidget {
                         ),
                       ],
                     ),
-              error: (e, s) => const AppErrorText(),
+              error: (error, stackTrace) =>
+                  AppErrorText(error: error, stackTrace: stackTrace),
               loading: () => const Center(child: CircularProgressIndicator()),
             ),
           ],
@@ -273,7 +276,8 @@ class _GroupsCard extends ConsumerWidget {
                           ),
                       ],
                     ),
-              error: (e, s) => const AppErrorText(),
+              error: (error, stackTrace) =>
+                  AppErrorText(error: error, stackTrace: stackTrace),
               loading: () => const Center(child: CircularProgressIndicator()),
             ),
           ],

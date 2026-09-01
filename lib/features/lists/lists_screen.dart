@@ -403,7 +403,8 @@ class _ListsList extends StatelessWidget {
           },
         );
       },
-      error: (error, _) => const AppErrorState(),
+      error: (error, stackTrace) =>
+          AppErrorState(error: error, stackTrace: stackTrace),
       loading: () => const Center(child: CircularProgressIndicator()),
     ),
     );

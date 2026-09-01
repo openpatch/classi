@@ -346,7 +346,8 @@ class StudentDetailScreen extends ConsumerWidget {
           ),
         );
       },
-      error: (error, _) => const AppErrorScaffold(),
+      error: (error, stackTrace) =>
+          AppErrorScaffold(error: error, stackTrace: stackTrace),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
@@ -789,7 +790,8 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
           ],
         );
       },
-      error: (error, _) => const AppErrorState(),
+      error: (error, stackTrace) =>
+          AppErrorState(error: error, stackTrace: stackTrace),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
@@ -1534,7 +1536,8 @@ class _MaterialTab extends ConsumerWidget {
           ],
         );
       },
-      error: (error, _) => const AppErrorState(),
+      error: (error, stackTrace) =>
+          AppErrorState(error: error, stackTrace: stackTrace),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
@@ -1712,7 +1715,8 @@ class _HomeworkTab extends ConsumerWidget {
           ],
         );
       },
-      error: (error, _) => const AppErrorState(),
+      error: (error, stackTrace) =>
+          AppErrorState(error: error, stackTrace: stackTrace),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
@@ -1967,7 +1971,8 @@ class _StudentNotesTab extends ConsumerWidget {
           ],
         );
       },
-      error: (error, _) => const AppErrorState(),
+      error: (error, stackTrace) =>
+          AppErrorState(error: error, stackTrace: stackTrace),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
@@ -2055,7 +2060,8 @@ class _ListsTab extends ConsumerWidget {
           ],
         );
       },
-      error: (error, _) => const AppErrorState(),
+      error: (error, stackTrace) =>
+          AppErrorState(error: error, stackTrace: stackTrace),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
@@ -2202,7 +2208,8 @@ class _AttendanceTab extends ConsumerWidget {
           ],
         );
       },
-      error: (error, _) => const AppErrorState(),
+      error: (error, stackTrace) =>
+          AppErrorState(error: error, stackTrace: stackTrace),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }

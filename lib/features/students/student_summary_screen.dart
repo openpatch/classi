@@ -157,7 +157,8 @@ class StudentSummaryScreen extends ConsumerWidget {
           ),
         );
       },
-      error: (e, s) => const AppErrorScaffold(),
+      error: (error, stackTrace) =>
+          AppErrorScaffold(error: error, stackTrace: stackTrace),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
     );

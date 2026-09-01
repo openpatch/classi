@@ -153,17 +153,28 @@ void showErrorSnackBar(
 /// The technical detail behind an error screen, collapsed by default, plus the
 /// buttons that get it to support.
 class ErrorReportDetails extends StatelessWidget {
-  const ErrorReportDetails({required this.report, super.key});
+  const ErrorReportDetails({
+    required this.report,
+    this.showTechnicalDetails = true,
+    super.key,
+  });
 
   final ErrorReport report;
+
+  /// Whether to offer the expandable stack trace. Inline error states sit in
+  /// tight boxes where the extra height would overflow, so they only show the
+  /// buttons.
+  final bool showTechnicalDetails;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final detail = [
-      if (report.error != null) '${report.error}',
-      if (report.stackTrace != null) '${report.stackTrace}',
-    ].join('\n\n');
+    final detail = !showTechnicalDetails
+        ? ''
+        : [
+            if (report.error != null) '${report.error}',
+            if (report.stackTrace != null) '${report.stackTrace}',
+          ].join('\n\n');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -220,48 +231,139 @@ class ErrorReportDetails extends StatelessWidget {
 }
 
 class AppErrorState extends StatelessWidget {
-  const AppErrorState({this.title, this.body, this.action, super.key});
+  const AppErrorState({
+    this.title,
+    this.body,
+    this.action,
+    this.error,
+    this.stackTrace,
+    this.operation,
+    this.showTechnicalDetails = false,
+    super.key,
+  });
 
   final String? title;
   final String? body;
   final Widget? action;
 
+  /// Whether the report offers the expandable stack trace; full-screen error
+  /// states can afford it, inline ones cannot.
+  final bool showTechnicalDetails;
+
+  /// The failure behind this state. Pass whatever the caller was handed —
+  /// without it the screen is a dead end a teacher cannot report.
+  final Object? error;
+  final StackTrace? stackTrace;
+
+  /// What Classi was loading, e.g. `load the group`.
+  final String? operation;
+
   @override
   Widget build(BuildContext context) {
+    final resolvedTitle = title ?? 'generic_error'.tr();
     return EmptyState(
       icon: Icons.error_outline,
-      title: title ?? 'generic_error'.tr(),
+      title: resolvedTitle,
       body: body ?? 'generic_error_hint'.tr(),
-      action: action,
+      action:
+          action ??
+          (error == null && stackTrace == null
+              ? null
+              : ErrorReportDetails(
+                  showTechnicalDetails: showTechnicalDetails,
+                  report: ErrorReport(
+                    message: resolvedTitle,
+                    operation: operation,
+                    error: error,
+                    stackTrace: stackTrace,
+                  ),
+                )),
     );
   }
 }
 
 class AppErrorScaffold extends StatelessWidget {
-  const AppErrorScaffold({this.title, this.body, this.action, super.key});
+  const AppErrorScaffold({
+    this.title,
+    this.body,
+    this.action,
+    this.error,
+    this.stackTrace,
+    this.operation,
+    super.key,
+  });
 
   final String? title;
   final String? body;
   final Widget? action;
+  final Object? error;
+  final StackTrace? stackTrace;
+  final String? operation;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AppErrorState(title: title, body: body, action: action),
+      body: AppErrorState(
+        title: title,
+        body: body,
+        action: action,
+        error: error,
+        stackTrace: stackTrace,
+        operation: operation,
+        showTechnicalDetails: true,
+      ),
     );
   }
 }
 
+/// Inline error text, with a compact report button when the failure behind it
+/// is known.
 class AppErrorText extends StatelessWidget {
-  const AppErrorText({this.message, super.key});
+  const AppErrorText({
+    this.message,
+    this.error,
+    this.stackTrace,
+    this.operation,
+    super.key,
+  });
 
   final String? message;
+  final Object? error;
+  final StackTrace? stackTrace;
+  final String? operation;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      message ?? 'generic_error'.tr(),
+    final resolvedMessage = message ?? 'generic_error'.tr();
+    final text = Text(
+      resolvedMessage,
       style: TextStyle(color: Theme.of(context).colorScheme.error),
+    );
+
+    if (error == null && stackTrace == null) {
+      return text;
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(child: text),
+        IconButton(
+          onPressed: () => sendErrorReport(
+            context,
+            ErrorReport(
+              message: resolvedMessage,
+              operation: operation,
+              error: error,
+              stackTrace: stackTrace,
+            ),
+          ),
+          icon: const Icon(Icons.outgoing_mail, size: 18),
+          tooltip: 'report_error'.tr(),
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
     );
   }
 }
