@@ -434,6 +434,12 @@ class AppSessionController extends ChangeNotifier {
     }
 
     await _openDatabase(passphrase);
+    // Reopening replaces the handle and closes the old one. Everything that
+    // resolved a repository or opened a query stream is still holding that
+    // closed handle, and its streams simply stop emitting — the screen freezes
+    // on its last snapshot instead of showing an error. Announce the swap so
+    // they rebuild against the database that is actually open.
+    notifyListeners();
   }
 
   Future<void> moveDatabaseTo(String folderPath) async {

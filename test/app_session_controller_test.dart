@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
 
 import 'package:classi/core/database/app_database.dart';
+import 'package:classi/core/providers/app_providers.dart';
 import 'package:classi/core/security/biometric_service.dart';
 import 'package:classi/core/security/key_service.dart';
 import 'package:classi/core/security/security_preferences_service.dart';
@@ -848,6 +850,49 @@ void main() {
       // overwrite the server copy without ever prompting again.
       expect(controller.lastKnownRevision, revisionBefore);
       expect(await backupPreferences.lastKnownRevision(), revisionBefore);
+    },
+  );
+
+  test(
+    'resuming onto a changed library announces the reopened database',
+    () async {
+      await controller.initialize();
+      await controller.createDatabase('test');
+
+      final openedDatabase = controller.database;
+      expect(openedDatabase, isNotNull);
+
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // Every edit moves the library's timestamp past the one the session
+      // recorded when it opened it, which is what makes a resume reopen it.
+      final file = File(openedDatabase!.databasePath);
+      await file.setLastModified(
+        (await file.lastModified()).add(const Duration(seconds: 5)),
+      );
+
+      // Not disposed here: the container owns the controller it is handed and
+      // would dispose it a second time under the shared tearDown.
+      final container = ProviderContainer(
+        overrides: [appSessionProvider.overrideWith((ref) => controller)],
+      );
+      expect(container.read(databaseProvider), same(openedDatabase));
+
+      await controller.handleAppResumed();
+
+      // The old handle is gone, so anything still holding it is talking to a
+      // closed database: whoever watches the session has to be told.
+      expect(controller.database, isNot(same(openedDatabase)));
+      expect(
+        notifications,
+        greaterThan(0),
+        reason: 'the swapped database was never announced',
+      );
+
+      // What the announcement is for: the repositories and query streams the
+      // screens hang off resolve to the database that is actually open.
+      expect(container.read(databaseProvider), same(controller.database));
     },
   );
 }
