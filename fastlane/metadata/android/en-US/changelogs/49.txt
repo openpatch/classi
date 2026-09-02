@@ -1,0 +1,5 @@
+Bug Fixes
+
+- Report the failure behind the inline error states too
+
+

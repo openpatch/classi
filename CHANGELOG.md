@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.18.4] - 2026-09-01
+
+### Bug Fixes
+
+- *(errors)* Report the failure behind the inline error states too
+
+
 ## [1.18.3] - 2026-09-01
 
 ### Features
