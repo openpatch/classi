@@ -23,8 +23,19 @@ class SecurityPreferencesService {
     'security',
     'biometricEnabled',
   ];
+  static const List<String> _backgroundLockGracePath = [
+    'security',
+    'backgroundLockGraceSeconds',
+  ];
 
   static const Duration defaultInactivityTimeout = Duration(minutes: 5);
+
+  /// How long the app may be in the background before locking on return.
+  ///
+  /// Switching to another app for a moment — to look something up, to take a
+  /// photo — is not the same as putting the phone down, and asking for the
+  /// passphrase every time makes a teacher stop using the lock at all.
+  static const Duration defaultBackgroundLockGrace = Duration(seconds: 30);
 
   final ProjectSettingsStore _projectSettingsStore;
 
@@ -89,6 +100,26 @@ class SecurityPreferencesService {
     );
   }
 
+  /// How long the app may stay in the background before it locks.
+  ///
+  /// [Duration.zero] locks the moment the app goes away, which is what the app
+  /// did before this setting existed.
+  Future<Duration> backgroundLockGrace() async {
+    final settings = await _projectSettingsStore.read();
+    final storedSeconds = ProjectSettingsStore.intAt(
+      settings,
+      _backgroundLockGracePath,
+    );
+    if (storedSeconds == null || storedSeconds < 0) {
+      return defaultBackgroundLockGrace;
+    }
+    return Duration(seconds: storedSeconds);
+  }
+
+  Future<void> setBackgroundLockGrace(Duration duration) async {
+    await _writeInt(_backgroundLockGracePath, duration.inSeconds);
+  }
+
   Future<bool> wasSessionDirty() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_sessionDirtyKey) ?? false;
@@ -145,12 +176,13 @@ class SecurityPreferencesService {
   Future<void> _writeInt(
     List<String> path,
     int value, {
-    required String removeLegacyKey,
+    String? removeLegacyKey,
   }) async {
     await _projectSettingsStore.update((settings) {
       ProjectSettingsStore.setPath(settings, path, value);
       return settings;
     });
+    if (removeLegacyKey == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(removeLegacyKey);
   }
