@@ -91,6 +91,45 @@ void main() {
     expect(movedTo, (1, 1, 0));
   });
 
+  testWidgets('the whole cell selects, not just the chip inside it', (
+    tester,
+  ) async {
+    (int, int, int)? movedTo;
+
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanGrid(
+          students: [_student(id: 1, firstName: 'Ada', lastName: 'Lovelace')],
+          columns: 2,
+          positions: const {1: (col: 0, row: 0)},
+          editMode: true,
+          // A tooltip wraps the cell, so this also covers that it does not
+          // swallow the tap.
+          fitTooltipBuilder: (_) => 'Should not sit with: Grace Hopper',
+          onPositionChanged: (id, col, row) => movedTo = (id, col, row),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The chip sits in the middle of its cell; aim at the corner instead,
+    // which used to be dead space.
+    Offset corner(int col, int row) =>
+        tester.getTopLeft(
+          find.byKey(ValueKey('seating-plan-cell-$col-$row')),
+        ) +
+        const Offset(4, 4);
+
+    await tester.tapAt(corner(0, 0));
+    await tester.pumpAndSettle();
+    // Only a selected student can be placed, so the move proves the corner
+    // tap selected Ada.
+    await tester.tapAt(corner(1, 0));
+    await tester.pumpAndSettle();
+
+    expect(movedTo, (1, 1, 0));
+  });
+
   testWidgets('a scored seat is tinted and explains itself in a tooltip', (
     tester,
   ) async {
@@ -133,6 +172,37 @@ void main() {
         matching: find.byType(Tooltip),
       ),
       findsNothing,
+    );
+  });
+
+  testWidgets('a cell keeps its tooltip in edit mode', (tester) async {
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanGrid(
+          students: [_student(id: 1, firstName: 'Ada', lastName: 'Lovelace')],
+          columns: 2,
+          positions: const {1: (col: 0, row: 0)},
+          editMode: true,
+          fitScores: const <int, double>{},
+          fitTooltipBuilder: (_) => 'Should not sit with: Grace Hopper',
+          onPositionChanged: (_, _, _) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Edit mode grows the grid by a row and a column on each side, so the
+    // student sits in the cell that still carries their own coordinates.
+    expect(
+      tester
+          .widget<Tooltip>(
+            find.descendant(
+              of: find.byKey(const ValueKey('seating-plan-cell-0-0')),
+              matching: find.byType(Tooltip),
+            ),
+          )
+          .message,
+      'Should not sit with: Grace Hopper',
     );
   });
 

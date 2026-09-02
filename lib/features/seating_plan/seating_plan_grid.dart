@@ -252,25 +252,32 @@ class _OccupiedCell extends StatelessWidget {
         ? Theme.of(context).colorScheme.primaryContainer
         : seatingFitColor(context, fitScore) ?? Colors.transparent;
 
+    // The chip is a good deal smaller than its cell, so let the whole cell
+    // take the tap: aiming for the avatar is fiddly, and a miss used to do
+    // nothing at all.
     final cell = SizedBox(
       width: _cellSize,
       height: _cellSize,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: background,
-          border: isSwapTarget
-              ? Border.all(color: Theme.of(context).colorScheme.primary)
-              : null,
-          borderRadius: BorderRadius.circular(AppRadii.medium),
-        ),
-        child: Center(
-          child: SeatingPlanChip(
-            student: student,
-            onTap: onTap,
-            opacity: opacity,
-            lessonOverlay: lessonOverlay,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: background,
+            border: isSwapTarget
+                ? Border.all(color: Theme.of(context).colorScheme.primary)
+                : null,
+            borderRadius: BorderRadius.circular(AppRadii.medium),
+          ),
+          child: Center(
+            child: SeatingPlanChip(
+              student: student,
+              onTap: onTap,
+              opacity: opacity,
+              lessonOverlay: lessonOverlay,
+            ),
           ),
         ),
       ),
@@ -290,16 +297,18 @@ class _EmptyCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Same as an occupied cell: the gap around the outline is part of the
+    // target, so a click near the edge still places the selected student.
     return SizedBox(
       width: _cellSize,
       height: _cellSize,
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(AppRadii.medium),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadii.medium),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               decoration: BoxDecoration(
