@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.18.5] - 2026-09-02
+
+### Bug Fixes
+
+- *(database)* Stay quiet when a library closes under a live stream
+
+
 ## [1.18.4] - 2026-09-01
 
 ### Bug Fixes
