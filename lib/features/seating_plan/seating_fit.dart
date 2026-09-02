@@ -22,8 +22,12 @@ double seatingFitWeight(double distance) {
 /// How well a student's seat matches the rules that mention them.
 ///
 /// [score] runs from `-1` (sitting right next to someone they must be kept
-/// apart from) to `1` (sitting right next to someone they belong with). The
-/// two id lists name the classmates in range that produced it.
+/// apart from) to `1` (sitting right next to someone they belong with), and
+/// is `0` when no classmate a rule names sits within [kSeatingFitRadius].
+///
+/// The two id lists name every classmate the student shares a rule with, near
+/// or far and no matter which side of the pair the rule stored them on, so the
+/// rules stay readable while the plan is still being arranged.
 typedef SeatingFit = ({
   double score,
   List<int> supportingStudentIds,
@@ -32,9 +36,10 @@ typedef SeatingFit = ({
 
 /// Scores every seat in [positions] against [relations].
 ///
-/// Only students that both sit on the plan and appear in at least one rule
-/// within [kSeatingFitRadius] get an entry; everyone else has nothing to say
-/// about their seat and is left out.
+/// Every student named by a rule gets an entry, even one whose partner sits
+/// out of range or is not on the plan at all: their seat stays untinted, but
+/// the rule is still there to be shown. Students no rule mentions are left
+/// out.
 Map<int, SeatingFit> calculateSeatingFit({
   required List<StudentRelation> relations,
   required Map<int, ({int col, int row})> positions,
@@ -46,12 +51,15 @@ Map<int, SeatingFit> calculateSeatingFit({
   for (final relation in relations) {
     final a = positions[relation.studentAId];
     final b = positions[relation.studentBId];
-    if (a == null || b == null) continue;
 
-    final dCol = (a.col - b.col).toDouble();
-    final dRow = (a.row - b.row).toDouble();
-    final weight = seatingFitWeight(sqrt(dCol * dCol + dRow * dRow));
-    if (weight == 0) continue;
+    // A pair that is not seated next to each other weighs nothing, but the
+    // rule still belongs on both of their cells.
+    var weight = 0.0;
+    if (a != null && b != null) {
+      final dCol = (a.col - b.col).toDouble();
+      final dRow = (a.row - b.row).toDouble();
+      weight = seatingFitWeight(sqrt(dCol * dCol + dRow * dRow));
+    }
 
     final delta = relation.isPositive ? weight : -weight;
     final partners = {

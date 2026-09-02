@@ -115,6 +115,33 @@ void main() {
     expect(await repository.watchRelationsForGroup(groupId).first, isEmpty);
   });
 
+  test('a rule counts for the group when its student sits second', () async {
+    // Ids are handed out in creation order and the pair is stored with the
+    // lower one first, so a partner created earlier — one that has since moved
+    // to another group — leaves the group's own student on the second side.
+    final otherGroupId = await groupRepository.createGroup(
+      name: '9B',
+      gradeScale: defaultGradeScaleEntries,
+    );
+    final movedOnId = await studentRepository.addStudent(
+      groupId: otherGroupId,
+      firstName: 'Alan',
+      lastName: 'Turing',
+    );
+    final (groupId, adaId, _) = await seedGroup();
+
+    await repository.upsertRelation(
+      studentAId: adaId,
+      studentBId: movedOnId,
+      isPositive: false,
+    );
+
+    final relations = await repository.watchRelationsForGroup(groupId).first;
+    expect(relations, hasLength(1));
+    expect(relations.single.studentAId, movedOnId);
+    expect(relations.single.studentBId, adaId);
+  });
+
   test('rules of another group are not returned', () async {
     final (groupId, adaId, graceId) = await seedGroup();
     final otherGroupId = await groupRepository.createGroup(

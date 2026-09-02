@@ -61,16 +61,61 @@ void main() {
       positions: {1: (col: 0, row: 0), 2: (col: 4, row: 0)},
     );
 
-    expect(fits, isEmpty);
+    expect(fits[1]!.score, 0);
+    expect(fits[2]!.score, 0);
   });
 
-  test('a rule with an unplaced student is ignored', () {
+  test('a rule out of range is still listed for both students', () {
+    final fits = calculateSeatingFit(
+      relations: [_relation(studentAId: 1, studentBId: 2, isPositive: false)],
+      positions: {1: (col: 0, row: 0), 2: (col: 4, row: 0)},
+    );
+
+    expect(fits[1]!.conflictingStudentIds, [2]);
+    expect(fits[2]!.conflictingStudentIds, [1]);
+  });
+
+  test('a rule with an unplaced student is still listed', () {
     final fits = calculateSeatingFit(
       relations: [_relation(studentAId: 1, studentBId: 2, isPositive: true)],
       positions: {1: (col: 0, row: 0)},
     );
 
-    expect(fits, isEmpty);
+    expect(fits[1]!.score, 0);
+    expect(fits[1]!.supportingStudentIds, [2]);
+  });
+
+  test('which side of a rule a student is stored on makes no difference', () {
+    final positions = {1: (col: 0, row: 0), 2: (col: 1, row: 0)};
+
+    final asFirst = calculateSeatingFit(
+      relations: [_relation(studentAId: 1, studentBId: 2, isPositive: false)],
+      positions: positions,
+    );
+    final asSecond = calculateSeatingFit(
+      relations: [_relation(studentAId: 2, studentBId: 1, isPositive: false)],
+      positions: positions,
+    );
+
+    for (final fits in [asFirst, asSecond]) {
+      expect(fits[1]!.score, -1);
+      expect(fits[1]!.conflictingStudentIds, [2]);
+      expect(fits[2]!.score, -1);
+      expect(fits[2]!.conflictingStudentIds, [1]);
+    }
+  });
+
+  test('students no rule mentions are left out', () {
+    final fits = calculateSeatingFit(
+      relations: [_relation(studentAId: 1, studentBId: 2, isPositive: true)],
+      positions: {
+        1: (col: 0, row: 0),
+        2: (col: 1, row: 0),
+        3: (col: 2, row: 0),
+      },
+    );
+
+    expect(fits.containsKey(3), isFalse);
   });
 
   test('a good and a bad neighbour at the same distance cancel out', () {
