@@ -2,6 +2,12 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:drift/drift.dart';
+// QueryStreamFetcher is the argument type of createStream, which [AppDatabase]
+// overrides below. Drift neither exports nor publishes the type, so there is no
+// public way to spell that signature; a drift upgrade that moves it fails to
+// compile, and database_close_stream_test.dart covers the behaviour it guards.
+// ignore: implementation_imports
+import 'package:drift/src/runtime/executor/stream_queries.dart';
 
 import 'cipher_opener.dart';
 import 'database_indexes.dart';
@@ -441,5 +447,31 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> checkpointAndTruncate() async {
     await customStatement('PRAGMA wal_checkpoint(TRUNCATE);');
+  }
+
+  /// Whether [close] has been asked for. See [createStream].
+  bool _isClosing = false;
+
+  /// Drops the failures a screen's still-open query streams run into while the
+  /// library is closing.
+  ///
+  /// Locking, switching libraries and auto-importing all close the database
+  /// under whatever screen is on top, and its streams can have a select in
+  /// flight. Drift then reports "the connection was closed", which the UI would
+  /// show as an error report for a teardown the app itself asked for. Once the
+  /// close is over the screen is gone anyway, so there is nothing left to tell
+  /// the teacher. Failures outside a close still reach the UI.
+  @override
+  // ignore: invalid_use_of_internal_member
+  Stream<T> createStream<T extends Object>(QueryStreamFetcher<T> stmt) {
+    return super
+        .createStream(stmt)
+        .handleError((_, _) {}, test: (_) => _isClosing);
+  }
+
+  @override
+  Future<void> close() {
+    _isClosing = true;
+    return super.close();
   }
 }
