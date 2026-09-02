@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
+import '../../shared/utils/formatting.dart';
 
 /// Manages the seating rules that say which students belong together and
 /// which have to be kept apart.
@@ -81,6 +82,65 @@ class StudentRelationRepository {
             ],
           ),
         );
+  }
+
+  /// Copies the rules of [sourceGroupId] over to [targetGroupId].
+  ///
+  /// A rule is about two people, so it holds in whichever subject a teacher
+  /// sees them: the same class in a second group should not need the same
+  /// "keep these two apart" typed in again. The pair is matched by name, the
+  /// way students are copied between groups, and a rule naming somebody the
+  /// target group does not have is skipped.
+  ///
+  /// Re-running this updates the rules already there instead of doubling them.
+  /// Returns how many rules were written.
+  Future<int> copyRelationsBetweenGroups({
+    required int sourceGroupId,
+    required int targetGroupId,
+  }) async {
+    if (sourceGroupId == targetGroupId) return 0;
+
+    return _database.transaction(() async {
+      Future<List<Student>> studentsOf(int groupId) {
+        return (_database.select(
+          _database.studentsTable,
+        )..where((t) => t.groupId.equals(groupId))).get();
+      }
+
+      final sourceStudents = await studentsOf(sourceGroupId);
+      final targetStudents = await studentsOf(targetGroupId);
+      final nameBySourceId = {
+        for (final student in sourceStudents)
+          student.id: studentMatchKey(
+            firstName: student.firstName,
+            lastName: student.lastName,
+          ),
+      };
+      final targetByName = {
+        for (final student in targetStudents)
+          studentMatchKey(
+            firstName: student.firstName,
+            lastName: student.lastName,
+          ): student.id,
+      };
+
+      final relations = await watchRelationsForGroup(sourceGroupId).first;
+      var copied = 0;
+      for (final relation in relations) {
+        final a = targetByName[nameBySourceId[relation.studentAId]];
+        final b = targetByName[nameBySourceId[relation.studentBId]];
+        if (a == null || b == null || a == b) continue;
+
+        await upsertRelation(
+          studentAId: a,
+          studentBId: b,
+          isPositive: relation.isPositive,
+          comment: relation.comment,
+        );
+        copied++;
+      }
+      return copied;
+    });
   }
 
   Future<void> deleteRelation(int id) {

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
+import '../../shared/utils/formatting.dart';
 
 /// Manages seating plans and student grid positions within those plans.
 class SeatingPlanRepository {
@@ -70,6 +71,82 @@ class SeatingPlanRepository {
     return (_database.delete(
       _database.seatingPlansTable,
     )..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Copies [sourcePlanId] into [targetGroupId], seating everyone it can find.
+  ///
+  /// The two groups hold different student rows for the same people, so seats
+  /// are handed over by name. Anyone the target group does not have is left
+  /// out and counted, rather than quietly dropping a seat: a plan copied into
+  /// a group with a student missing should say so.
+  ///
+  /// Returns the new plan's id, how many students were seated and how many
+  /// seats had nobody to put in them.
+  Future<({int planId, int seated, int missing})> copyPlanToGroup({
+    required int sourcePlanId,
+    required int targetGroupId,
+    String? name,
+  }) async {
+    return _database.transaction(() async {
+      final source =
+          await (_database.select(_database.seatingPlansTable)
+                ..where((t) => t.id.equals(sourcePlanId)))
+              .getSingle();
+
+      Future<List<Student>> studentsOf(int groupId) {
+        return (_database.select(
+          _database.studentsTable,
+        )..where((t) => t.groupId.equals(groupId))).get();
+      }
+
+      final sourceStudents = await studentsOf(source.groupId);
+      final targetStudents = await studentsOf(targetGroupId);
+      final targetByName = {
+        for (final student in targetStudents)
+          studentMatchKey(
+            firstName: student.firstName,
+            lastName: student.lastName,
+          ): student.id,
+      };
+      final nameBySourceId = {
+        for (final student in sourceStudents)
+          student.id: studentMatchKey(
+            firstName: student.firstName,
+            lastName: student.lastName,
+          ),
+      };
+
+      final planId = await createPlan(
+        groupId: targetGroupId,
+        name: name ?? source.name,
+        columns: source.columns,
+      );
+
+      final positions =
+          await (_database.select(_database.seatingPlanPositionsTable)
+                ..where((t) => t.seatingPlanId.equals(sourcePlanId)))
+              .get();
+
+      var seated = 0;
+      var missing = 0;
+      for (final position in positions) {
+        final studentId = targetByName[nameBySourceId[position.studentId]];
+        if (studentId == null) {
+          missing++;
+          continue;
+        }
+        await _writePosition(
+          planId: planId,
+          studentId: studentId,
+          col: position.colIndex,
+          row: position.rowIndex,
+        );
+        seated++;
+      }
+      _announcePositionsChanged();
+
+      return (planId: planId, seated: seated, missing: missing);
+    });
   }
 
   // ── Positions ──────────────────────────────────────────────────────────────

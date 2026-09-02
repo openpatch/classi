@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/theme/app_ui.dart';
+import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
+import '../groups/group_picker_sheet.dart';
 import 'seating_plan_form.dart';
 
 /// Shows a modal bottom sheet that lists all seating plans for [groupId].
@@ -62,6 +64,11 @@ class _SeatingPlanSelectorSheet extends ConsumerWidget {
                   'seating_plans'.tr(),
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
+              ),
+              IconButton(
+                onPressed: () => _copyPlan(context, ref),
+                icon: const Icon(Icons.content_copy_outlined),
+                tooltip: 'copy_seating_plan'.tr(),
               ),
               FilledButton.tonalIcon(
                 onPressed: () => _createPlan(context, ref),
@@ -155,6 +162,105 @@ class _SeatingPlanSelectorSheet extends ConsumerWidget {
     if (created != null && context.mounted) {
       Navigator.of(context).pop(created);
     }
+  }
+
+  /// Copies a plan from another group: the same class in a second subject
+  /// keeps the same seating, and rebuilding it by hand is the tedium this
+  /// spares.
+  Future<void> _copyPlan(BuildContext context, WidgetRef ref) async {
+    final source = await showGroupPickerSheet(
+      context: context,
+      excludeGroupId: groupId,
+      title: 'copy_seating_plan'.tr(),
+    );
+    if (source == null || !context.mounted) return;
+
+    final repository = ref.read(seatingPlanRepositoryProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final plans = await repository.watchPlansForGroup(source.id).first;
+    if (!context.mounted) return;
+    if (plans.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('empty_seating_plans'.tr())),
+      );
+      return;
+    }
+
+    final plan = plans.length == 1
+        ? plans.single
+        : await _pickPlan(context, plans);
+    if (plan == null || !context.mounted) return;
+
+    try {
+      final result = await repository.copyPlanToGroup(
+        sourcePlanId: plan.id,
+        targetGroupId: groupId,
+      );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'copy_seating_plan_result'.tr(
+              namedArgs: {
+                'seated': result.seated.toString(),
+                'missing': result.missing.toString(),
+              },
+            ),
+          ),
+        ),
+      );
+
+      final copied = await repository.watchPlansForGroup(groupId).first;
+      final created = copied.where((p) => p.id == result.planId).firstOrNull;
+      if (created != null && context.mounted) {
+        Navigator.of(context).pop(created);
+      }
+    } on Object catch (error, stackTrace) {
+      if (context.mounted) {
+        showErrorSnackBar(
+          context,
+          'generic_error'.tr(),
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+  }
+
+  Future<SeatingPlan?> _pickPlan(
+    BuildContext context,
+    List<SeatingPlan> plans,
+  ) {
+    return showModalBottomSheet<SeatingPlan>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xLarge,
+          AppSpacing.small,
+          AppSpacing.xLarge,
+          AppSpacing.xxLarge,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'choose_seating_plan'.tr(),
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
+            const SizedBox(height: AppSpacing.medium),
+            for (final plan in plans)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.grid_view_outlined),
+                title: Text(plan.name),
+                onTap: () => Navigator.of(sheetContext).pop(plan),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _renamePlan(
