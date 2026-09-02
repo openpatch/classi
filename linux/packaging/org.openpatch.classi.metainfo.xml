@@ -83,6 +83,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.19.0" date="2026-09-02">
+      <description>
+        <ul>
+          <li>Hand the reopened database to the app after a resume</li>
+          <li>Keep two students off the same cell</li>
+          <li>Rules for who should and should not sit together</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.18.5" date="2026-09-02">
       <description>
         <ul>
