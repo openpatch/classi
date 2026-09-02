@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.20.0] - 2026-09-02
+
+### Bug Fixes
+
+- *(session)* Keep the app in step with its library, and usable while it saves
+- *(seating-plan)* Show every rule a student has, near or far
+- *(seating-plan)* Take a tap anywhere in a student's cell
+- *(i18n)* Restore the seating plan's translations and guard them
+
+
+### Features
+
+- *(security)* Wait a moment before locking when the app goes away
+- *(seating-plan)* Draw the rules, suggest a seating, export a plan
+- *(groups)* Take students, rules and a seating plan from another group
+- *(lists)* Sort the lists and the entries inside them
+
+
 ## [1.19.0] - 2026-09-02
 
 ### Bug Fixes
