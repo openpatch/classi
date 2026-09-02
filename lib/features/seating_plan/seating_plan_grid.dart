@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/database/app_database.dart';
@@ -31,6 +32,7 @@ class SeatingPlanGrid extends StatefulWidget {
     this.editMode = false,
     this.fitScores,
     this.fitTooltipBuilder,
+    this.relationLines = const [],
     this.lessonOverlayBuilder,
     this.lessonOpacityBuilder,
     this.onChipTap,
@@ -59,6 +61,16 @@ class SeatingPlanGrid extends StatefulWidget {
 
   /// Optional explanation of a student's fit score, shown as a cell tooltip.
   final String? Function(Student student)? fitTooltipBuilder;
+
+  /// Rules to draw across the grid as a line between the pair they name,
+  /// green for students that belong together and red — dashed, so the two
+  /// stay apart for colour-blind eyes as well — for students to keep apart.
+  /// Empty draws nothing.
+  ///
+  /// While a student is selected only the lines that name them are drawn, so
+  /// a class with many rules stays readable while one seat is being sorted
+  /// out.
+  final List<SeatingRelationLine> relationLines;
 
   /// Optional overlay widget for lesson-mode indicators.
   final Widget? Function(Student student)? lessonOverlayBuilder;
@@ -130,20 +142,47 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
           scrollDirection: Axis.horizontal,
           child: SizedBox(
             width: _cellSize * bounds.colCount,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Stack(
               children: [
-                for (int row = bounds.rowStart; row <= bounds.rowEnd; row++)
-                  Row(
-                    children: [
-                      for (
-                        int col = bounds.colStart;
-                        col <= bounds.colEnd;
-                        col++
-                      )
-                        _buildCell(context, col, row, cellToStudent),
-                    ],
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (
+                      int row = bounds.rowStart;
+                      row <= bounds.rowEnd;
+                      row++
+                    )
+                      Row(
+                        children: [
+                          for (
+                            int col = bounds.colStart;
+                            col <= bounds.colEnd;
+                            col++
+                          )
+                            _buildCell(context, col, row, cellToStudent),
+                        ],
+                      ),
+                  ],
+                ),
+                // Above the cells so a line stays visible over a tinted seat,
+                // but never in the way of a tap.
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _RelationLinesPainter(
+                        segments: _lineSegments(bounds),
+                        positiveColor: seatingRelationColor(
+                          context,
+                          isPositive: true,
+                        ),
+                        negativeColor: seatingRelationColor(
+                          context,
+                          isPositive: false,
+                        ),
+                      ),
+                    ),
                   ),
+                ),
               ],
             ),
           ),
@@ -172,6 +211,32 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
         ],
       ],
     );
+  }
+
+  /// The lines to draw, in the grid's own pixel coordinates.
+  ///
+  /// A rule is skipped when either of its students has no seat on this plan.
+  List<_LineSegment> _lineSegments(_GridBounds bounds) {
+    Offset? centerOf(int studentId) {
+      final position = widget.positions[studentId];
+      if (position == null) return null;
+      return Offset(
+        (position.col - bounds.colStart + 0.5) * _cellSize,
+        (position.row - bounds.rowStart + 0.5) * _cellSize,
+      );
+    }
+
+    final selected = _selectedStudentId;
+
+    return [
+      for (final line in widget.relationLines)
+        if (selected == null ||
+            line.studentAId == selected ||
+            line.studentBId == selected)
+          if (centerOf(line.studentAId) case final a?)
+            if (centerOf(line.studentBId) case final b?)
+              (from: a, to: b, isPositive: line.isPositive),
+    ];
   }
 
   Widget _buildCell(
@@ -327,6 +392,72 @@ class _EmptyCell extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// One drawn rule: the two seat centres it connects and its colour.
+typedef _LineSegment = ({Offset from, Offset to, bool isPositive});
+
+/// How far a line stops short of a seat's centre, so the faces stay clear.
+const double _avatarClearance = 26.0;
+
+class _RelationLinesPainter extends CustomPainter {
+  const _RelationLinesPainter({
+    required this.segments,
+    required this.positiveColor,
+    required this.negativeColor,
+  });
+
+  final List<_LineSegment> segments;
+  final Color positiveColor;
+  final Color negativeColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    for (final segment in segments) {
+      final direction = segment.to - segment.from;
+      final length = direction.distance;
+      // Two students on the same cell — an older plan can still hold that —
+      // have no line to draw.
+      if (length <= 2 * _avatarClearance) continue;
+
+      final step = direction / length;
+      final from = segment.from + step * _avatarClearance;
+      final to = segment.to - step * _avatarClearance;
+
+      paint.color = (segment.isPositive ? positiveColor : negativeColor)
+          .withValues(alpha: 0.85);
+      if (segment.isPositive) {
+        canvas.drawLine(from, to, paint);
+      } else {
+        _drawDashed(canvas, from, to, paint);
+      }
+    }
+  }
+
+  void _drawDashed(Canvas canvas, Offset from, Offset to, Paint paint) {
+    const dash = 7.0;
+    const gap = 5.0;
+    final direction = to - from;
+    final length = direction.distance;
+    final step = direction / length;
+
+    for (var start = 0.0; start < length; start += dash + gap) {
+      final end = min(start + dash, length);
+      canvas.drawLine(from + step * start, from + step * end, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RelationLinesPainter oldDelegate) {
+    return oldDelegate.positiveColor != positiveColor ||
+        oldDelegate.negativeColor != negativeColor ||
+        !listEquals(oldDelegate.segments, segments);
   }
 }
 
