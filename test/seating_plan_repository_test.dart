@@ -206,4 +206,48 @@ void main() {
     expect(positions[ids[0]], (col: 2, row: 0));
     expect(positions[ids[1]], (col: 2, row: 0));
   });
+
+  test('applyPositions writes a whole rearrangement at once', () async {
+    final groupId = await groupRepository.createGroup(
+      name: '8A',
+      gradeScale: defaultGradeScaleEntries,
+    );
+    final adaId = await studentRepository.addStudent(
+      groupId: groupId,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+    );
+    final graceId = await studentRepository.addStudent(
+      groupId: groupId,
+      firstName: 'Grace',
+      lastName: 'Hopper',
+    );
+    final planId = await repository.createPlan(groupId: groupId, name: 'Main');
+    await repository.upsertPosition(
+      planId: planId,
+      studentId: adaId,
+      col: 0,
+      row: 0,
+    );
+    await repository.upsertPosition(
+      planId: planId,
+      studentId: graceId,
+      col: 1,
+      row: 0,
+    );
+
+    // The two trade seats, which is what a suggestion hands back.
+    await repository.applyPositions(
+      planId: planId,
+      positions: {
+        adaId: (col: 1, row: 0),
+        graceId: (col: 0, row: 0),
+      },
+    );
+
+    expect(await repository.watchPositionsForPlan(planId).first, {
+      adaId: (col: 1, row: 0),
+      graceId: (col: 0, row: 0),
+    });
+  });
 }

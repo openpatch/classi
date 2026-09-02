@@ -19,6 +19,9 @@ class AppScaffold extends ConsumerWidget {
     final isExporting = ref.watch(
       appSessionProvider.select((s) => s.isExporting),
     );
+    final isBlockingExport = ref.watch(
+      appSessionProvider.select((s) => s.isBlockingExport),
+    );
     final isWide = MediaQuery.sizeOf(context).width > 700 || Platform.isWindows;
     final isExtended = MediaQuery.sizeOf(context).width > 1200;
     final selectedIndex = _selectedIndex(context);
@@ -140,9 +143,12 @@ class AppScaffold extends ConsumerWidget {
     Widget result = scaffold;
 
     if (isExporting) {
+      // The progress line shows for every export, but only one the user is
+      // waiting on takes the app away from them: a backup running by itself
+      // has no business interrupting a lesson.
       result = Stack(
         children: [
-          AbsorbPointer(child: result),
+          if (isBlockingExport) AbsorbPointer(child: result) else result,
           const Positioned(
             top: 0,
             left: 0,

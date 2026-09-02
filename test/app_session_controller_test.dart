@@ -17,6 +17,7 @@ import 'package:classi/core/storage/database_path_service.dart';
 import 'package:classi/core/storage/library_backup_preferences_service.dart';
 import 'package:classi/core/storage/library_backup_service.dart';
 import 'package:classi/core/storage/project_settings_store.dart';
+import 'package:classi/shared/utils/formatting.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -152,6 +153,66 @@ void main() {
     final unlocked = await controller.unlock('test');
     expect(unlocked, isTrue);
     expect(controller.status, AppSessionStatus.ready);
+  });
+
+  /// Rebuilds the session on a backup service that hangs mid-upload, so a
+  /// test can look at the app while an export is in flight.
+  Future<_DelayingLibraryBackupService> withHangingExport() async {
+    final delayingBackupService = _DelayingLibraryBackupService();
+    controller.dispose();
+    final databasePathService = _TestDatabasePathService(
+      '${tempDirectory.path}/test.classi',
+    );
+    controller = AppSessionController(
+      keyService: keyService,
+      databasePathService: databasePathService,
+      securityPreferencesService: _securityPreferencesServiceFor(
+        databasePathService,
+      ),
+      libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+        databasePathService,
+      ),
+      libraryBackupService: delayingBackupService,
+      biometricService: BiometricService(),
+    );
+    await controller.initialize();
+    await controller.createDatabase('test');
+    controller.clearPendingRecoveryKey();
+    await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+    await controller.setWebDavAutoExportEnabled(true);
+    return delayingBackupService;
+  }
+
+  test('a save the app starts by itself keeps the app usable', () async {
+    final backup = await withHangingExport();
+    await controller.setLockOnBackground(false);
+
+    final backgrounded = controller.handleAppBackgrounded();
+    await backup.started.future;
+
+    expect(controller.isExporting, isTrue);
+    expect(
+      controller.isBlockingExport,
+      isFalse,
+      reason: 'a backup running on its own must not take the app away',
+    );
+
+    backup.finish.complete();
+    await backgrounded;
+    expect(controller.isExporting, isFalse);
+  });
+
+  test('an export the user asked for holds the app still', () async {
+    final backup = await withHangingExport();
+
+    final exporting = controller.exportNow();
+    await backup.started.future;
+
+    expect(controller.isBlockingExport, isTrue);
+
+    backup.finish.complete();
+    await exporting;
+    expect(controller.isBlockingExport, isFalse);
   });
 
   test('lock keeps the database available until export finishes', () async {
@@ -853,6 +914,189 @@ void main() {
     },
   );
 
+  test('a seating plan still updates after a resume reopened the library', () async {
+    await controller.initialize();
+    await controller.createDatabase('test');
+
+    // Not disposed here: the container owns the controller it is handed and
+    // would dispose it a second time under the shared tearDown.
+    final container = ProviderContainer(
+      overrides: [appSessionProvider.overrideWith((ref) => controller)],
+    );
+
+    final groupId = await container
+        .read(groupRepositoryProvider)
+        .createGroup(name: '8A', gradeScale: defaultGradeScaleEntries);
+    final studentId = await container
+        .read(studentRepositoryProvider)
+        .addStudent(groupId: groupId, firstName: 'Ada', lastName: 'Lovelace');
+    final planId = await container
+        .read(seatingPlanRepositoryProvider)
+        .createPlan(groupId: groupId, name: 'Main');
+    await container
+        .read(seatingPlanRepositoryProvider)
+        .upsertPosition(planId: planId, studentId: studentId, col: 0, row: 0);
+
+    // Stands in for the seating plan screen: it watches the positions and
+    // redraws from whatever the stream hands it.
+    final seen = <Map<int, ({int col, int row})>>[];
+    final subscription = container.listen(
+      seatingPlanPositionsProvider(planId),
+      (_, next) {
+        final positions = next.value;
+        if (positions != null) seen.add(positions);
+      },
+      fireImmediately: true,
+    );
+    addTearDown(subscription.close);
+    await pumpEventQueue();
+    expect(seen.last, {studentId: (col: 0, row: 0)});
+
+    // Coming back to the app reopens the library, because the app's own edits
+    // moved its timestamp.
+    final file = File(controller.database!.databasePath);
+    await file.setLastModified(
+      (await file.lastModified()).add(const Duration(seconds: 5)),
+    );
+    await controller.handleAppResumed();
+    await pumpEventQueue();
+
+    // Moving a student, the way the grid does it.
+    await container
+        .read(seatingPlanRepositoryProvider)
+        .moveStudent(planId: planId, studentId: studentId, col: 2, row: 1);
+    await pumpEventQueue();
+
+    expect(
+      seen.last,
+      {studentId: (col: 2, row: 1)},
+      reason: 'the plan stopped following the library after the resume',
+    );
+  });
+
+  test('a resume re-runs the queries the screens are watching', () async {
+    await controller.initialize();
+    await controller.createDatabase('test');
+    await controller.setLockOnBackground(false);
+
+    final container = ProviderContainer(
+      overrides: [appSessionProvider.overrideWith((ref) => controller)],
+    );
+    final groupId = await container
+        .read(groupRepositoryProvider)
+        .createGroup(name: '8A', gradeScale: defaultGradeScaleEntries);
+    final studentId = await container
+        .read(studentRepositoryProvider)
+        .addStudent(groupId: groupId, firstName: 'Ada', lastName: 'Lovelace');
+    final planId = await container
+        .read(seatingPlanRepositoryProvider)
+        .createPlan(groupId: groupId, name: 'Main');
+    await container
+        .read(seatingPlanRepositoryProvider)
+        .upsertPosition(planId: planId, studentId: studentId, col: 0, row: 0);
+
+    var emissions = 0;
+    final subscription = container.listen(
+      seatingPlanPositionsProvider(planId),
+      (_, next) {
+        if (next.value != null) emissions++;
+      },
+      fireImmediately: true,
+    );
+    addTearDown(subscription.close);
+    await pumpEventQueue();
+    final before = emissions;
+
+    // An update notification lost while the app was away leaves the screen
+    // showing what it drew before, with no way to tell. Coming back has to
+    // put the plan back in step with the library either way.
+    await controller.handleAppBackgrounded();
+    await controller.handleAppResumed();
+    await pumpEventQueue();
+
+    expect(
+      emissions,
+      greaterThan(before),
+      reason: 'the watched plan was never re-read after the resume',
+    );
+  });
+
+  test('a resume keeps the library the app itself last wrote to', () async {
+    await controller.initialize();
+    await controller.createDatabase('test');
+    await controller.setLockOnBackground(false);
+
+    final openedDatabase = controller.database;
+    final container = ProviderContainer(
+      overrides: [appSessionProvider.overrideWith((ref) => controller)],
+    );
+    await container
+        .read(groupRepositoryProvider)
+        .createGroup(name: '8A', gradeScale: defaultGradeScaleEntries);
+
+    // Switching away checkpoints the library, which moves its timestamp. That
+    // is the app's own doing and no reason to throw the open handle — and
+    // every screen hanging off it — away.
+    await controller.handleAppBackgrounded();
+    await controller.handleAppResumed();
+
+    expect(controller.database, same(openedDatabase));
+  });
+
+  test('a resume reopens a library that stopped answering', () async {
+    await controller.initialize();
+    await controller.createDatabase('test');
+
+    await controller.setLockOnBackground(false);
+    // Leaves the session's record of the library's timestamp matching the file
+    // on disk, so the reopen below cannot be put down to an outside change.
+    await controller.handleAppBackgrounded();
+
+    final openedDatabase = controller.database;
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    // Nothing changed on disk, so only the handle itself gives the trouble
+    // away: closed underneath the app, its query streams go quiet instead of
+    // failing and the screen freezes on what it last drew.
+    final file = File(openedDatabase!.databasePath);
+    final untouched = await file.lastModified();
+    await openedDatabase.close();
+    await file.setLastModified(untouched);
+
+    await controller.handleAppResumed();
+
+    expect(controller.database, isNot(same(openedDatabase)));
+    expect(
+      notifications,
+      greaterThan(0),
+      reason: 'the replacement database was never announced',
+    );
+  });
+
+  test('a library that cannot be reopened falls back to the lock screen', () async {
+    await controller.initialize();
+    await controller.createDatabase('test');
+
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    // Whatever the reason a reopen fails — a half-written sync, a library on a
+    // volume that went away — the session must not stay "ready" with nothing
+    // behind it.
+    (keyService as _TestKeyService).failNextOpen = true;
+    final file = File(controller.database!.databasePath);
+    await file.setLastModified(
+      (await file.lastModified()).add(const Duration(seconds: 5)),
+    );
+
+    await controller.handleAppResumed();
+
+    expect(controller.status, AppSessionStatus.locked);
+    expect(controller.database, isNull);
+    expect(notifications, greaterThan(0));
+  });
+
   test(
     'resuming onto a changed library announces the reopened database',
     () async {
@@ -922,8 +1166,24 @@ class _FailingDatabasePathService extends DatabasePathService {
 }
 
 class _TestKeyService extends KeyService {
+  /// Makes the next attempt to open the library fail, standing in for the
+  /// many ways a reopen can go wrong outside the app's control.
+  bool failNextOpen = false;
+
   @override
   Future<String?> getWebDavPassword(File dbFile) async => '';
+
+  @override
+  Future<String> deriveDatabaseKey({
+    required File dbFile,
+    required String passphrase,
+  }) {
+    if (failNextOpen) {
+      failNextOpen = false;
+      return Future.error(StateError('the library is not reachable'));
+    }
+    return super.deriveDatabaseKey(dbFile: dbFile, passphrase: passphrase);
+  }
 }
 
 SecurityPreferencesService _securityPreferencesServiceFor(
