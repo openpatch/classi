@@ -11,17 +11,25 @@ class StudentRelationRepository {
 
   /// Watches every rule that mentions a student of [groupId].
   ///
-  /// Rules always join two students of the same group, so matching on the
-  /// first of the pair is enough.
+  /// A rule counts for the group when either of its students belongs to it,
+  /// not just the one that happened to be stored first.
   Stream<List<StudentRelation>> watchRelationsForGroup(int groupId) {
     final relations = _database.studentRelationsTable;
     final students = _database.studentsTable;
 
     final query =
         _database.select(relations).join([
-            innerJoin(students, students.id.equalsExp(relations.studentAId)),
+            innerJoin(
+              students,
+              students.id.equalsExp(relations.studentAId) |
+                  students.id.equalsExp(relations.studentBId),
+              useColumns: false,
+            ),
           ])
           ..where(students.groupId.equals(groupId))
+          // Both students are normally in the group, which matches the rule
+          // once per side; fold those back into a single row.
+          ..groupBy([relations.id])
           ..orderBy([OrderingTerm.asc(relations.createdAt)]);
 
     return query.map((row) => row.readTable(relations)).watch();
