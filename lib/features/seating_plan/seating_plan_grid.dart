@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/database/app_database.dart';
 import '../../shared/theme/app_ui.dart';
+import 'seating_fit.dart';
 import 'seating_plan_chip.dart';
 
 const double _cellSize = 96.0;
@@ -28,6 +29,8 @@ class SeatingPlanGrid extends StatefulWidget {
     required this.positions,
     required this.onPositionChanged,
     this.editMode = false,
+    this.fitScores,
+    this.fitTooltipBuilder,
     this.lessonOverlayBuilder,
     this.lessonOpacityBuilder,
     this.onChipTap,
@@ -48,6 +51,14 @@ class SeatingPlanGrid extends StatefulWidget {
 
   /// When `true`, chips can be rearranged via tap-to-select-then-place.
   final bool editMode;
+
+  /// How well each student's seat matches the group's seating rules, from
+  /// `-1` (bad) to `1` (good), keyed by studentId. Scored seats are tinted
+  /// green or red; students missing from the map keep a plain cell.
+  final Map<int, double>? fitScores;
+
+  /// Optional explanation of a student's fit score, shown as a cell tooltip.
+  final String? Function(Student student)? fitTooltipBuilder;
 
   /// Optional overlay widget for lesson-mode indicators.
   final Widget? Function(Student student)? lessonOverlayBuilder;
@@ -176,6 +187,8 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
         key: ValueKey('seating-plan-cell-$col-$row'),
         student: student,
         isSelected: isSelected,
+        fitScore: widget.fitScores?[student.id],
+        fitTooltip: widget.fitTooltipBuilder?.call(student),
         isSwapTarget:
             widget.editMode &&
             _selectedStudentId != null &&
@@ -218,6 +231,8 @@ class _OccupiedCell extends StatelessWidget {
     required this.isSwapTarget,
     required this.onTap,
     required this.opacity,
+    this.fitScore,
+    this.fitTooltip,
     this.lessonOverlay,
   });
 
@@ -226,20 +241,25 @@ class _OccupiedCell extends StatelessWidget {
   final bool isSwapTarget;
   final VoidCallback onTap;
   final double opacity;
+  final double? fitScore;
+  final String? fitTooltip;
   final Widget? lessonOverlay;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    // Selection has to stay readable, so it wins over the fit tint.
+    final background = isSelected
+        ? Theme.of(context).colorScheme.primaryContainer
+        : seatingFitColor(context, fitScore) ?? Colors.transparent;
+
+    final cell = SizedBox(
       width: _cellSize,
       height: _cellSize,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primaryContainer
-              : Colors.transparent,
+          color: background,
           border: isSwapTarget
               ? Border.all(color: Theme.of(context).colorScheme.primary)
               : null,
@@ -255,6 +275,10 @@ class _OccupiedCell extends StatelessWidget {
         ),
       ),
     );
+
+    final tooltip = fitTooltip;
+    if (tooltip == null) return cell;
+    return Tooltip(message: tooltip, child: cell);
   }
 }
 

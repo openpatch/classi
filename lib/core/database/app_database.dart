@@ -24,6 +24,7 @@ import 'tables/school_years_table.dart';
 import 'tables/seating_plan_positions_table.dart';
 import 'tables/seating_plans_table.dart';
 import 'tables/sessions_table.dart';
+import 'tables/student_relations_table.dart';
 import 'tables/students_table.dart';
 import 'tables/timeframe_grades_table.dart';
 import 'tables/timeframes_table.dart';
@@ -47,6 +48,7 @@ typedef TimeframeGrade = TimeframeGradesTableData;
     AttendanceLogsTable,
     GroupsTable,
     StudentsTable,
+    StudentRelationsTable,
     GradeEntriesTable,
     MaterialLogsTable,
     HomeworkLogsTable,
@@ -91,7 +93,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Exposed statically so callers can compare it against the version on disk
   /// before opening (and therefore migrating) a library.
-  static const int currentSchemaVersion = 25;
+  static const int currentSchemaVersion = 26;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -263,6 +265,12 @@ class AppDatabase extends _$AppDatabase {
       if (from < 25) {
         // The database had no indexes at all until here, so every lookup by
         // group, student or date was a full table scan. Purely additive.
+        await _createIndexes();
+      }
+      if (from < 26) {
+        await migrator.createTable(studentRelationsTable);
+        // Purely additive, and `IF NOT EXISTS` everywhere, so re-running the
+        // whole set is the cheapest way to pick up the new table's indexes.
         await _createIndexes();
       }
     },

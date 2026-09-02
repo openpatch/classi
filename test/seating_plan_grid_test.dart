@@ -1,5 +1,6 @@
 import 'package:classi/core/database/app_database.dart';
 import 'package:classi/core/providers/app_providers.dart';
+import 'package:classi/features/seating_plan/seating_fit.dart';
 import 'package:classi/features/seating_plan/seating_plan_grid.dart';
 import 'package:classi/features/students/student_sorting.dart';
 import 'package:flutter/material.dart';
@@ -89,7 +90,90 @@ void main() {
 
     expect(movedTo, (1, 1, 0));
   });
+
+  testWidgets('a scored seat is tinted and explains itself in a tooltip', (
+    tester,
+  ) async {
+    final students = [
+      _student(id: 1, firstName: 'Ada', lastName: 'Lovelace'),
+      _student(id: 2, firstName: 'Grace', lastName: 'Hopper'),
+    ];
+
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanGrid(
+          students: students,
+          columns: 2,
+          positions: const {1: (col: 0, row: 0), 2: (col: 1, row: 0)},
+          fitScores: const {1: -1, 2: -1},
+          fitTooltipBuilder: (student) =>
+              student.id == 1 ? 'Should not sit near: Grace Hopper' : null,
+          onPositionChanged: (_, _, _) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_cellColor(tester, 0, 0), seatingFitColor(_cellContext(tester), -1));
+    expect(
+      tester
+          .widget<Tooltip>(
+            find.descendant(
+              of: find.byKey(const ValueKey('seating-plan-cell-0-0')),
+              matching: find.byType(Tooltip),
+            ),
+          )
+          .message,
+      'Should not sit near: Grace Hopper',
+    );
+    // Grace has no tooltip text, so her cell must not be wrapped either.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('seating-plan-cell-1-0')),
+        matching: find.byType(Tooltip),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('an unscored seat keeps a plain cell', (tester) async {
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanGrid(
+          students: [_student(id: 1, firstName: 'Ada', lastName: 'Lovelace')],
+          columns: 2,
+          positions: const {1: (col: 0, row: 0)},
+          fitScores: const <int, double>{},
+          onPositionChanged: (_, _, _) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_cellColor(tester, 0, 0), Colors.transparent);
+  });
 }
+
+/// The painted background of the cell at [col], [row].
+///
+/// The avatar inside the cell animates a container of its own, so take the
+/// outermost match — the cell's own background.
+Color? _cellColor(WidgetTester tester, int col, int row) {
+  final container = tester
+      .widgetList<AnimatedContainer>(
+        find.descendant(
+          of: find.byKey(ValueKey('seating-plan-cell-$col-$row')),
+          matching: find.byType(AnimatedContainer),
+        ),
+      )
+      .first;
+  return (container.decoration! as BoxDecoration).color;
+}
+
+/// A context below the [MaterialApp], so the theme brightness the grid sees is
+/// the one the expected colour is built from.
+BuildContext _cellContext(WidgetTester tester) =>
+    tester.element(find.byType(SeatingPlanGrid));
 
 class _TestHarness extends StatelessWidget {
   const _TestHarness({required this.child});
