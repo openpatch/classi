@@ -11,5 +11,6 @@ Features
 - Wait a moment before locking when the app goes away
 - Draw the rules, suggest a seating, export a plan
 - Take students, rules and a seating plan from another group
+- Sort the lists and the entries inside them
 
 
