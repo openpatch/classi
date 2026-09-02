@@ -83,6 +83,13 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.18.5" date="2026-09-02">
+      <description>
+        <ul>
+          <li>Stay quiet when a library closes under a live stream</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.18.4" date="2026-09-01">
       <description>
         <ul>
