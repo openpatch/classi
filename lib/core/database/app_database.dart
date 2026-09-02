@@ -427,6 +427,18 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Re-runs every open query stream against the current data.
+  ///
+  /// Drift only re-runs a stream when it is told the tables behind it changed,
+  /// and that notification has to travel from the background isolate the
+  /// library actually runs in. When one is missed — the app was away while it
+  /// was delivered — writes keep landing but every screen goes on drawing what
+  /// it last saw, and only restarting the app brings it back. Coming back to
+  /// the app is the moment to catch up.
+  void refreshAllStreams() {
+    markTablesUpdated(allTables);
+  }
+
   Future<DateTime?> lastModified() async {
     if (databasePath == ':memory:') {
       return null;

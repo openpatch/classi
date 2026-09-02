@@ -88,8 +88,34 @@ class SeatingPlanRepository {
     );
   }
 
+  /// Tells this app's own query streams that the seating changed.
+  ///
+  /// The library runs in a background isolate, so even the notification for a
+  /// write this app just made has to travel back over a port before drift
+  /// re-runs the queries behind the plan. When one goes missing the screen
+  /// keeps drawing the old seating while the edits land in the library
+  /// regardless, and only restarting the app brings the two back together.
+  /// Announcing it locally as well costs one extra read of a handful of rows.
+  void _announcePositionsChanged() {
+    _database.markTablesUpdated([_database.seatingPlanPositionsTable]);
+  }
+
   /// Saves the grid position of a single student in a plan.
   Future<void> upsertPosition({
+    required int planId,
+    required int studentId,
+    required int col,
+    required int row,
+  }) {
+    return _writePosition(
+      planId: planId,
+      studentId: studentId,
+      col: col,
+      row: row,
+    ).whenComplete(_announcePositionsChanged);
+  }
+
+  Future<void> _writePosition({
     required int planId,
     required int studentId,
     required int col,
@@ -126,8 +152,10 @@ class SeatingPlanRepository {
     required int studentId,
     required int col,
     required int row,
-  }) {
-    return _database.transaction(() async {
+  }) async {
+    // Announced after the transaction, not inside it: re-reading the plan
+    // before the write is committed would only redraw the seating it had.
+    await _database.transaction(() async {
       final source =
           await (_database.select(_database.seatingPlanPositionsTable)..where(
                 (t) =>
@@ -182,6 +210,29 @@ class SeatingPlanRepository {
         ),
       );
     });
+    _announcePositionsChanged();
+  }
+
+  /// Seats every student of [positions] where the map says, in one go.
+  ///
+  /// Written in a transaction: the suggestion hands back a permutation of the
+  /// seats already in use, and half of a permutation would put two students on
+  /// the same cell for anyone watching the plan.
+  Future<void> applyPositions({
+    required int planId,
+    required Map<int, ({int col, int row})> positions,
+  }) async {
+    await _database.transaction(() async {
+      for (final entry in positions.entries) {
+        await _writePosition(
+          planId: planId,
+          studentId: entry.key,
+          col: entry.value.col,
+          row: entry.value.row,
+        );
+      }
+    });
+    _announcePositionsChanged();
   }
 
   /// Ensures every student in [students] sits on their own cell of [planId].

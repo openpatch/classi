@@ -134,6 +134,7 @@ class AppSessionController extends ChangeNotifier {
   DateTime? _lastImportedAt;
   String? _lastKnownRevision;
   bool _isExporting = false;
+  bool _isBlockingExport = false;
   WebDavSyncStatus _webDavSyncStatus = WebDavSyncStatus.notConfigured;
   Future<void>? _pendingLockCleanup;
   String? _lastBackupMessageCode;
@@ -182,6 +183,16 @@ class AppSessionController extends ChangeNotifier {
   /// another device on the next export.
   String? get lastKnownRevision => _lastKnownRevision;
   bool get isExporting => _isExporting;
+
+  /// Whether an export the user is standing in front of is running.
+  ///
+  /// The saves the app makes on its own — the periodic one and the one on the
+  /// way to the background — deliberately leave this `false`. A backup that
+  /// lands a few seconds later is a much smaller problem than a teacher whose
+  /// app stops taking taps in the middle of a lesson, and the upload works off
+  /// a snapshot taken up front, so what happens on screen meanwhile cannot
+  /// spoil it.
+  bool get isBlockingExport => _isBlockingExport;
   WebDavSyncStatus get webDavSyncStatus => _webDavSyncStatus;
   String? get lastBackupMessageCode => _lastBackupMessageCode;
   bool get lastBackupMessageIsError => _lastBackupMessageIsError;
@@ -335,6 +346,9 @@ class AppSessionController extends ChangeNotifier {
     _isBusy = true;
     _errorCode = null;
     _isExporting = true;
+    // Locking ends with the library closed, so there is nothing useful left to
+    // do on screen while this runs.
+    _isBlockingExport = true;
     notifyListeners();
     try {
       await _persistOpenDatabaseState(
@@ -351,6 +365,7 @@ class AppSessionController extends ChangeNotifier {
       final databaseToClose = _detachDatabase();
       _status = AppSessionStatus.locked;
       _isExporting = false;
+      _isBlockingExport = false;
       final cleanupFuture = _runPendingLockCleanup(databaseToClose);
       _pendingLockCleanup = cleanupFuture;
       _isBusy = false;
@@ -362,6 +377,11 @@ class AppSessionController extends ChangeNotifier {
   Future<void> handleAppResumed() async {
     if (_status == AppSessionStatus.ready) {
       await refreshIfChanged();
+      // Whether or not the library was reopened, the screens that were left
+      // standing while the app was away may have missed the updates behind
+      // them. Re-running their queries is far cheaper than a teacher
+      // wondering why the plan they just edited will not budge.
+      _database?.refreshAllStreams();
       _resetInactivityTimer();
       _startPeriodicExportTimerIfNeeded();
     }
@@ -424,7 +444,8 @@ class AppSessionController extends ChangeNotifier {
 
     final modified = await file.lastModified();
     final previous = _openedAt;
-    if (previous != null && modified.isAtSameMomentAs(previous)) {
+    final unchanged = previous != null && modified.isAtSameMomentAs(previous);
+    if (unchanged && await _isDatabaseResponsive()) {
       return;
     }
 
@@ -433,13 +454,68 @@ class AppSessionController extends ChangeNotifier {
       return;
     }
 
-    await _openDatabase(passphrase);
+    try {
+      await _openDatabase(passphrase);
+    } on Object catch (error, stackTrace) {
+      // A failed reopen leaves the session claiming to be ready with no
+      // library behind it, and it cannot try again: closing cleared the
+      // passphrase. Every screen would keep its dead streams and every edit
+      // would fail until the app is restarted. The lock screen is a worse
+      // place to be than a working library, but it is one the teacher can get
+      // out of.
+      _logUnexpectedError(
+        operation: 'reopen the library',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      await _closeDatabase();
+      _setLockedError(AppSessionErrorCode.errorLoadingDatabase);
+      notifyListeners();
+      return;
+    }
     // Reopening replaces the handle and closes the old one. Everything that
     // resolved a repository or opened a query stream is still holding that
     // closed handle, and its streams simply stop emitting — the screen freezes
     // on its last snapshot instead of showing an error. Announce the swap so
     // they rebuild against the database that is actually open.
     notifyListeners();
+  }
+
+  /// Whether the open library still answers queries.
+  ///
+  /// A changed timestamp is not the only reason a session can end up on a
+  /// handle it cannot use — one can also stop working on its own, closed
+  /// underneath us or left behind by a half-finished swap. Drift streams that
+  /// hang off such a handle go quiet rather than fail, so the screen freezes
+  /// on its last snapshot and edits appear to do nothing until the app is
+  /// restarted. Coming back to the app is the moment to catch that.
+  Future<bool> _isDatabaseResponsive() async {
+    final database = _database;
+    if (database == null) {
+      return false;
+    }
+    try {
+      await database.customSelect('SELECT 1').getSingle();
+      return true;
+    } on Object catch (error, stackTrace) {
+      developer.log(
+        'The open library stopped answering; reopening it.',
+        name: 'classi.session',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  /// Records the library's timestamp as one the app itself produced.
+  ///
+  /// [refreshIfChanged] reopens the library when its file is newer than the
+  /// moment it was opened. Without this, the app's own writes make it look
+  /// like an outside change and every single resume tears down the open
+  /// handle, every repository and every query stream — for nothing.
+  Future<void> _rememberLibraryTimestamp() async {
+    _openedAt = await _database?.lastModified() ?? _openedAt;
   }
 
   Future<void> moveDatabaseTo(String folderPath) async {
@@ -761,12 +837,16 @@ class AppSessionController extends ChangeNotifier {
     }
 
     _isExporting = true;
+    // The user asked for this one and is waiting for the answer, so hold the
+    // app still until it is done.
+    _isBlockingExport = true;
     notifyListeners();
     try {
       await _flushAndAutoExport();
       return null;
     } finally {
       _isExporting = false;
+      _isBlockingExport = false;
       notifyListeners();
     }
   }
@@ -1191,6 +1271,7 @@ class AppSessionController extends ChangeNotifier {
 
     final dbFile = await _databasePathService.getDatabaseFile();
     await database.checkpointAndTruncate();
+    await _rememberLibraryTimestamp();
     if (closeDatabaseAfterSnapshot) {
       await _closeDatabase();
     }
@@ -1210,6 +1291,7 @@ class AppSessionController extends ChangeNotifier {
 
     try {
       await database.checkpointAndTruncate();
+      await _rememberLibraryTimestamp();
     } catch (error, stackTrace) {
       _logUnexpectedError(
         operation: 'checkpoint before background auto export',
