@@ -258,6 +258,18 @@ String effectiveFirstName({required String firstName, String? callName}) {
       : trimmedCallName;
 }
 
+/// Identifies a student across groups by the name a teacher typed.
+///
+/// Copying a class into a second subject has to recognise the students that
+/// are already there, and two groups share nothing else: their student rows
+/// have different ids. Case and stray spaces are ignored, so "von Neumann"
+/// and "Von  Neumann" are the same person.
+String studentMatchKey({required String firstName, required String lastName}) {
+  String normalize(String value) =>
+      value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  return '${normalize(lastName)}|${normalize(firstName)}';
+}
+
 String studentDisplayName({
   required String firstName,
   required String lastName,

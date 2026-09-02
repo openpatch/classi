@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
+import '../../shared/utils/formatting.dart';
 import 'student_draft.dart';
 import 'student_sorting.dart';
 
@@ -95,6 +96,106 @@ class StudentRepository {
         for (final student in students)
           _companionForDraft(groupId: groupId, student: student),
       ]);
+    });
+  }
+
+  /// Copies the students of [sourceGroupId] into [targetGroupId].
+  ///
+  /// A student the target already has — matched on first and last name — keeps
+  /// their id and everything hanging off it, their grades and attendance
+  /// included, and only takes over what the source has to add: a call name, an
+  /// avatar, an origin note. Nothing already in the target is erased by a
+  /// source that has nothing to put there, so copying twice is safe and is how
+  /// an avatar drawn in one subject reaches the other.
+  ///
+  /// Returns how many students were added, how many were filled in, and the
+  /// students the target has that the source does not — a class that lost
+  /// somebody in one subject usually lost them in the other, but taking a
+  /// student out deletes their grades, so that is left for the caller to ask
+  /// about.
+  Future<({int added, int updated, List<Student> notInSource})>
+  copyStudentsFromGroup({
+    required int sourceGroupId,
+    required int targetGroupId,
+  }) async {
+    if (sourceGroupId == targetGroupId) {
+      return (added: 0, updated: 0, notInSource: const <Student>[]);
+    }
+
+    return _database.transaction(() async {
+      final source = await watchByGroup(sourceGroupId).first;
+      final target = await watchByGroup(targetGroupId).first;
+      final existing = {
+        for (final student in target)
+          studentMatchKey(
+            firstName: student.firstName,
+            lastName: student.lastName,
+          ): student,
+      };
+
+      final sourceKeys = {
+        for (final student in source)
+          studentMatchKey(
+            firstName: student.firstName,
+            lastName: student.lastName,
+          ),
+      };
+
+      var added = 0;
+      var updated = 0;
+      for (final student in source) {
+        final match = existing[studentMatchKey(
+          firstName: student.firstName,
+          lastName: student.lastName,
+        )];
+
+        if (match == null) {
+          await addStudent(
+            groupId: targetGroupId,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            callName: student.callName,
+            originNote: student.originNote,
+            avatarJson: student.avatarJson,
+          );
+          added++;
+          continue;
+        }
+
+        final callName = student.callName ?? match.callName;
+        final originNote = student.originNote ?? match.originNote;
+        final avatarJson = student.avatarJson ?? match.avatarJson;
+        if (callName == match.callName &&
+            originNote == match.originNote &&
+            avatarJson == match.avatarJson) {
+          continue;
+        }
+
+        await updateStudent(
+          id: match.id,
+          firstName: match.firstName,
+          lastName: match.lastName,
+          callName: callName,
+          originNote: originNote,
+          avatarJson: avatarJson,
+        );
+        updated++;
+      }
+
+      return (
+        added: added,
+        updated: updated,
+        notInSource: [
+          for (final student in target)
+            if (!sourceKeys.contains(
+              studentMatchKey(
+                firstName: student.firstName,
+                lastName: student.lastName,
+              ),
+            ))
+              student,
+        ],
+      );
     });
   }
 

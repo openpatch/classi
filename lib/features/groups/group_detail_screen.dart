@@ -51,8 +51,10 @@ import '../students/student_form.dart';
 import '../sessions/session_form.dart';
 import '../sessions/session_repository.dart';
 import '../students/student_import_parser.dart';
+import '../students/student_repository.dart';
 import '../students/student_sorting.dart';
 import 'group_form.dart';
+import 'group_picker_sheet.dart';
 
 final groupProvider = StreamProvider.autoDispose.family<Group?, int>(
   (ref, groupId) => ref.watch(groupRepositoryProvider).watchGroup(groupId),
@@ -430,6 +432,9 @@ class GroupDetailScreen extends ConsumerWidget {
                           ? null
                           : () =>
                                 _importWebUntisStudents(context, ref, group.id),
+                      onCopyStudents: archived
+                          ? null
+                          : () => _copyStudentsFromGroup(context, ref, group.id),
                     ),
                     error: (error, stackTrace) =>
                         AppErrorText(error: error, stackTrace: stackTrace),
@@ -864,6 +869,116 @@ class GroupDetailScreen extends ConsumerWidget {
         if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr());
       }
     }
+  }
+
+  /// Takes another group's students over into this one.
+  ///
+  /// The same class taught in a second subject is a second group, and typing
+  /// the roster in twice is the price of that today. Students already here are
+  /// recognised by name and only filled in, so this can be run again whenever
+  /// the other group has learned something new about them.
+  Future<void> _copyStudentsFromGroup(
+    BuildContext context,
+    WidgetRef ref,
+    int groupId,
+  ) async {
+    final source = await showGroupPickerSheet(
+      context: context,
+      excludeGroupId: groupId,
+      title: 'copy_students_from_group'.tr(),
+    );
+    if (source == null || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final studentRepository = ref.read(studentRepositoryProvider);
+      final result = await studentRepository.copyStudentsFromGroup(
+        sourceGroupId: source.id,
+        targetGroupId: groupId,
+      );
+      // The rules are about the same two people whichever subject they sit in,
+      // so they come along with the students they name.
+      final rules = await ref
+          .read(studentRelationRepositoryProvider)
+          .copyRelationsBetweenGroups(
+            sourceGroupId: source.id,
+            targetGroupId: groupId,
+          );
+
+      var removed = 0;
+      if (result.notInSource.isNotEmpty && context.mounted) {
+        removed = await _removeStudentsMissingFrom(
+          context,
+          studentRepository,
+          students: result.notInSource,
+          sourceName: source.name,
+        );
+      }
+
+      final parts = [
+        'copy_students_result'.tr(
+          namedArgs: {
+            'added': result.added.toString(),
+            'updated': result.updated.toString(),
+          },
+        ),
+        if (rules > 0)
+          'copy_seating_rules_result'.tr(
+            namedArgs: {'count': rules.toString()},
+          ),
+        if (removed > 0)
+          'removed_students_result'.tr(
+            namedArgs: {'count': removed.toString()},
+          ),
+      ];
+      messenger.showSnackBar(SnackBar(content: Text(parts.join(' · '))));
+    } on Object catch (error, stackTrace) {
+      if (context.mounted) {
+        showErrorSnackBar(
+          context,
+          'generic_error'.tr(),
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+  }
+
+  /// Offers to take out the students the other group no longer has.
+  ///
+  /// Always an explicit ask: a student leaving a group takes their grades,
+  /// attendance and notes with them, and a copy action is no place to do that
+  /// on its own. Returns how many were removed.
+  Future<int> _removeStudentsMissingFrom(
+    BuildContext context,
+    StudentRepository studentRepository, {
+    required List<Student> students,
+    required String sourceName,
+  }) async {
+    const shown = 8;
+    final names = students
+        .map((student) => '${student.firstName} ${student.lastName}')
+        .toList();
+    final listed = names.length > shown
+        ? '${names.take(shown).join(', ')} …'
+        : names.join(', ');
+
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: 'remove_missing_students'.tr(
+        namedArgs: {'count': students.length.toString()},
+      ),
+      body: 'remove_missing_students_body'.tr(
+        namedArgs: {'names': listed, 'group': sourceName},
+      ),
+      confirmKey: 'delete',
+    );
+    if (!confirmed) return 0;
+
+    for (final student in students) {
+      await studentRepository.deleteStudent(student.id);
+    }
+    return students.length;
   }
 
   Future<void> _showExportSheet(
@@ -2397,6 +2512,7 @@ class _StudentsSection extends ConsumerStatefulWidget {
     required this.onAddStudent,
     required this.onBatchCreateStudents,
     required this.onImportStudents,
+    required this.onCopyStudents,
     required this.groupId,
     required this.groupName,
   });
@@ -2410,6 +2526,9 @@ class _StudentsSection extends ConsumerStatefulWidget {
   final VoidCallback? onAddStudent;
   final VoidCallback? onBatchCreateStudents;
   final VoidCallback? onImportStudents;
+
+  /// Takes the students of another group over into this one.
+  final VoidCallback? onCopyStudents;
 
   /// Names the class on anything the section hands out, such as an exported
   /// seating plan.
@@ -2670,6 +2789,12 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                       onPressed: widget.onImportStudents,
                       icon: const Icon(Icons.upload_file_outlined),
                       label: Text('import_webuntis'.tr()),
+                    ),
+                  if (widget.onCopyStudents != null)
+                    OutlinedButton.icon(
+                      onPressed: widget.onCopyStudents,
+                      icon: const Icon(Icons.content_copy_outlined),
+                      label: Text('copy_students_from_group'.tr()),
                     ),
                 ],
               ),
