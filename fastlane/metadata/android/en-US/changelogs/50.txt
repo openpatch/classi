@@ -1,0 +1,5 @@
+Bug Fixes
+
+- Stay quiet when a library closes under a live stream
+
+
