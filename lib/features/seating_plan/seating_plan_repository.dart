@@ -148,16 +148,21 @@ class SeatingPlanRepository {
 
       if (source.colIndex == col && source.rowIndex == row) return;
 
-      final target =
+      // Reading every occupant rather than a single one: libraries written
+      // before [initializePositionsForPlan] respected occupancy can still hold
+      // two students in one cell, and a `getSingleOrNull` would throw there,
+      // leaving that cell permanently unusable.
+      final targets =
           await (_database.select(_database.seatingPlanPositionsTable)..where(
                 (t) =>
                     t.seatingPlanId.equals(planId) &
                     t.colIndex.equals(col) &
                     t.rowIndex.equals(row),
               ))
-              .getSingleOrNull();
+              .get();
 
-      if (target != null && target.studentId != studentId) {
+      for (final target in targets) {
+        if (target.studentId == studentId) continue;
         await (_database.update(
           _database.seatingPlanPositionsTable,
         )..where((t) => t.id.equals(target.id))).write(
@@ -179,10 +184,16 @@ class SeatingPlanRepository {
     });
   }
 
-  /// Ensures every student in [students] has a position row for [planId].
+  /// Ensures every student in [students] sits on their own cell of [planId].
   ///
-  /// Existing positions are preserved. New students are placed left-to-right,
-  /// top-to-bottom based on the plan's [columns] setting.
+  /// Existing positions are preserved. Students without one are placed in the
+  /// first free cell, scanning left-to-right and top-to-bottom over the plan's
+  /// [columns] setting, so a student who joins the group later lands in a gap
+  /// or below the class instead of on top of whoever sits at the top left.
+  ///
+  /// Any students found sharing a cell — written by an earlier version that
+  /// placed new students without looking — are moved apart as well. A shared
+  /// cell hides one of the two on the grid and makes every move into it fail.
   Future<void> initializePositionsForPlan({
     required int planId,
     required List<Student> students,
@@ -191,24 +202,56 @@ class SeatingPlanRepository {
     final existing = await (_database.select(
       _database.seatingPlanPositionsTable,
     )..where((t) => t.seatingPlanId.equals(planId))).get();
-    final existingIds = {for (final p in existing) p.studentId};
+
+    final effectiveColumns = columns < 1 ? 1 : columns;
+    final occupied = <(int, int)>{};
+    final stacked = <SeatingPlanPosition>[];
+    for (final position in existing) {
+      if (!occupied.add((position.colIndex, position.rowIndex))) {
+        stacked.add(position);
+      }
+    }
 
     var col = 0;
     var row = 0;
-
-    for (final student in students) {
-      if (existingIds.contains(student.id)) continue;
-      await upsertPosition(
-        planId: planId,
-        studentId: student.id,
-        col: col,
-        row: row,
-      );
+    void advance() {
       col++;
-      if (col >= columns) {
+      if (col >= effectiveColumns) {
         col = 0;
         row++;
       }
+    }
+
+    ({int col, int row}) takeFreeCell() {
+      while (occupied.contains((col, row))) {
+        advance();
+      }
+      final cell = (col: col, row: row);
+      occupied.add((col, row));
+      advance();
+      return cell;
+    }
+
+    for (final position in stacked) {
+      final cell = takeFreeCell();
+      await upsertPosition(
+        planId: planId,
+        studentId: position.studentId,
+        col: cell.col,
+        row: cell.row,
+      );
+    }
+
+    final existingIds = {for (final p in existing) p.studentId};
+    for (final student in students) {
+      if (existingIds.contains(student.id)) continue;
+      final cell = takeFreeCell();
+      await upsertPosition(
+        planId: planId,
+        studentId: student.id,
+        col: cell.col,
+        row: cell.row,
+      );
     }
   }
 }
