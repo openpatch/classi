@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.19.0] - 2026-09-02
+
+### Bug Fixes
+
+- *(session)* Hand the reopened database to the app after a resume
+- *(seating-plan)* Keep two students off the same cell
+
+
+### Features
+
+- *(seating-plan)* Rules for who should and should not sit together
+
+
 ## [1.18.5] - 2026-09-02
 
 ### Bug Fixes
