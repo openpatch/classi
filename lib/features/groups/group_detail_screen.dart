@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
@@ -5,9 +6,11 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../core/database/app_database.dart';
@@ -39,8 +42,10 @@ import '../schedule/lesson_schedule_editor_sheet.dart';
 import '../schedule/lesson_schedule_providers.dart';
 import '../seating_plan/seating_fit.dart';
 import '../seating_plan/seating_plan_grid.dart';
+import '../seating_plan/seating_plan_pdf.dart';
 import '../seating_plan/seating_plan_selector_sheet.dart';
 import '../seating_plan/seating_rules_sheet.dart';
+import '../seating_plan/seating_suggestion.dart';
 import '../students/student_batch_create_sheet.dart';
 import '../students/student_form.dart';
 import '../sessions/session_form.dart';
@@ -414,6 +419,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       averagesValue: averagesValue,
                       categoryAveragesValue: categoryAveragesValue,
                       groupId: group.id,
+                      groupName: group.name,
                       onAddStudent: archived
                           ? null
                           : () => _addStudent(context, ref, group.id),
@@ -2392,6 +2398,7 @@ class _StudentsSection extends ConsumerStatefulWidget {
     required this.onBatchCreateStudents,
     required this.onImportStudents,
     required this.groupId,
+    required this.groupName,
   });
 
   final List<Student> students;
@@ -2403,6 +2410,10 @@ class _StudentsSection extends ConsumerStatefulWidget {
   final VoidCallback? onAddStudent;
   final VoidCallback? onBatchCreateStudents;
   final VoidCallback? onImportStudents;
+
+  /// Names the class on anything the section hands out, such as an exported
+  /// seating plan.
+  final String groupName;
   final int groupId;
 
   @override
@@ -2413,6 +2424,8 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
   _StudentViewMode _viewMode = _StudentViewMode.list;
   SeatingPlan? _activePlan;
   bool _editMode = false;
+  bool _showRelationLines = true;
+  bool _showFitColors = true;
 
   Future<void> _ensureActivePlan() async {
     final repo = ref.read(seatingPlanRepositoryProvider);
@@ -2437,6 +2450,125 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
       students: widget.students,
       columns: plan.columns,
     );
+  }
+
+  /// Rearranges the class over the seats the plan already uses so that fewer
+  /// seating rules are broken.
+  Future<void> _suggestSeating(BuildContext context) async {
+    final plan = _activePlan;
+    if (plan == null) return;
+
+    final positions =
+        ref.read(seatingPlanPositionsProvider(plan.id)).value ??
+        const <int, ({int col, int row})>{};
+    final relations =
+        ref.read(groupStudentRelationsProvider(widget.groupId)).value ??
+        const <StudentRelation>[];
+    final suggestion = suggestSeating(
+      relations: relations,
+      positions: positions,
+    );
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (mapEquals(suggestion, positions)) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('seating_suggestion_none'.tr())),
+      );
+      return;
+    }
+
+    final repository = ref.read(seatingPlanRepositoryProvider);
+    try {
+      await repository.applyPositions(planId: plan.id, positions: suggestion);
+    } on Object catch (error, stackTrace) {
+      if (context.mounted) {
+        showErrorSnackBar(
+          context,
+          'generic_error'.tr(),
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('seating_suggestion_applied'.tr()),
+        action: SnackBarAction(
+          label: 'undo'.tr(),
+          // Rearranging the whole class is a big step to take on one tap, so
+          // keep the seating it replaced one tap away.
+          onPressed: () {
+            repository.applyPositions(planId: plan.id, positions: positions);
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Writes the plan out as a printable PDF and hands it to the teacher.
+  Future<void> _exportSeatingPlanPdf(BuildContext context) async {
+    final plan = _activePlan;
+    if (plan == null) return;
+
+    final positions =
+        ref.read(seatingPlanPositionsProvider(plan.id)).value ??
+        const <int, ({int col, int row})>{};
+    final nameById = {
+      for (final student in widget.students)
+        student.id: studentDisplayName(
+          firstName: student.firstName,
+          lastName: student.lastName,
+          callName: student.callName,
+          sortField: widget.sortField,
+        ),
+    };
+
+    final messenger = ScaffoldMessenger.of(context);
+    final session = ref.read(appSessionProvider);
+    try {
+      final bytes = await buildSeatingPlanPdf(
+        title: widget.groupName,
+        subtitle: plan.name,
+        nameById: nameById,
+        positions: positions,
+        unplacedLabel: 'unplaced_students'.tr(),
+      );
+      final filename = _seatingPlanFilename(widget.groupName, plan.name);
+      final file = File('${(await getTemporaryDirectory()).path}/$filename');
+      await file.writeAsBytes(bytes);
+
+      final saved = await shareOrSaveFile(
+        file: file,
+        filename: filename,
+        mimeType: 'application/pdf',
+        subject: filename,
+        savePathResolver: () async {
+          session.suspendBackgroundLock();
+          try {
+            return await FilePicker.saveFile(
+              fileName: filename,
+              type: FileType.custom,
+              allowedExtensions: ['pdf'],
+            );
+          } finally {
+            session.resumeBackgroundLock();
+          }
+        },
+      );
+      if (saved) {
+        messenger.showSnackBar(SnackBar(content: Text('export_success'.tr())));
+      }
+    } on Object catch (error, stackTrace) {
+      developer.log(
+        'Seating plan export failed',
+        name: 'classi.group_detail',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      messenger.showSnackBar(SnackBar(content: Text('export_failed'.tr())));
+    }
   }
 
   Future<void> _openPlanSelector(BuildContext context) async {
@@ -2646,7 +2778,31 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                           students: widget.students,
                         ),
                       ),
-                      if (_activePlan != null)
+                      if (_activePlan != null) ...[
+                        IconButton(
+                          isSelected: _showRelationLines,
+                          icon: const Icon(Icons.polyline_outlined),
+                          selectedIcon: const Icon(Icons.polyline),
+                          tooltip: _showRelationLines
+                              ? 'hide_seating_rule_lines'.tr()
+                              : 'show_seating_rule_lines'.tr(),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => setState(
+                            () => _showRelationLines = !_showRelationLines,
+                          ),
+                        ),
+                        IconButton(
+                          isSelected: _showFitColors,
+                          icon: const Icon(Icons.palette_outlined),
+                          selectedIcon: const Icon(Icons.palette),
+                          tooltip: _showFitColors
+                              ? 'hide_seating_fit_colors'.tr()
+                              : 'show_seating_fit_colors'.tr(),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => setState(
+                            () => _showFitColors = !_showFitColors,
+                          ),
+                        ),
                         IconButton(
                           icon: Icon(
                             _editMode ? Icons.check : Icons.edit_outlined,
@@ -2656,6 +2812,44 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                           onPressed: () =>
                               setState(() => _editMode = !_editMode),
                         ),
+                        // The occasional actions live in a menu; the row is
+                        // already carrying three toggles on a phone.
+                        PopupMenuButton<_SeatingPlanAction>(
+                          icon: const Icon(Icons.more_vert),
+                          tooltip: 'more'.tr(),
+                          onSelected: (action) => switch (action) {
+                            _SeatingPlanAction.suggest => _suggestSeating(
+                              context,
+                            ),
+                            _SeatingPlanAction.exportPdf =>
+                              _exportSeatingPlanPdf(context),
+                          },
+                          itemBuilder: (_) => [
+                            PopupMenuItem(
+                              value: _SeatingPlanAction.suggest,
+                              child: ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(
+                                  Icons.auto_awesome_outlined,
+                                ),
+                                title: Text('suggest_seating'.tr()),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: _SeatingPlanAction.exportPdf,
+                              child: ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(
+                                  Icons.picture_as_pdf_outlined,
+                                ),
+                                title: Text('export_seating_plan_pdf'.tr()),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       OutlinedButton.icon(
                         onPressed: () => _openPlanSelector(context),
                         icon: const Icon(Icons.tune_outlined, size: 18),
@@ -2682,6 +2876,8 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                   plan: _activePlan!,
                   students: widget.students,
                   editMode: _editMode,
+                  showRelationLines: _showRelationLines,
+                  showFitColors: _showFitColors,
                   onChipTap: (student) =>
                       context.push('/students/${student.id}'),
                 ),
@@ -2693,17 +2889,41 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
   }
 }
 
+enum _SeatingPlanAction { suggest, exportPdf }
+
+/// A file name a teacher can find again, e.g. `8A-Fensterreihe.pdf`.
+String _seatingPlanFilename(String groupName, String planName) {
+  String clean(String value) => value
+      .replaceAll(RegExp(r'[^\w\s-]'), '')
+      .trim()
+      .replaceAll(RegExp(r'\s+'), '-');
+
+  final parts = [
+    clean(groupName),
+    clean(planName),
+  ].where((part) => part.isNotEmpty);
+  return '${parts.isEmpty ? 'seating-plan' : parts.join('-')}.pdf';
+}
+
 class _SeatingPlanView extends ConsumerWidget {
   const _SeatingPlanView({
     required this.plan,
     required this.students,
     required this.editMode,
+    required this.showRelationLines,
+    required this.showFitColors,
     required this.onChipTap,
   });
 
   final SeatingPlan plan;
   final List<Student> students;
   final bool editMode;
+
+  /// Whether to connect the pairs a rule names with a line.
+  final bool showRelationLines;
+
+  /// Whether to tint seats green or red by how well they fit the rules.
+  final bool showFitColors;
   final void Function(Student student) onChipTap;
 
   @override
@@ -2740,11 +2960,24 @@ class _SeatingPlanView extends ConsumerWidget {
             columns: plan.columns,
             positions: positions,
             editMode: editMode,
-            fitScores: {
-              for (final entry in fits.entries) entry.key: entry.value.score,
-            },
+            fitScores: showFitColors
+                ? {
+                    for (final entry in fits.entries)
+                      entry.key: entry.value.score,
+                  }
+                : null,
             fitTooltipBuilder: (student) =>
                 _fitTooltip(fits[student.id], nameById),
+            relationLines: showRelationLines
+                ? [
+                    for (final relation in relations)
+                      (
+                        studentAId: relation.studentAId,
+                        studentBId: relation.studentBId,
+                        isPositive: relation.isPositive,
+                      ),
+                  ]
+                : const [],
             onChipTap: onChipTap,
             onPositionChanged: (studentId, col, row) async {
               // The grid redraws from the position stream, so a write that
@@ -2760,6 +2993,11 @@ class _SeatingPlanView extends ConsumerWidget {
                       row: row,
                     );
               } on Object catch (error, stackTrace) {
+                // A write that fails on a library handle the session has
+                // outlived leaves every stream on this screen dead. Have the
+                // session check the library so the next tap works, rather
+                // than leaving the plan frozen until the app restarts.
+                unawaited(ref.read(appSessionProvider).refreshIfChanged());
                 if (context.mounted) {
                   showErrorSnackBar(
                     context,
@@ -2771,7 +3009,7 @@ class _SeatingPlanView extends ConsumerWidget {
               }
             },
           ),
-          if (relations.isNotEmpty) ...[
+          if (relations.isNotEmpty && showFitColors) ...[
             const SizedBox(height: AppSpacing.medium),
             const SeatingFitLegend(),
           ],

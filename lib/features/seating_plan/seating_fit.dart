@@ -84,19 +84,36 @@ Map<int, SeatingFit> calculateSeatingFit({
   };
 }
 
+/// A rule to draw as a line between the two seats it connects.
+typedef SeatingRelationLine = ({
+  int studentAId,
+  int studentBId,
+  bool isPositive,
+});
+
+/// Green for students that belong together, red for students to keep apart.
+///
+/// The hues are picked per brightness so they stay legible on a dark surface
+/// too.
+Color seatingRelationColor(BuildContext context, {required bool isPositive}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  if (isPositive) {
+    return isDark ? const Color(0xFF6ADF8E) : const Color(0xFF2E7D32);
+  }
+  return isDark ? const Color(0xFFFF8A80) : const Color(0xFFC62828);
+}
+
 /// The background tint for a seat scored [score], or `null` when the seat is
 /// neutral and should stay uncoloured.
 ///
 /// Green means the neighbours fit, red means they clash; the further from
-/// zero, the more saturated. The hues are picked per brightness so a tint
-/// stays visible on a dark surface too.
+/// zero, the more saturated.
 Color? seatingFitColor(BuildContext context, double? score) {
   if (score == null || score == 0) return null;
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  final base = score > 0
-      ? (isDark ? const Color(0xFF6ADF8E) : const Color(0xFF2E7D32))
-      : (isDark ? const Color(0xFFFF8A80) : const Color(0xFFC62828));
-  return base.withValues(alpha: 0.12 + 0.28 * score.abs());
+  return seatingRelationColor(
+    context,
+    isPositive: score > 0,
+  ).withValues(alpha: 0.12 + 0.28 * score.abs());
 }
 
 /// Explains what the green and red seat tints mean.

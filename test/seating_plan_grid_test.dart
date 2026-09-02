@@ -206,6 +206,189 @@ void main() {
     );
   });
 
+  testWidgets('a rule draws a line between the two seats it names', (
+    tester,
+  ) async {
+    final students = [
+      _student(id: 1, firstName: 'Ada', lastName: 'Lovelace'),
+      _student(id: 2, firstName: 'Grace', lastName: 'Hopper'),
+    ];
+
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanGrid(
+          students: students,
+          columns: 2,
+          positions: const {1: (col: 0, row: 0), 2: (col: 1, row: 0)},
+          relationLines: const [
+            (studentAId: 1, studentBId: 2, isPositive: true),
+          ],
+          onPositionChanged: (_, _, _) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Cells are 96 wide, so the seats' centres are 96 apart; the line stops
+    // short of both avatars.
+    expect(
+      find.byType(SeatingPlanGrid),
+      paints..line(
+        p1: const Offset(74, 48),
+        p2: const Offset(118, 48),
+        color: seatingRelationColor(
+          _cellContext(tester),
+          isPositive: true,
+        ).withValues(alpha: 0.85),
+      ),
+    );
+  });
+
+  testWidgets('a keep-apart rule is drawn dashed and in red', (tester) async {
+    final students = [
+      _student(id: 1, firstName: 'Ada', lastName: 'Lovelace'),
+      _student(id: 2, firstName: 'Grace', lastName: 'Hopper'),
+    ];
+
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanGrid(
+          students: students,
+          columns: 2,
+          positions: const {1: (col: 0, row: 0), 2: (col: 1, row: 0)},
+          relationLines: const [
+            (studentAId: 1, studentBId: 2, isPositive: false),
+          ],
+          onPositionChanged: (_, _, _) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final red = seatingRelationColor(
+      _cellContext(tester),
+      isPositive: false,
+    ).withValues(alpha: 0.85);
+    // Several segments rather than one: the dashes are what tells the two
+    // kinds of rule apart without relying on colour.
+    expect(
+      find.byType(SeatingPlanGrid),
+      paints
+        ..line(color: red)
+        ..line(color: red)
+        ..line(color: red),
+    );
+  });
+
+  testWidgets('selecting a student narrows the lines down to theirs', (
+    tester,
+  ) async {
+    final students = [
+      _student(id: 1, firstName: 'Ada', lastName: 'Lovelace'),
+      _student(id: 2, firstName: 'Grace', lastName: 'Hopper'),
+      _student(id: 3, firstName: 'Alan', lastName: 'Turing'),
+      _student(id: 4, firstName: 'Katherine', lastName: 'Johnson'),
+    ];
+
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanGrid(
+          students: students,
+          columns: 4,
+          positions: const {
+            1: (col: 0, row: 0),
+            2: (col: 1, row: 0),
+            3: (col: 2, row: 0),
+            4: (col: 3, row: 0),
+          },
+          editMode: true,
+          relationLines: const [
+            (studentAId: 1, studentBId: 2, isPositive: true),
+            (studentAId: 3, studentBId: 4, isPositive: true),
+          ],
+          onPositionChanged: (_, _, _) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final green = seatingRelationColor(
+      _cellContext(tester),
+      isPositive: true,
+    ).withValues(alpha: 0.85);
+    // Edit mode keeps a spare row and column around the seats, so the first
+    // student's centre sits one cell in.
+    const adaToGrace = (p1: Offset(170, 144), p2: Offset(214, 144));
+    const alanToKatherine = (p1: Offset(362, 144), p2: Offset(406, 144));
+    expect(
+      find.byType(SeatingPlanGrid),
+      paints
+        ..line(p1: adaToGrace.p1, p2: adaToGrace.p2)
+        ..line(p1: alanToKatherine.p1, p2: alanToKatherine.p2),
+    );
+
+    await tester.tap(find.text('Ada Lovelace'));
+    await tester.pumpAndSettle();
+
+    // Only Ada's rule is left; the pair across the room is out of the way.
+    expect(
+      find.byType(SeatingPlanGrid),
+      paints..line(p1: adaToGrace.p1, p2: adaToGrace.p2, color: green),
+    );
+    expect(
+      find.byType(SeatingPlanGrid),
+      isNot(
+        paints..line(
+          p1: alanToKatherine.p1,
+          p2: alanToKatherine.p2,
+          color: green,
+        ),
+      ),
+    );
+  });
+
+  testWidgets('no lines are drawn when the rules are toggled off', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanGrid(
+          students: [
+            _student(id: 1, firstName: 'Ada', lastName: 'Lovelace'),
+            _student(id: 2, firstName: 'Grace', lastName: 'Hopper'),
+          ],
+          columns: 2,
+          positions: const {1: (col: 0, row: 0), 2: (col: 1, row: 0)},
+          onPositionChanged: (_, _, _) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SeatingPlanGrid), isNot(paints..line()));
+  });
+
+  testWidgets('a rule naming a student who has no seat draws nothing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanGrid(
+          students: [_student(id: 1, firstName: 'Ada', lastName: 'Lovelace')],
+          columns: 2,
+          positions: const {1: (col: 0, row: 0)},
+          relationLines: const [
+            (studentAId: 1, studentBId: 7, isPositive: true),
+          ],
+          onPositionChanged: (_, _, _) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SeatingPlanGrid), isNot(paints..line()));
+  });
+
   testWidgets('an unscored seat keeps a plain cell', (tester) async {
     await tester.pumpWidget(
       _TestHarness(
