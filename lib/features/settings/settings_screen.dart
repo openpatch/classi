@@ -542,6 +542,27 @@ class _SecuritySection extends ConsumerWidget {
     30: Duration(minutes: 30),
   };
 
+  /// How long the app may be in the background before it locks.
+  static const List<Duration> _graceOptions = [
+    Duration.zero,
+    Duration(seconds: 15),
+    Duration(seconds: 30),
+    Duration(minutes: 1),
+    Duration(minutes: 5),
+  ];
+
+  static String _graceLabel(Duration value) {
+    if (value <= Duration.zero) return 'background_lock_grace_none'.tr();
+    if (value.inSeconds < 60) {
+      return 'seconds_count'.tr(
+        namedArgs: {'count': value.inSeconds.toString()},
+      );
+    }
+    return 'minutes_count'.tr(
+      namedArgs: {'count': value.inMinutes.toString()},
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Column(
@@ -582,6 +603,37 @@ class _SecuritySection extends ConsumerWidget {
             }
             ref.read(appSessionProvider).setInactivityTimeout(value);
           },
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<Duration>(
+          initialValue: _graceOptions.firstWhere(
+            (value) => value == session.backgroundLockGrace,
+            orElse: () => SecurityPreferencesService.defaultBackgroundLockGrace,
+          ),
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: 'background_lock_grace'.tr(),
+            helperText: 'background_lock_grace_hint'.tr(),
+            helperMaxLines: 3,
+          ),
+          items: [
+            for (final value in _graceOptions)
+              DropdownMenuItem(
+                value: value,
+                child: Text(
+                  _graceLabel(value),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          // Nothing to delay when the app never locks on its way out.
+          onChanged: session.lockOnBackground
+              ? (value) {
+                  if (value == null) return;
+                  ref.read(appSessionProvider).setBackgroundLockGrace(value);
+                }
+              : null,
         ),
         const SizedBox(height: 12),
         _BiometricToggle(session: session),

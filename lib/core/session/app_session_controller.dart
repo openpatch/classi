@@ -105,6 +105,10 @@ class AppSessionController extends ChangeNotifier {
   Duration _inactivityTimeout =
       SecurityPreferencesService.defaultInactivityTimeout;
   Timer? _inactivityTimer;
+  Duration _backgroundLockGrace =
+      SecurityPreferencesService.defaultBackgroundLockGrace;
+  Timer? _backgroundLockTimer;
+  DateTime? _backgroundedAt;
 
   /// How often to opportunistically re-export while the app is open and
   /// unlocked, independent of backgrounding.
@@ -157,6 +161,12 @@ class AppSessionController extends ChangeNotifier {
   bool get lockOnBackground => _lockOnBackground;
   bool get biometricEnabled => _biometricEnabled;
   Duration get inactivityTimeout => _inactivityTimeout;
+
+  /// How long the app may be in the background before locking on return.
+  ///
+  /// Only meaningful while [lockOnBackground] is on. [Duration.zero] locks the
+  /// moment the app goes away.
+  Duration get backgroundLockGrace => _backgroundLockGrace;
   String? get pendingRecoveryKey => _pendingRecoveryKey;
   bool get webDavAutoExportEnabled => _webDavAutoExportEnabled;
   bool get webDavAutoImportEnabled => _webDavAutoImportEnabled;
@@ -376,6 +386,9 @@ class AppSessionController extends ChangeNotifier {
 
   Future<void> handleAppResumed() async {
     if (_status == AppSessionStatus.ready) {
+      // Coming back after more than the grace period is the same as having
+      // been locked while away; there is nothing to refresh in that case.
+      if (await _lockIfGraceExpired()) return;
       await refreshIfChanged();
       // Whether or not the library was reopened, the screens that were left
       // standing while the app was away may have missed the updates behind
@@ -416,12 +429,71 @@ class AppSessionController extends ChangeNotifier {
     }
 
     if (_lockOnBackground) {
-      await lock();
+      if (_backgroundLockGrace <= Duration.zero) {
+        await lock();
+        return;
+      }
+      // Locking is put off, saving is not: the library is checkpointed and
+      // backed up right away, so nothing is riding on the app coming back.
+      _cancelInactivityTimer();
+      _startBackgroundLockGrace();
+      await _flushAndAutoExport();
       return;
     }
 
     _cancelInactivityTimer();
     await _flushAndAutoExport();
+  }
+
+  /// Arms the delayed lock for an app that just went into the background.
+  ///
+  /// The timer only does its job where the app keeps running while it is out
+  /// of sight, such as on a desktop. A phone freezes the process, so the
+  /// timestamp is what actually decides: [_lockIfGraceExpired] measures how
+  /// long the app was away when it comes back.
+  void _startBackgroundLockGrace() {
+    _backgroundedAt = DateTime.now();
+    _backgroundLockTimer?.cancel();
+    _backgroundLockTimer = Timer(
+      _backgroundLockGrace,
+      () => unawaited(_lockAfterGrace()),
+    );
+  }
+
+  Future<void> _lockAfterGrace() async {
+    _backgroundLockTimer = null;
+    await lock();
+    // [lock] steps aside while a save or another transition is in flight. The
+    // app is still unlocked and still out of sight, so come back for it rather
+    // than leaving it open on a desk.
+    if (_status == AppSessionStatus.ready && _backgroundedAt != null) {
+      _backgroundLockTimer = Timer(
+        const Duration(seconds: 5),
+        () => unawaited(_lockAfterGrace()),
+      );
+    }
+  }
+
+  void _cancelBackgroundLockGrace() {
+    _backgroundLockTimer?.cancel();
+    _backgroundLockTimer = null;
+    _backgroundedAt = null;
+  }
+
+  /// Locks when the app was away for longer than [backgroundLockGrace].
+  ///
+  /// Returns whether it locked.
+  Future<bool> _lockIfGraceExpired() async {
+    final leftAt = _backgroundedAt;
+    _cancelBackgroundLockGrace();
+    if (leftAt == null || !_lockOnBackground) {
+      return false;
+    }
+    if (DateTime.now().difference(leftAt) < _backgroundLockGrace) {
+      return false;
+    }
+    await lock();
+    return true;
   }
 
   void registerActivity() {
@@ -685,6 +757,12 @@ class AppSessionController extends ChangeNotifier {
     _inactivityTimeout = value;
     await _securityPreferencesService.setInactivityTimeout(value);
     _resetInactivityTimer();
+    notifyListeners();
+  }
+
+  Future<void> setBackgroundLockGrace(Duration value) async {
+    _backgroundLockGrace = value;
+    await _securityPreferencesService.setBackgroundLockGrace(value);
     notifyListeners();
   }
 
@@ -1151,6 +1229,7 @@ class AppSessionController extends ChangeNotifier {
 
   AppDatabase? _detachDatabase() {
     _cancelInactivityTimer();
+    _cancelBackgroundLockGrace();
     _cancelPeriodicExportTimer();
     final database = _database;
     _database = null;
@@ -1196,6 +1275,8 @@ class AppSessionController extends ChangeNotifier {
   Future<void> _loadSecurityPreferences() async {
     _lockOnBackground = await _securityPreferencesService.lockOnBackground();
     _inactivityTimeout = await _securityPreferencesService.inactivityTimeout();
+    _backgroundLockGrace = await _securityPreferencesService
+        .backgroundLockGrace();
     _biometricEnabled = await _securityPreferencesService.biometricEnabled();
   }
 
@@ -1717,6 +1798,7 @@ class AppSessionController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _cancelInactivityTimer();
+    _cancelBackgroundLockGrace();
     _cancelPeriodicExportTimer();
     unawaited(_closeDatabase());
     super.dispose();

@@ -137,6 +137,8 @@ void main() {
     await controller.initialize();
     await controller.createDatabase('test');
     controller.clearPendingRecoveryKey();
+    // No grace: this is about the lock itself, not about when it starts.
+    await controller.setBackgroundLockGrace(Duration.zero);
 
     expect(controller.status, AppSessionStatus.ready);
 
@@ -213,6 +215,56 @@ void main() {
     backup.finish.complete();
     await exporting;
     expect(controller.isBlockingExport, isFalse);
+  });
+
+  test('a quick switch away does not lock the app', () async {
+    await controller.initialize();
+    await controller.createDatabase('test');
+    controller.clearPendingRecoveryKey();
+    await controller.setLockOnBackground(true);
+    await controller.setBackgroundLockGrace(const Duration(seconds: 30));
+
+    await controller.handleAppBackgrounded();
+    expect(
+      controller.status,
+      AppSessionStatus.ready,
+      reason: 'looking something up in another app is not putting the phone '
+          'down',
+    );
+
+    await controller.handleAppResumed();
+    expect(controller.status, AppSessionStatus.ready);
+  });
+
+  test('staying away past the grace locks the app', () async {
+    await controller.initialize();
+    await controller.createDatabase('test');
+    controller.clearPendingRecoveryKey();
+    await controller.setLockOnBackground(true);
+    await controller.setBackgroundLockGrace(const Duration(hours: 1));
+
+    await controller.handleAppBackgrounded();
+    expect(controller.status, AppSessionStatus.ready);
+
+    // A phone freezes the app while it is away, so the timer that would lock
+    // it never runs: shortening the grace stands in for the hour passing, and
+    // what has to catch it is the check on the way back in.
+    await controller.setBackgroundLockGrace(Duration.zero);
+    await controller.handleAppResumed();
+
+    expect(controller.status, AppSessionStatus.locked);
+  });
+
+  test('without a grace the app locks the moment it goes away', () async {
+    await controller.initialize();
+    await controller.createDatabase('test');
+    controller.clearPendingRecoveryKey();
+    await controller.setLockOnBackground(true);
+    await controller.setBackgroundLockGrace(Duration.zero);
+
+    await controller.handleAppBackgrounded();
+
+    expect(controller.status, AppSessionStatus.locked);
   });
 
   test('lock keeps the database available until export finishes', () async {
@@ -548,6 +600,9 @@ void main() {
       controller.clearPendingRecoveryKey();
 
       await controller.setLockOnBackground(true);
+      // Straight to the lock, so the export this test is about runs here
+      // rather than after a grace period.
+      await controller.setBackgroundLockGrace(Duration.zero);
       await controller.handleAppBackgrounded();
 
       expect(controller.status, AppSessionStatus.locked);
