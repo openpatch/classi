@@ -4114,6 +4114,17 @@ class $ListsTableTable extends ListsTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _touchedAtMeta = const VerificationMeta(
+    'touchedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> touchedAt = GeneratedColumn<DateTime>(
+    'touched_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4121,6 +4132,7 @@ class $ListsTableTable extends ListsTable
     name,
     createdAt,
     archivedAt,
+    touchedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4163,6 +4175,12 @@ class $ListsTableTable extends ListsTable
         archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
       );
     }
+    if (data.containsKey('touched_at')) {
+      context.handle(
+        _touchedAtMeta,
+        touchedAt.isAcceptableOrUnknown(data['touched_at']!, _touchedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -4192,6 +4210,10 @@ class $ListsTableTable extends ListsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}archived_at'],
       ),
+      touchedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}touched_at'],
+      ),
     );
   }
 
@@ -4207,12 +4229,18 @@ class Checklist extends DataClass implements Insertable<Checklist> {
   final String name;
   final DateTime createdAt;
   final DateTime? archivedAt;
+
+  /// When the list was last worked on: an item added, ticked off, renamed or
+  /// removed. `null` for lists nobody has touched since the column existed,
+  /// which sort as if they were last used when they were made.
+  final DateTime? touchedAt;
   const Checklist({
     required this.id,
     this.groupId,
     required this.name,
     required this.createdAt,
     this.archivedAt,
+    this.touchedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4225,6 +4253,9 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || archivedAt != null) {
       map['archived_at'] = Variable<DateTime>(archivedAt);
+    }
+    if (!nullToAbsent || touchedAt != null) {
+      map['touched_at'] = Variable<DateTime>(touchedAt);
     }
     return map;
   }
@@ -4240,6 +4271,9 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       archivedAt: archivedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(archivedAt),
+      touchedAt: touchedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(touchedAt),
     );
   }
 
@@ -4254,6 +4288,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       name: serializer.fromJson<String>(json['name']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
+      touchedAt: serializer.fromJson<DateTime?>(json['touchedAt']),
     );
   }
   @override
@@ -4265,6 +4300,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       'name': serializer.toJson<String>(name),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'archivedAt': serializer.toJson<DateTime?>(archivedAt),
+      'touchedAt': serializer.toJson<DateTime?>(touchedAt),
     };
   }
 
@@ -4274,12 +4310,14 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     String? name,
     DateTime? createdAt,
     Value<DateTime?> archivedAt = const Value.absent(),
+    Value<DateTime?> touchedAt = const Value.absent(),
   }) => Checklist(
     id: id ?? this.id,
     groupId: groupId.present ? groupId.value : this.groupId,
     name: name ?? this.name,
     createdAt: createdAt ?? this.createdAt,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
+    touchedAt: touchedAt.present ? touchedAt.value : this.touchedAt,
   );
   Checklist copyWithCompanion(ListsTableCompanion data) {
     return Checklist(
@@ -4290,6 +4328,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       archivedAt: data.archivedAt.present
           ? data.archivedAt.value
           : this.archivedAt,
+      touchedAt: data.touchedAt.present ? data.touchedAt.value : this.touchedAt,
     );
   }
 
@@ -4300,13 +4339,15 @@ class Checklist extends DataClass implements Insertable<Checklist> {
           ..write('groupId: $groupId, ')
           ..write('name: $name, ')
           ..write('createdAt: $createdAt, ')
-          ..write('archivedAt: $archivedAt')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('touchedAt: $touchedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, groupId, name, createdAt, archivedAt);
+  int get hashCode =>
+      Object.hash(id, groupId, name, createdAt, archivedAt, touchedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4315,7 +4356,8 @@ class Checklist extends DataClass implements Insertable<Checklist> {
           other.groupId == this.groupId &&
           other.name == this.name &&
           other.createdAt == this.createdAt &&
-          other.archivedAt == this.archivedAt);
+          other.archivedAt == this.archivedAt &&
+          other.touchedAt == this.touchedAt);
 }
 
 class ListsTableCompanion extends UpdateCompanion<Checklist> {
@@ -4324,12 +4366,14 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
   final Value<String> name;
   final Value<DateTime> createdAt;
   final Value<DateTime?> archivedAt;
+  final Value<DateTime?> touchedAt;
   const ListsTableCompanion({
     this.id = const Value.absent(),
     this.groupId = const Value.absent(),
     this.name = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.archivedAt = const Value.absent(),
+    this.touchedAt = const Value.absent(),
   });
   ListsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -4337,6 +4381,7 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
     required String name,
     this.createdAt = const Value.absent(),
     this.archivedAt = const Value.absent(),
+    this.touchedAt = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Checklist> custom({
     Expression<int>? id,
@@ -4344,6 +4389,7 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
     Expression<String>? name,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? archivedAt,
+    Expression<DateTime>? touchedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4351,6 +4397,7 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
       if (name != null) 'name': name,
       if (createdAt != null) 'created_at': createdAt,
       if (archivedAt != null) 'archived_at': archivedAt,
+      if (touchedAt != null) 'touched_at': touchedAt,
     });
   }
 
@@ -4360,6 +4407,7 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
     Value<String>? name,
     Value<DateTime>? createdAt,
     Value<DateTime?>? archivedAt,
+    Value<DateTime?>? touchedAt,
   }) {
     return ListsTableCompanion(
       id: id ?? this.id,
@@ -4367,6 +4415,7 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
       name: name ?? this.name,
       createdAt: createdAt ?? this.createdAt,
       archivedAt: archivedAt ?? this.archivedAt,
+      touchedAt: touchedAt ?? this.touchedAt,
     );
   }
 
@@ -4388,6 +4437,9 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
     if (archivedAt.present) {
       map['archived_at'] = Variable<DateTime>(archivedAt.value);
     }
+    if (touchedAt.present) {
+      map['touched_at'] = Variable<DateTime>(touchedAt.value);
+    }
     return map;
   }
 
@@ -4398,7 +4450,8 @@ class ListsTableCompanion extends UpdateCompanion<Checklist> {
           ..write('groupId: $groupId, ')
           ..write('name: $name, ')
           ..write('createdAt: $createdAt, ')
-          ..write('archivedAt: $archivedAt')
+          ..write('archivedAt: $archivedAt, ')
+          ..write('touchedAt: $touchedAt')
           ..write(')'))
         .toString();
   }
@@ -12906,6 +12959,7 @@ typedef $$ListsTableTableCreateCompanionBuilder =
       required String name,
       Value<DateTime> createdAt,
       Value<DateTime?> archivedAt,
+      Value<DateTime?> touchedAt,
     });
 typedef $$ListsTableTableUpdateCompanionBuilder =
     ListsTableCompanion Function({
@@ -12914,6 +12968,7 @@ typedef $$ListsTableTableUpdateCompanionBuilder =
       Value<String> name,
       Value<DateTime> createdAt,
       Value<DateTime?> archivedAt,
+      Value<DateTime?> touchedAt,
     });
 
 final class $$ListsTableTableReferences
@@ -12984,6 +13039,11 @@ class $$ListsTableTableFilterComposer
 
   ColumnFilters<DateTime> get archivedAt => $composableBuilder(
     column: $table.archivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get touchedAt => $composableBuilder(
+    column: $table.touchedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13065,6 +13125,11 @@ class $$ListsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get touchedAt => $composableBuilder(
+    column: $table.touchedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$GroupsTableTableOrderingComposer get groupId {
     final $$GroupsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -13111,6 +13176,9 @@ class $$ListsTableTableAnnotationComposer
     column: $table.archivedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<DateTime> get touchedAt =>
+      $composableBuilder(column: $table.touchedAt, builder: (column) => column);
 
   $$GroupsTableTableAnnotationComposer get groupId {
     final $$GroupsTableTableAnnotationComposer composer = $composerBuilder(
@@ -13194,12 +13262,14 @@ class $$ListsTableTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
+                Value<DateTime?> touchedAt = const Value.absent(),
               }) => ListsTableCompanion(
                 id: id,
                 groupId: groupId,
                 name: name,
                 createdAt: createdAt,
                 archivedAt: archivedAt,
+                touchedAt: touchedAt,
               ),
           createCompanionCallback:
               ({
@@ -13208,12 +13278,14 @@ class $$ListsTableTableTableManager
                 required String name,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
+                Value<DateTime?> touchedAt = const Value.absent(),
               }) => ListsTableCompanion.insert(
                 id: id,
                 groupId: groupId,
                 name: name,
                 createdAt: createdAt,
                 archivedAt: archivedAt,
+                touchedAt: touchedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

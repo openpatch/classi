@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
+import 'list_sorting.dart';
 import '../../shared/utils/formatting.dart';
 import '../students/student_sorting.dart';
 import 'list_item_links.dart';
@@ -17,11 +18,13 @@ class ListRepository {
 
   final AppDatabase _database;
 
-  Stream<List<Checklist>> watchAllLists() {
-    return (_database.select(_database.listsTable)
-          ..where((table) => table.archivedAt.isNull())
-          ..orderBy([(table) => OrderingTerm.asc(table.name)]))
-        .watch();
+  Stream<List<Checklist>> watchAllLists({
+    ListSortField sortField = ListSortField.name,
+  }) {
+    final query = _database.select(_database.listsTable)
+      ..where((table) => table.archivedAt.isNull());
+    _applySort(query, sortField);
+    return query.watch();
   }
 
   Stream<List<Checklist>> watchArchivedAllLists() {
@@ -34,12 +37,53 @@ class ListRepository {
         .watch();
   }
 
-  Stream<List<Checklist>> watchLists(int groupId) {
-    return (_database.select(_database.listsTable)
-          ..where((table) => table.groupId.equals(groupId))
-          ..where((table) => table.archivedAt.isNull())
-          ..orderBy([(table) => OrderingTerm.asc(table.name)]))
-        .watch();
+  Stream<List<Checklist>> watchLists(
+    int groupId, {
+    ListSortField sortField = ListSortField.name,
+  }) {
+    final query = _database.select(_database.listsTable)
+      ..where((table) => table.groupId.equals(groupId))
+      ..where((table) => table.archivedAt.isNull());
+    _applySort(query, sortField);
+    return query.watch();
+  }
+
+  /// Orders [query] by [sortField], with the name as the tie-breaker.
+  ///
+  /// A list nobody has touched since [ListsTable.touchedAt] existed falls back
+  /// to when it was made, so an old library sorts sensibly from the first tap
+  /// instead of piling every list at one end.
+  void _applySort(
+    SimpleSelectStatement<$ListsTableTable, Checklist> query,
+    ListSortField sortField,
+  ) {
+    switch (sortField) {
+      case ListSortField.name:
+        query.orderBy([(table) => OrderingTerm.asc(table.name)]);
+      case ListSortField.newest:
+        query.orderBy([
+          (table) => OrderingTerm.desc(table.createdAt),
+          (table) => OrderingTerm.asc(table.name),
+        ]);
+      case ListSortField.recentlyUsed:
+        query.orderBy([
+          (table) =>
+              OrderingTerm.desc(coalesce([table.touchedAt, table.createdAt])),
+          (table) => OrderingTerm.asc(table.name),
+        ]);
+    }
+  }
+
+  /// Notes that [listId] was just worked on.
+  ///
+  /// Called from every change to a list's contents, which is what "recently
+  /// used" means to a teacher: the list they last ticked something off in.
+  Future<void> _touch(int listId) {
+    return (_database.update(
+      _database.listsTable,
+    )..where((table) => table.id.equals(listId))).write(
+      ListsTableCompanion(touchedAt: Value(DateTime.now())),
+    );
   }
 
   Stream<List<Checklist>> watchArchivedLists(int groupId) {
@@ -59,11 +103,49 @@ class ListRepository {
     )..where((table) => table.id.equals(id))).watchSingleOrNull();
   }
 
-  Stream<List<ChecklistItem>> watchItems(int listId) {
-    return (_database.select(_database.listItemsTable)
-          ..where((table) => table.listId.equals(listId))
-          ..orderBy([(table) => OrderingTerm.asc(table.createdAt)]))
-        .watch();
+  /// The entries of [listId], in the order the teacher asked for.
+  ///
+  /// Sorting by student reads the name off the student an entry is linked to,
+  /// which is why it needs [studentSortField]: an entry should sit where its
+  /// student sits in every other list in the app. Entries about nobody follow
+  /// behind, in the order they were written.
+  Stream<List<ChecklistItem>> watchItems(
+    int listId, {
+    ListItemSortField sortField = ListItemSortField.entered,
+    StudentSortField studentSortField = StudentSortField.lastName,
+  }) {
+    final items = _database.listItemsTable;
+    final students = _database.studentsTable;
+    final query = _database.select(items).join([
+      leftOuterJoin(students, students.id.equalsExp(items.studentId)),
+    ])..where(items.listId.equals(listId));
+
+    final entered = OrderingTerm.asc(items.createdAt);
+    query.orderBy(switch (sortField) {
+      ListItemSortField.entered => [entered],
+      ListItemSortField.label => [
+        OrderingTerm.asc(items.label.lower()),
+        entered,
+      ],
+      ListItemSortField.student => [
+        // Nobody's entry has no name to sort by; NULLs would lead otherwise.
+        OrderingTerm.asc(students.id.isNull()),
+        if (studentSortField == StudentSortField.firstName) ...[
+          OrderingTerm.asc(students.firstName.lower()),
+          OrderingTerm.asc(students.lastName.lower()),
+        ] else ...[
+          OrderingTerm.asc(students.lastName.lower()),
+          OrderingTerm.asc(students.firstName.lower()),
+        ],
+        entered,
+      ],
+      ListItemSortField.openFirst => [
+        OrderingTerm.asc(items.checkedAt.isNotNull()),
+        entered,
+      ],
+    });
+
+    return query.map((row) => row.readTable(items)).watch();
   }
 
   Stream<List<({Checklist list, ChecklistItem item})>> watchItemsForStudent(
@@ -224,6 +306,7 @@ class ListRepository {
             label: label.trim(),
           ),
         );
+    await _touch(listId);
   }
 
   Future<void> updateItem({
@@ -248,22 +331,31 @@ class ListRepository {
         label: Value(label.trim()),
       ),
     );
+    await _touch(item.listId);
   }
 
-  Future<void> toggleItem({required int itemId, required bool checked}) {
-    return (_database.update(
+  Future<void> toggleItem({required int itemId, required bool checked}) async {
+    await (_database.update(
       _database.listItemsTable,
     )..where((table) => table.id.equals(itemId))).write(
       ListItemsTableCompanion(
         checkedAt: Value(checked ? DateTime.now() : null),
       ),
     );
+    final item = await (_database.select(
+      _database.listItemsTable,
+    )..where((table) => table.id.equals(itemId))).getSingleOrNull();
+    if (item != null) await _touch(item.listId);
   }
 
-  Future<void> deleteItem(int itemId) {
-    return (_database.delete(
+  Future<void> deleteItem(int itemId) async {
+    final item = await (_database.select(
+      _database.listItemsTable,
+    )..where((table) => table.id.equals(itemId))).getSingleOrNull();
+    await (_database.delete(
       _database.listItemsTable,
     )..where((table) => table.id.equals(itemId))).go();
+    if (item != null) await _touch(item.listId);
   }
 
   Future<void> populateFromGroup({
@@ -316,6 +408,7 @@ class ListRepository {
         );
       }
     });
+    await _touch(listId);
   }
 
   Future<Checklist> _requireList(int listId) {

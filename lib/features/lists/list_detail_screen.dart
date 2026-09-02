@@ -14,6 +14,7 @@ import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/student_link_chip.dart';
 import 'list_item_editor.dart';
 import 'list_item_links.dart';
+import 'list_sorting.dart';
 
 final checklistProvider = StreamProvider.autoDispose.family<Checklist?, int>(
   (ref, listId) => ref.watch(listRepositoryProvider).watchList(listId),
@@ -21,7 +22,13 @@ final checklistProvider = StreamProvider.autoDispose.family<Checklist?, int>(
 
 final checklistItemsProvider = StreamProvider.autoDispose
     .family<List<ChecklistItem>, int>(
-      (ref, listId) => ref.watch(listRepositoryProvider).watchItems(listId),
+      (ref, listId) => ref
+          .watch(listRepositoryProvider)
+          .watchItems(
+            listId,
+            sortField: ref.watch(listItemSortFieldProvider),
+            studentSortField: ref.watch(studentSortFieldProvider),
+          ),
     );
 
 final listDetailGroupProvider = StreamProvider.autoDispose.family<Group?, int>(
@@ -97,6 +104,25 @@ class _ListDetailScreenState extends ConsumerState<ListDetailScreen> {
                   (list.groupId == null ? 'global_list'.tr() : null),
             ),
             actions: [
+              PopupMenuButton<ListItemSortField>(
+                icon: const Icon(Icons.sort),
+                tooltip: 'sort_list_items'.tr(),
+                initialValue: ref.watch(listItemSortFieldProvider),
+                onSelected: (value) =>
+                    ref.read(listSortControllerProvider).setItemSortField(value),
+                itemBuilder: (_) => [
+                  for (final entry in const {
+                    ListItemSortField.entered: 'sort_items_as_entered',
+                    ListItemSortField.label: 'sort_items_by_label',
+                    ListItemSortField.student: 'sort_items_by_student',
+                    ListItemSortField.openFirst: 'sort_items_open_first',
+                  }.entries)
+                    PopupMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value.tr()),
+                    ),
+                ],
+              ),
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: () => _renameList(context, list),
