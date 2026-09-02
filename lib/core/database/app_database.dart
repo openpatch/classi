@@ -93,7 +93,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Exposed statically so callers can compare it against the version on disk
   /// before opening (and therefore migrating) a library.
-  static const int currentSchemaVersion = 26;
+  static const int currentSchemaVersion = 27;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -273,6 +273,19 @@ class AppDatabase extends _$AppDatabase {
         // whole set is the cheapest way to pick up the new table's indexes.
         await _createIndexes();
       }
+
+      if (from < 27) {
+        // A library that never got the lists table — a create that was
+        // interrupted, a restore that landed halfway — would be bricked at
+        // startup by an ALTER on a table that is not there. Build it instead;
+        // refusing to open a teacher's library over a sort order is the worse
+        // trade by far.
+        if (await _hasTable('lists_table')) {
+          await migrator.addColumn(listsTable, listsTable.touchedAt);
+        } else {
+          await migrator.createTable(listsTable);
+        }
+      }
     },
   );
 
@@ -437,6 +450,15 @@ class AppDatabase extends _$AppDatabase {
   /// the app is the moment to catch up.
   void refreshAllStreams() {
     markTablesUpdated(allTables);
+  }
+
+  /// Whether [name] exists in this library.
+  Future<bool> _hasTable(String name) async {
+    final rows = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+      variables: [Variable<String>(name)],
+    ).get();
+    return rows.isNotEmpty;
   }
 
   Future<DateTime?> lastModified() async {

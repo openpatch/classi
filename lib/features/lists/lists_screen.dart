@@ -13,13 +13,18 @@ import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/swipe_action_background.dart';
 import 'list_editor.dart';
 import 'list_repository.dart';
+import 'list_sorting.dart';
 
 final listsProvider = StreamProvider.autoDispose.family<List<Checklist>, int>(
-  (ref, groupId) => ref.watch(listRepositoryProvider).watchLists(groupId),
+  (ref, groupId) => ref
+      .watch(listRepositoryProvider)
+      .watchLists(groupId, sortField: ref.watch(listSortFieldProvider)),
 );
 
 final allListsProvider = StreamProvider.autoDispose<List<Checklist>>(
-  (ref) => ref.watch(listRepositoryProvider).watchAllLists(),
+  (ref) => ref
+      .watch(listRepositoryProvider)
+      .watchAllLists(sortField: ref.watch(listSortFieldProvider)),
 );
 
 final archivedAllListsProvider = StreamProvider.autoDispose<List<Checklist>>(
@@ -80,6 +85,26 @@ class _ListsScreenState extends ConsumerState<ListsScreen> {
         backgroundColor: appBarColor,
         foregroundColor: appBarForeground,
         title: Text('lists'.tr()),
+        actions: [
+          PopupMenuButton<ListSortField>(
+            icon: const Icon(Icons.sort),
+            tooltip: 'sort_lists'.tr(),
+            initialValue: ref.watch(listSortFieldProvider),
+            onSelected: (value) =>
+                ref.read(listSortControllerProvider).setSortField(value),
+            itemBuilder: (_) => [
+              for (final entry in const {
+                ListSortField.name: 'sort_lists_by_name',
+                ListSortField.newest: 'sort_lists_by_newest',
+                ListSortField.recentlyUsed: 'sort_lists_by_recently_used',
+              }.entries)
+                PopupMenuItem(
+                  value: entry.key,
+                  child: Text(entry.value.tr()),
+                ),
+            ],
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () =>

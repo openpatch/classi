@@ -14,6 +14,7 @@ import '../../features/school_years/active_school_year_controller.dart';
 import '../../features/school_years/school_year_repository.dart';
 import '../../features/homework/homework_repository.dart';
 import '../../features/lists/list_repository.dart';
+import '../../features/lists/list_sorting.dart';
 import '../../features/lessons/lesson_repository.dart';
 import '../../features/material_tracking/material_repository.dart';
 import '../../features/notes/note_repository.dart';
@@ -22,6 +23,7 @@ import '../../features/seating_plan/student_relation_repository.dart';
 import '../../features/schedule/lesson_slot_repository.dart';
 import '../../features/sessions/session_repository.dart';
 import '../../features/settings/grade_system_controller.dart';
+import '../../features/settings/list_sort_controller.dart';
 import '../../features/settings/student_sort_controller.dart';
 import '../../features/settings/theme_controller.dart';
 import '../../features/students/student_repository.dart';
@@ -115,6 +117,29 @@ final studentSortControllerProvider =
 
 final studentSortFieldProvider = Provider<StudentSortField>(
   (ref) => ref.watch(studentSortControllerProvider).sortField,
+);
+
+final listSortControllerProvider = ChangeNotifierProvider<ListSortController>((
+  ref,
+) {
+  final controller = ListSortController(
+    projectSettingsStore: ref.watch(projectSettingsStoreProvider),
+  );
+  unawaited(controller.initialize());
+  ref.listen<String?>(selectedDatabasePathProvider, (previous, next) {
+    if (previous != next) {
+      unawaited(controller.initialize());
+    }
+  });
+  return controller;
+});
+
+final listSortFieldProvider = Provider<ListSortField>(
+  (ref) => ref.watch(listSortControllerProvider).sortField,
+);
+
+final listItemSortFieldProvider = Provider<ListItemSortField>(
+  (ref) => ref.watch(listSortControllerProvider).itemSortField,
 );
 
 final themeControllerProvider = ChangeNotifierProvider<ThemeController>((ref) {

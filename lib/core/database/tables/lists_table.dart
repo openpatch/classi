@@ -17,4 +17,9 @@ class ListsTable extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   DateTimeColumn get archivedAt => dateTime().nullable()();
+
+  /// When the list was last worked on: an item added, ticked off, renamed or
+  /// removed. `null` for lists nobody has touched since the column existed,
+  /// which sort as if they were last used when they were made.
+  DateTimeColumn get touchedAt => dateTime().nullable()();
 }
