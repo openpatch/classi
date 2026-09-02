@@ -1,0 +1,11 @@
+Bug Fixes
+
+- Hand the reopened database to the app after a resume
+- Keep two students off the same cell
+
+
+Features
+
+- Rules for who should and should not sit together
+
+
