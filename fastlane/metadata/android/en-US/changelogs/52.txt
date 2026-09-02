@@ -1,0 +1,15 @@
+Bug Fixes
+
+- Keep the app in step with its library, and usable while it saves
+- Show every rule a student has, near or far
+- Take a tap anywhere in a student's cell
+- Restore the seating plan's translations and guard them
+
+
+Features
+
+- Wait a moment before locking when the app goes away
+- Draw the rules, suggest a seating, export a plan
+- Take students, rules and a seating plan from another group
+
+
