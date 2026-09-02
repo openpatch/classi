@@ -37,8 +37,10 @@ import '../schedule/lesson_planning.dart';
 import '../schedule/lesson_schedule.dart';
 import '../schedule/lesson_schedule_editor_sheet.dart';
 import '../schedule/lesson_schedule_providers.dart';
+import '../seating_plan/seating_fit.dart';
 import '../seating_plan/seating_plan_grid.dart';
 import '../seating_plan/seating_plan_selector_sheet.dart';
+import '../seating_plan/seating_rules_sheet.dart';
 import '../students/student_batch_create_sheet.dart';
 import '../students/student_form.dart';
 import '../sessions/session_form.dart';
@@ -2634,6 +2636,16 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.rule_outlined),
+                        tooltip: 'seating_rules'.tr(),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => showSeatingRulesSheet(
+                          context: context,
+                          groupId: widget.groupId,
+                          students: widget.students,
+                        ),
+                      ),
                       if (_activePlan != null)
                         IconButton(
                           icon: Icon(
@@ -2699,27 +2711,95 @@ class _SeatingPlanView extends ConsumerWidget {
     final positionsValue = ref.watch(seatingPlanPositionsProvider(plan.id));
     final positions =
         positionsValue.value ?? const <int, ({int col, int row})>{};
+    final relations =
+        ref.watch(groupStudentRelationsProvider(plan.groupId)).value ??
+        const <StudentRelation>[];
+    final sortField = ref.watch(studentSortFieldProvider);
+
+    final fits = calculateSeatingFit(
+      relations: relations,
+      positions: positions,
+    );
+    final nameById = {
+      for (final student in students)
+        student.id: studentDisplayName(
+          firstName: student.firstName,
+          lastName: student.lastName,
+          callName: student.callName,
+          sortField: sortField,
+        ),
+    };
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.small),
-      child: SeatingPlanGrid(
-        students: students,
-        columns: plan.columns,
-        positions: positions,
-        editMode: editMode,
-        onChipTap: onChipTap,
-        onPositionChanged: (studentId, col, row) {
-          ref
-              .read(seatingPlanRepositoryProvider)
-              .moveStudent(
-                planId: plan.id,
-                studentId: studentId,
-                col: col,
-                row: row,
-              );
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SeatingPlanGrid(
+            students: students,
+            columns: plan.columns,
+            positions: positions,
+            editMode: editMode,
+            fitScores: {
+              for (final entry in fits.entries) entry.key: entry.value.score,
+            },
+            fitTooltipBuilder: (student) =>
+                _fitTooltip(fits[student.id], nameById),
+            onChipTap: onChipTap,
+            onPositionChanged: (studentId, col, row) async {
+              // The grid redraws from the position stream, so a write that
+              // fails silently reads as a plan that has stopped accepting
+              // edits. Say so instead.
+              try {
+                await ref
+                    .read(seatingPlanRepositoryProvider)
+                    .moveStudent(
+                      planId: plan.id,
+                      studentId: studentId,
+                      col: col,
+                      row: row,
+                    );
+              } on Object catch (error, stackTrace) {
+                if (context.mounted) {
+                  showErrorSnackBar(
+                    context,
+                    'generic_error'.tr(),
+                    error: error,
+                    stackTrace: stackTrace,
+                  );
+                }
+              }
+            },
+          ),
+          if (relations.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.medium),
+            const SeatingFitLegend(),
+          ],
+        ],
       ),
     );
+  }
+
+  /// Names the classmates in range that made a seat green or red.
+  String? _fitTooltip(SeatingFit? fit, Map<int, String> nameById) {
+    if (fit == null) return null;
+
+    String names(List<int> studentIds) => studentIds
+        .toSet()
+        .map((id) => nameById[id] ?? 'unknown_student'.tr())
+        .join(', ');
+
+    final lines = [
+      if (fit.supportingStudentIds.isNotEmpty)
+        'seating_fit_sits_with'.tr(
+          namedArgs: {'names': names(fit.supportingStudentIds)},
+        ),
+      if (fit.conflictingStudentIds.isNotEmpty)
+        'seating_fit_conflicts_with'.tr(
+          namedArgs: {'names': names(fit.conflictingStudentIds)},
+        ),
+    ];
+    return lines.isEmpty ? null : lines.join('\n');
   }
 }
 

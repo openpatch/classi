@@ -18,6 +18,7 @@ import '../../features/lessons/lesson_repository.dart';
 import '../../features/material_tracking/material_repository.dart';
 import '../../features/notes/note_repository.dart';
 import '../../features/seating_plan/seating_plan_repository.dart';
+import '../../features/seating_plan/student_relation_repository.dart';
 import '../../features/schedule/lesson_slot_repository.dart';
 import '../../features/sessions/session_repository.dart';
 import '../../features/settings/grade_system_controller.dart';
@@ -193,6 +194,10 @@ final lessonRepositoryProvider = Provider<LessonRepository>(
 
 final seatingPlanRepositoryProvider = Provider<SeatingPlanRepository>(
   (ref) => SeatingPlanRepository(ref.watch(databaseProvider)),
+);
+
+final studentRelationRepositoryProvider = Provider<StudentRelationRepository>(
+  (ref) => StudentRelationRepository(ref.watch(databaseProvider)),
 );
 
 final sessionRepositoryProvider = Provider<SessionRepository>(
@@ -411,6 +416,15 @@ final groupSeatingPlansProvider = StreamProvider.autoDispose
     .family<List<SeatingPlan>, int>(
       (ref, groupId) =>
           ref.watch(seatingPlanRepositoryProvider).watchPlansForGroup(groupId),
+    );
+
+/// The seating rules of a group: which students belong together and which
+/// have to be kept apart.
+final groupStudentRelationsProvider = StreamProvider.autoDispose
+    .family<List<StudentRelation>, int>(
+      (ref, groupId) => ref
+          .watch(studentRelationRepositoryProvider)
+          .watchRelationsForGroup(groupId),
     );
 
 final seatingPlanPositionsProvider = StreamProvider.autoDispose

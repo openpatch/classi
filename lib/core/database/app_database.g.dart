@@ -1910,6 +1910,432 @@ class AttendanceLogsTableCompanion
   }
 }
 
+class $StudentRelationsTableTable extends StudentRelationsTable
+    with TableInfo<$StudentRelationsTableTable, StudentRelation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StudentRelationsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _studentAIdMeta = const VerificationMeta(
+    'studentAId',
+  );
+  @override
+  late final GeneratedColumn<int> studentAId = GeneratedColumn<int>(
+    'student_a_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES students_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _studentBIdMeta = const VerificationMeta(
+    'studentBId',
+  );
+  @override
+  late final GeneratedColumn<int> studentBId = GeneratedColumn<int>(
+    'student_b_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES students_table (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _isPositiveMeta = const VerificationMeta(
+    'isPositive',
+  );
+  @override
+  late final GeneratedColumn<bool> isPositive = GeneratedColumn<bool>(
+    'is_positive',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_positive" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _commentMeta = const VerificationMeta(
+    'comment',
+  );
+  @override
+  late final GeneratedColumn<String> comment = GeneratedColumn<String>(
+    'comment',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    studentAId,
+    studentBId,
+    isPositive,
+    comment,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'student_relations_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudentRelation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('student_a_id')) {
+      context.handle(
+        _studentAIdMeta,
+        studentAId.isAcceptableOrUnknown(
+          data['student_a_id']!,
+          _studentAIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_studentAIdMeta);
+    }
+    if (data.containsKey('student_b_id')) {
+      context.handle(
+        _studentBIdMeta,
+        studentBId.isAcceptableOrUnknown(
+          data['student_b_id']!,
+          _studentBIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_studentBIdMeta);
+    }
+    if (data.containsKey('is_positive')) {
+      context.handle(
+        _isPositiveMeta,
+        isPositive.isAcceptableOrUnknown(data['is_positive']!, _isPositiveMeta),
+      );
+    }
+    if (data.containsKey('comment')) {
+      context.handle(
+        _commentMeta,
+        comment.isAcceptableOrUnknown(data['comment']!, _commentMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {studentAId, studentBId},
+  ];
+  @override
+  StudentRelation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudentRelation(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      studentAId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}student_a_id'],
+      )!,
+      studentBId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}student_b_id'],
+      )!,
+      isPositive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_positive'],
+      )!,
+      comment: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}comment'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $StudentRelationsTableTable createAlias(String alias) {
+    return $StudentRelationsTableTable(attachedDatabase, alias);
+  }
+}
+
+class StudentRelation extends DataClass implements Insertable<StudentRelation> {
+  final int id;
+  final int studentAId;
+  final int studentBId;
+
+  /// `true` when the two should sit together, `false` when they should not.
+  final bool isPositive;
+
+  /// Why the rule exists, e.g. "talks too much with him".
+  final String? comment;
+  final DateTime createdAt;
+  const StudentRelation({
+    required this.id,
+    required this.studentAId,
+    required this.studentBId,
+    required this.isPositive,
+    this.comment,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['student_a_id'] = Variable<int>(studentAId);
+    map['student_b_id'] = Variable<int>(studentBId);
+    map['is_positive'] = Variable<bool>(isPositive);
+    if (!nullToAbsent || comment != null) {
+      map['comment'] = Variable<String>(comment);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  StudentRelationsTableCompanion toCompanion(bool nullToAbsent) {
+    return StudentRelationsTableCompanion(
+      id: Value(id),
+      studentAId: Value(studentAId),
+      studentBId: Value(studentBId),
+      isPositive: Value(isPositive),
+      comment: comment == null && nullToAbsent
+          ? const Value.absent()
+          : Value(comment),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory StudentRelation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudentRelation(
+      id: serializer.fromJson<int>(json['id']),
+      studentAId: serializer.fromJson<int>(json['studentAId']),
+      studentBId: serializer.fromJson<int>(json['studentBId']),
+      isPositive: serializer.fromJson<bool>(json['isPositive']),
+      comment: serializer.fromJson<String?>(json['comment']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'studentAId': serializer.toJson<int>(studentAId),
+      'studentBId': serializer.toJson<int>(studentBId),
+      'isPositive': serializer.toJson<bool>(isPositive),
+      'comment': serializer.toJson<String?>(comment),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  StudentRelation copyWith({
+    int? id,
+    int? studentAId,
+    int? studentBId,
+    bool? isPositive,
+    Value<String?> comment = const Value.absent(),
+    DateTime? createdAt,
+  }) => StudentRelation(
+    id: id ?? this.id,
+    studentAId: studentAId ?? this.studentAId,
+    studentBId: studentBId ?? this.studentBId,
+    isPositive: isPositive ?? this.isPositive,
+    comment: comment.present ? comment.value : this.comment,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  StudentRelation copyWithCompanion(StudentRelationsTableCompanion data) {
+    return StudentRelation(
+      id: data.id.present ? data.id.value : this.id,
+      studentAId: data.studentAId.present
+          ? data.studentAId.value
+          : this.studentAId,
+      studentBId: data.studentBId.present
+          ? data.studentBId.value
+          : this.studentBId,
+      isPositive: data.isPositive.present
+          ? data.isPositive.value
+          : this.isPositive,
+      comment: data.comment.present ? data.comment.value : this.comment,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudentRelation(')
+          ..write('id: $id, ')
+          ..write('studentAId: $studentAId, ')
+          ..write('studentBId: $studentBId, ')
+          ..write('isPositive: $isPositive, ')
+          ..write('comment: $comment, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, studentAId, studentBId, isPositive, comment, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudentRelation &&
+          other.id == this.id &&
+          other.studentAId == this.studentAId &&
+          other.studentBId == this.studentBId &&
+          other.isPositive == this.isPositive &&
+          other.comment == this.comment &&
+          other.createdAt == this.createdAt);
+}
+
+class StudentRelationsTableCompanion extends UpdateCompanion<StudentRelation> {
+  final Value<int> id;
+  final Value<int> studentAId;
+  final Value<int> studentBId;
+  final Value<bool> isPositive;
+  final Value<String?> comment;
+  final Value<DateTime> createdAt;
+  const StudentRelationsTableCompanion({
+    this.id = const Value.absent(),
+    this.studentAId = const Value.absent(),
+    this.studentBId = const Value.absent(),
+    this.isPositive = const Value.absent(),
+    this.comment = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  StudentRelationsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int studentAId,
+    required int studentBId,
+    this.isPositive = const Value.absent(),
+    this.comment = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : studentAId = Value(studentAId),
+       studentBId = Value(studentBId);
+  static Insertable<StudentRelation> custom({
+    Expression<int>? id,
+    Expression<int>? studentAId,
+    Expression<int>? studentBId,
+    Expression<bool>? isPositive,
+    Expression<String>? comment,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (studentAId != null) 'student_a_id': studentAId,
+      if (studentBId != null) 'student_b_id': studentBId,
+      if (isPositive != null) 'is_positive': isPositive,
+      if (comment != null) 'comment': comment,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  StudentRelationsTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? studentAId,
+    Value<int>? studentBId,
+    Value<bool>? isPositive,
+    Value<String?>? comment,
+    Value<DateTime>? createdAt,
+  }) {
+    return StudentRelationsTableCompanion(
+      id: id ?? this.id,
+      studentAId: studentAId ?? this.studentAId,
+      studentBId: studentBId ?? this.studentBId,
+      isPositive: isPositive ?? this.isPositive,
+      comment: comment ?? this.comment,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (studentAId.present) {
+      map['student_a_id'] = Variable<int>(studentAId.value);
+    }
+    if (studentBId.present) {
+      map['student_b_id'] = Variable<int>(studentBId.value);
+    }
+    if (isPositive.present) {
+      map['is_positive'] = Variable<bool>(isPositive.value);
+    }
+    if (comment.present) {
+      map['comment'] = Variable<String>(comment.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudentRelationsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('studentAId: $studentAId, ')
+          ..write('studentBId: $studentBId, ')
+          ..write('isPositive: $isPositive, ')
+          ..write('comment: $comment, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $GradeEntriesTableTable extends GradeEntriesTable
     with TableInfo<$GradeEntriesTableTable, GradeEntriesTableData> {
   @override
@@ -7209,6 +7635,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $StudentsTableTable studentsTable = $StudentsTableTable(this);
   late final $AttendanceLogsTableTable attendanceLogsTable =
       $AttendanceLogsTableTable(this);
+  late final $StudentRelationsTableTable studentRelationsTable =
+      $StudentRelationsTableTable(this);
   late final $GradeEntriesTableTable gradeEntriesTable =
       $GradeEntriesTableTable(this);
   late final $MaterialLogsTableTable materialLogsTable =
@@ -7240,6 +7668,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     groupsTable,
     studentsTable,
     attendanceLogsTable,
+    studentRelationsTable,
     gradeEntriesTable,
     materialLogsTable,
     homeworkLogsTable,
@@ -7275,6 +7704,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('attendance_logs_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'students_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('student_relations_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'students_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('student_relations_table', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -8874,6 +9317,52 @@ final class $$StudentsTableTableReferences
     );
   }
 
+  static MultiTypedResultKey<$StudentRelationsTableTable, List<StudentRelation>>
+  _relationsAsStudentATable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.studentRelationsTable,
+    aliasName: $_aliasNameGenerator(
+      db.studentsTable.id,
+      db.studentRelationsTable.studentAId,
+    ),
+  );
+
+  $$StudentRelationsTableTableProcessedTableManager get relationsAsStudentA {
+    final manager = $$StudentRelationsTableTableTableManager(
+      $_db,
+      $_db.studentRelationsTable,
+    ).filter((f) => f.studentAId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _relationsAsStudentATable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$StudentRelationsTableTable, List<StudentRelation>>
+  _relationsAsStudentBTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.studentRelationsTable,
+    aliasName: $_aliasNameGenerator(
+      db.studentsTable.id,
+      db.studentRelationsTable.studentBId,
+    ),
+  );
+
+  $$StudentRelationsTableTableProcessedTableManager get relationsAsStudentB {
+    final manager = $$StudentRelationsTableTableTableManager(
+      $_db,
+      $_db.studentRelationsTable,
+    ).filter((f) => f.studentBId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _relationsAsStudentBTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<
     $GradeEntriesTableTable,
     List<GradeEntriesTableData>
@@ -9148,6 +9637,58 @@ class $$StudentsTableTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> relationsAsStudentA(
+    Expression<bool> Function($$StudentRelationsTableTableFilterComposer f) f,
+  ) {
+    final $$StudentRelationsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.studentRelationsTable,
+          getReferencedColumn: (t) => t.studentAId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StudentRelationsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.studentRelationsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> relationsAsStudentB(
+    Expression<bool> Function($$StudentRelationsTableTableFilterComposer f) f,
+  ) {
+    final $$StudentRelationsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.studentRelationsTable,
+          getReferencedColumn: (t) => t.studentBId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StudentRelationsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.studentRelationsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
@@ -9488,6 +10029,58 @@ class $$StudentsTableTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> relationsAsStudentA<T extends Object>(
+    Expression<T> Function($$StudentRelationsTableTableAnnotationComposer a) f,
+  ) {
+    final $$StudentRelationsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.studentRelationsTable,
+          getReferencedColumn: (t) => t.studentAId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StudentRelationsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.studentRelationsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> relationsAsStudentB<T extends Object>(
+    Expression<T> Function($$StudentRelationsTableTableAnnotationComposer a) f,
+  ) {
+    final $$StudentRelationsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.studentRelationsTable,
+          getReferencedColumn: (t) => t.studentBId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StudentRelationsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.studentRelationsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
   Expression<T> gradeEntriesTableRefs<T extends Object>(
     Expression<T> Function($$GradeEntriesTableTableAnnotationComposer a) f,
   ) {
@@ -9686,6 +10279,8 @@ class $$StudentsTableTableTableManager
           PrefetchHooks Function({
             bool groupId,
             bool attendanceLogsTableRefs,
+            bool relationsAsStudentA,
+            bool relationsAsStudentB,
             bool gradeEntriesTableRefs,
             bool materialLogsTableRefs,
             bool homeworkLogsTableRefs,
@@ -9762,6 +10357,8 @@ class $$StudentsTableTableTableManager
               ({
                 groupId = false,
                 attendanceLogsTableRefs = false,
+                relationsAsStudentA = false,
+                relationsAsStudentB = false,
                 gradeEntriesTableRefs = false,
                 materialLogsTableRefs = false,
                 homeworkLogsTableRefs = false,
@@ -9774,6 +10371,8 @@ class $$StudentsTableTableTableManager
                   db: db,
                   explicitlyWatchedTables: [
                     if (attendanceLogsTableRefs) db.attendanceLogsTable,
+                    if (relationsAsStudentA) db.studentRelationsTable,
+                    if (relationsAsStudentB) db.studentRelationsTable,
                     if (gradeEntriesTableRefs) db.gradeEntriesTable,
                     if (materialLogsTableRefs) db.materialLogsTable,
                     if (homeworkLogsTableRefs) db.homeworkLogsTable,
@@ -9837,6 +10436,48 @@ class $$StudentsTableTableTableManager
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.studentId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (relationsAsStudentA)
+                        await $_getPrefetchedData<
+                          StudentsTableData,
+                          $StudentsTableTable,
+                          StudentRelation
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StudentsTableTableReferences
+                              ._relationsAsStudentATable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StudentsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).relationsAsStudentA,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.studentAId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (relationsAsStudentB)
+                        await $_getPrefetchedData<
+                          StudentsTableData,
+                          $StudentsTableTable,
+                          StudentRelation
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StudentsTableTableReferences
+                              ._relationsAsStudentBTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StudentsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).relationsAsStudentB,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.studentBId == item.id,
                               ),
                           typedResults: items,
                         ),
@@ -10010,6 +10651,8 @@ typedef $$StudentsTableTableProcessedTableManager =
       PrefetchHooks Function({
         bool groupId,
         bool attendanceLogsTableRefs,
+        bool relationsAsStudentA,
+        bool relationsAsStudentB,
         bool gradeEntriesTableRefs,
         bool materialLogsTableRefs,
         bool homeworkLogsTableRefs,
@@ -10372,6 +11015,458 @@ typedef $$AttendanceLogsTableTableProcessedTableManager =
       (AttendanceLogsTableData, $$AttendanceLogsTableTableReferences),
       AttendanceLogsTableData,
       PrefetchHooks Function({bool studentId})
+    >;
+typedef $$StudentRelationsTableTableCreateCompanionBuilder =
+    StudentRelationsTableCompanion Function({
+      Value<int> id,
+      required int studentAId,
+      required int studentBId,
+      Value<bool> isPositive,
+      Value<String?> comment,
+      Value<DateTime> createdAt,
+    });
+typedef $$StudentRelationsTableTableUpdateCompanionBuilder =
+    StudentRelationsTableCompanion Function({
+      Value<int> id,
+      Value<int> studentAId,
+      Value<int> studentBId,
+      Value<bool> isPositive,
+      Value<String?> comment,
+      Value<DateTime> createdAt,
+    });
+
+final class $$StudentRelationsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $StudentRelationsTableTable,
+          StudentRelation
+        > {
+  $$StudentRelationsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $StudentsTableTable _studentAIdTable(_$AppDatabase db) =>
+      db.studentsTable.createAlias(
+        $_aliasNameGenerator(
+          db.studentRelationsTable.studentAId,
+          db.studentsTable.id,
+        ),
+      );
+
+  $$StudentsTableTableProcessedTableManager get studentAId {
+    final $_column = $_itemColumn<int>('student_a_id')!;
+
+    final manager = $$StudentsTableTableTableManager(
+      $_db,
+      $_db.studentsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_studentAIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $StudentsTableTable _studentBIdTable(_$AppDatabase db) =>
+      db.studentsTable.createAlias(
+        $_aliasNameGenerator(
+          db.studentRelationsTable.studentBId,
+          db.studentsTable.id,
+        ),
+      );
+
+  $$StudentsTableTableProcessedTableManager get studentBId {
+    final $_column = $_itemColumn<int>('student_b_id')!;
+
+    final manager = $$StudentsTableTableTableManager(
+      $_db,
+      $_db.studentsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_studentBIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$StudentRelationsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $StudentRelationsTableTable> {
+  $$StudentRelationsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPositive => $composableBuilder(
+    column: $table.isPositive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get comment => $composableBuilder(
+    column: $table.comment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$StudentsTableTableFilterComposer get studentAId {
+    final $$StudentsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentAId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableTableFilterComposer get studentBId {
+    final $$StudentsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentBId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudentRelationsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $StudentRelationsTableTable> {
+  $$StudentRelationsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPositive => $composableBuilder(
+    column: $table.isPositive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get comment => $composableBuilder(
+    column: $table.comment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$StudentsTableTableOrderingComposer get studentAId {
+    final $$StudentsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentAId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableTableOrderingComposer get studentBId {
+    final $$StudentsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentBId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudentRelationsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StudentRelationsTableTable> {
+  $$StudentRelationsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPositive => $composableBuilder(
+    column: $table.isPositive,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get comment =>
+      $composableBuilder(column: $table.comment, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$StudentsTableTableAnnotationComposer get studentAId {
+    final $$StudentsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentAId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StudentsTableTableAnnotationComposer get studentBId {
+    final $$StudentsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.studentBId,
+      referencedTable: $db.studentsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudentsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudentRelationsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StudentRelationsTableTable,
+          StudentRelation,
+          $$StudentRelationsTableTableFilterComposer,
+          $$StudentRelationsTableTableOrderingComposer,
+          $$StudentRelationsTableTableAnnotationComposer,
+          $$StudentRelationsTableTableCreateCompanionBuilder,
+          $$StudentRelationsTableTableUpdateCompanionBuilder,
+          (StudentRelation, $$StudentRelationsTableTableReferences),
+          StudentRelation,
+          PrefetchHooks Function({bool studentAId, bool studentBId})
+        > {
+  $$StudentRelationsTableTableTableManager(
+    _$AppDatabase db,
+    $StudentRelationsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StudentRelationsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$StudentRelationsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$StudentRelationsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> studentAId = const Value.absent(),
+                Value<int> studentBId = const Value.absent(),
+                Value<bool> isPositive = const Value.absent(),
+                Value<String?> comment = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => StudentRelationsTableCompanion(
+                id: id,
+                studentAId: studentAId,
+                studentBId: studentBId,
+                isPositive: isPositive,
+                comment: comment,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int studentAId,
+                required int studentBId,
+                Value<bool> isPositive = const Value.absent(),
+                Value<String?> comment = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => StudentRelationsTableCompanion.insert(
+                id: id,
+                studentAId: studentAId,
+                studentBId: studentBId,
+                isPositive: isPositive,
+                comment: comment,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$StudentRelationsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({studentAId = false, studentBId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (studentAId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.studentAId,
+                                referencedTable:
+                                    $$StudentRelationsTableTableReferences
+                                        ._studentAIdTable(db),
+                                referencedColumn:
+                                    $$StudentRelationsTableTableReferences
+                                        ._studentAIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (studentBId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.studentBId,
+                                referencedTable:
+                                    $$StudentRelationsTableTableReferences
+                                        ._studentBIdTable(db),
+                                referencedColumn:
+                                    $$StudentRelationsTableTableReferences
+                                        ._studentBIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$StudentRelationsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StudentRelationsTableTable,
+      StudentRelation,
+      $$StudentRelationsTableTableFilterComposer,
+      $$StudentRelationsTableTableOrderingComposer,
+      $$StudentRelationsTableTableAnnotationComposer,
+      $$StudentRelationsTableTableCreateCompanionBuilder,
+      $$StudentRelationsTableTableUpdateCompanionBuilder,
+      (StudentRelation, $$StudentRelationsTableTableReferences),
+      StudentRelation,
+      PrefetchHooks Function({bool studentAId, bool studentBId})
     >;
 typedef $$GradeEntriesTableTableCreateCompanionBuilder =
     GradeEntriesTableCompanion Function({
@@ -15348,6 +16443,8 @@ class $AppDatabaseManager {
       $$StudentsTableTableTableManager(_db, _db.studentsTable);
   $$AttendanceLogsTableTableTableManager get attendanceLogsTable =>
       $$AttendanceLogsTableTableTableManager(_db, _db.attendanceLogsTable);
+  $$StudentRelationsTableTableTableManager get studentRelationsTable =>
+      $$StudentRelationsTableTableTableManager(_db, _db.studentRelationsTable);
   $$GradeEntriesTableTableTableManager get gradeEntriesTable =>
       $$GradeEntriesTableTableTableManager(_db, _db.gradeEntriesTable);
   $$MaterialLogsTableTableTableManager get materialLogsTable =>

@@ -64,6 +64,12 @@ const List<String> databaseIndexStatements = [
   'CREATE INDEX IF NOT EXISTS idx_seating_plan_positions_student_id '
       'ON seating_plan_positions_table (student_id)',
 
+  // Seating rules are read for a whole group through their students.
+  'CREATE INDEX IF NOT EXISTS idx_student_relations_student_a_id '
+      'ON student_relations_table (student_a_id)',
+  'CREATE INDEX IF NOT EXISTS idx_student_relations_student_b_id '
+      'ON student_relations_table (student_b_id)',
+
   // Timeframes hang off a school year, their grades off a timeframe.
   'CREATE INDEX IF NOT EXISTS idx_timeframes_school_year_id '
       'ON timeframes_table (school_year_id)',
