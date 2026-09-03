@@ -1,0 +1,5 @@
+Bug Fixes
+
+- Make a WebDAV conflict a state both devices can see and resolve
+
+
