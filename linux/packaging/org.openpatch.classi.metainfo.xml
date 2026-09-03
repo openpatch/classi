@@ -83,6 +83,13 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.20.1" date="2026-09-03">
+      <description>
+        <ul>
+          <li>Make a WebDAV conflict a state both devices can see and resolve</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.20.0" date="2026-09-02">
       <description>
         <ul>
