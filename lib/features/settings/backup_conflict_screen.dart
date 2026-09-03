@@ -140,23 +140,18 @@ class _BackupConflictScreenState extends ConsumerState<BackupConflictScreen> {
 
     setState(() => _resolving = true);
     try {
-      final session = ref.read(appSessionProvider);
-      final dbPath = await session.currentDatabasePath();
-      if (!mounted) return;
-      final errorCode = await session.restoreWebDavBackup(
-        remotePath: widget.canonical.remotePath,
-        destinationPath: dbPath,
-        createNew: false,
-      );
+      // Restoring the open library locks the session, which pops this screen
+      // out from under us, so the whole resolution — restore *and* archiving
+      // the conflict copy — is handed to the session in one call. Anything
+      // this method still wanted to do afterwards may never run.
+      final errorCode = await ref
+          .read(appSessionProvider)
+          .useServerVersionAfterConflict(
+            canonicalRemotePath: widget.canonical.remotePath,
+            conflictFileName: widget.conflict.fileName,
+          );
       if (!mounted) return;
       if (errorCode == null) {
-        // This device took the server's side. The copy still holds the local
-        // changes that lost, so it is archived rather than deleted — but it
-        // is no longer an open conflict.
-        await session.markConflictResolved(
-          conflictFileName: widget.conflict.fileName,
-        );
-        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('backup_restored'.tr())));

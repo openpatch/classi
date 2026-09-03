@@ -1095,6 +1095,38 @@ class AppSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resolves a sync conflict by taking the server's version: restores the
+  /// canonical backup over this device's library, then archives the conflict
+  /// copy so every device stops reporting the conflict.
+  ///
+  /// Both halves have to run here rather than in the caller. Restoring the
+  /// library that is currently open closes the database and locks the
+  /// session, which sends the router to the unlock screen and tears down
+  /// whatever pushed the resolution screen — so a follow-up
+  /// [markConflictResolved] issued from the UI never arrives, the
+  /// `_CONFLICT_` copy stays on the server, and the next sync check reports
+  /// the same conflict again on every device.
+  ///
+  /// Returns a translation key on error or `null` on success.
+  Future<String?> useServerVersionAfterConflict({
+    required String canonicalRemotePath,
+    required String conflictFileName,
+  }) async {
+    final destinationPath = await _databasePathService.getCurrentDatabasePath();
+    final errorCode = await restoreWebDavBackup(
+      remotePath: canonicalRemotePath,
+      destinationPath: destinationPath,
+      createNew: false,
+    );
+    if (errorCode != null) return errorCode;
+
+    // This device took the server's side. The copy still holds the local
+    // changes that lost, so it is archived rather than deleted — but it is
+    // no longer an open conflict.
+    await markConflictResolved(conflictFileName: conflictFileName);
+    return null;
+  }
+
   Future<String?> restoreWebDavBackup({
     required String remotePath,
     required String destinationPath,
