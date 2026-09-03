@@ -577,6 +577,74 @@ void main() {
     },
   );
 
+  test(
+    'taking the server version archives the conflict copy in the same call',
+    () async {
+      final remoteLibraryDirectory = Directory(
+        '${tempDirectory.path}/remote-conflict.classi',
+      );
+      await remoteLibraryDirectory.create(recursive: true);
+      await File(
+        '${remoteLibraryDirectory.path}/data.db',
+      ).writeAsString('server-db');
+      await File(
+        '${remoteLibraryDirectory.path}/data.db.security.json',
+      ).writeAsString('server-security');
+      await File(
+        '${remoteLibraryDirectory.path}/data.db.integrity.json',
+      ).writeAsString('server-integrity');
+
+      final archiveBytes = await LibraryBackupService().buildBackupArchive(
+        remoteLibraryDirectory.path,
+      );
+      final restoreService = _RestoringSelfLibraryBackupService(archiveBytes);
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _RestoringAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: restoreService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      final currentPath = await controller.currentDatabasePath();
+      final errorCode = await controller.useServerVersionAfterConflict(
+        canonicalRemotePath: '/backups/test.classi-backup',
+        conflictFileName: 'test_CONFLICT_device-a.classi-backup',
+      );
+
+      expect(errorCode, isNull);
+      expect(
+        await File('$currentPath/data.db').readAsString(),
+        'server-db',
+      );
+      // Restoring the open library locks the session, which tears down the
+      // conflict screen. If archiving the copy were left to the caller it
+      // would never happen, and every device would keep reporting the
+      // conflict the teacher just resolved.
+      expect(
+        restoreService.archivedConflictName,
+        'test_CONFLICT_device-a.classi-backup',
+      );
+      expect(controller.hasPendingSyncConflict, isFalse);
+      expect(controller.webDavSyncStatus, isNot(WebDavSyncStatus.conflict));
+    },
+  );
+
   test('auto-export is skipped when WebDAV is not configured', () async {
     await controller.initialize();
     await controller.createDatabase('test');
@@ -1425,6 +1493,17 @@ class _RestoringSelfLibraryBackupService extends LibraryBackupService {
   final Uint8List archiveBytes;
   bool exportCalled = false;
   String? lastRemotePath;
+  String? archivedConflictName;
+
+  @override
+  Future<void> archiveResolvedConflictCopy({
+    required webdav.Client client,
+    required String serverPath,
+    required String conflictFileName,
+    DateTime? resolvedAt,
+  }) async {
+    archivedConflictName = conflictFileName;
+  }
 
   @override
   Future<DateTime> exportBackupToWebDav({
