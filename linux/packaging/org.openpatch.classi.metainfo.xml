@@ -83,6 +83,20 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.20.0" date="2026-09-02">
+      <description>
+        <ul>
+          <li>Keep the app in step with its library, and usable while it saves</li>
+          <li>Show every rule a student has, near or far</li>
+          <li>Take a tap anywhere in a student's cell</li>
+          <li>Restore the seating plan's translations and guard them</li>
+          <li>Wait a moment before locking when the app goes away</li>
+          <li>Draw the rules, suggest a seating, export a plan</li>
+          <li>Take students, rules and a seating plan from another group</li>
+          <li>Sort the lists and the entries inside them</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.19.0" date="2026-09-02">
       <description>
         <ul>
