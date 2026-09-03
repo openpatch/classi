@@ -7,5 +7,5 @@ Type=Application
 Categories=Education;
 StartupWMClass=org.openpatch.classi
 X-AppImage-Name=Classi
-X-AppImage-Version=1.19.0
+X-AppImage-Version=1.20.0
 X-AppImage-Arch=x86_64
