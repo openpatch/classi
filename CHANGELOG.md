@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.20.1] - 2026-09-03
+
+### Bug Fixes
+
+- *(sync)* Make a WebDAV conflict a state both devices can see and resolve
+
+
 ## [1.20.0] - 2026-09-02
 
 ### Bug Fixes
