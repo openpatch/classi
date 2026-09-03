@@ -923,6 +923,88 @@ void main() {
   );
 
   test(
+    'the device that raised a conflict keeps reporting it instead of only '
+    'flashing an error',
+    () async {
+      final conflictService = _ConflictingLibraryBackupService();
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: conflictService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      await controller.exportNow();
+
+      // A conflict does not clear itself. Reporting it only through the
+      // transient backup message left the teacher with an error that looked
+      // like a failed upload, and nothing pointing at the resolution screen.
+      expect(controller.hasPendingSyncConflict, isTrue);
+      expect(controller.webDavSyncStatus, WebDavSyncStatus.conflict);
+      expect(controller.pendingConflictDeviceName, 'Other Device');
+    },
+  );
+
+  test(
+    'the other device sees a conflict even though the canonical backup is '
+    'still its own',
+    () async {
+      final parkedService = _ParkedConflictLibraryBackupService();
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: parkedService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoImportEnabled(true);
+
+      await controller.refreshWebDavSyncStatus();
+
+      // The canonical backup is old and unchanged, so every timestamp
+      // comparison says "up to date" — the newer work is in the conflict
+      // copy, which only this lookup can see.
+      expect(parkedService.conflictLookups, greaterThan(0));
+      expect(controller.webDavSyncStatus, WebDavSyncStatus.conflict);
+      expect(controller.hasPendingSyncConflict, isTrue);
+      expect(controller.pendingConflictDeviceName, 'Other Device');
+      expect(
+        controller.hasPendingAutoImport,
+        isFalse,
+        reason: 'a conflict needs resolving, not a blind import of one side',
+      );
+    },
+  );
+
+  test(
     'a failed keep-this-device resolution reports the failure and does not '
     'leave the remote revision adopted',
     () async {
@@ -1525,6 +1607,61 @@ class _ConflictingLibraryBackupService extends LibraryBackupService {
     throw const WebDavSyncConflictException(
       message: 'Another device changed this library.',
       conflictingDeviceName: 'Other Device',
+      conflictRemotePath: '/test_CONFLICT_device-a.classi-backup',
+      canonicalRevision: 'server-revision',
     );
   }
+
+  // A conflicting export leaves the copy on the server, so the sync-status
+  // check that runs straight afterwards finds it there.
+  @override
+  Future<List<String>?> listConflictCopyNames({
+    required webdav.Client client,
+    required String serverPath,
+    required String libraryName,
+  }) async => ['${libraryName}_CONFLICT_device-a$classiBackupExtension'];
+
+  @override
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) async => const WebDavBackupDeviceInfo(
+    deviceId: 'device-a',
+    deviceName: 'Other Device',
+  );
+}
+
+/// A server where another device has already parked its changes in a
+/// `_CONFLICT_` copy, but the canonical backup is untouched and older than
+/// this device's own last export — the situation in which this device would
+/// otherwise report itself up to date.
+class _ParkedConflictLibraryBackupService extends LibraryBackupService {
+  int conflictLookups = 0;
+
+  @override
+  Future<List<String>?> listConflictCopyNames({
+    required webdav.Client client,
+    required String serverPath,
+    required String libraryName,
+  }) async {
+    conflictLookups++;
+    return ['${libraryName}_CONFLICT_other-device$classiBackupExtension'];
+  }
+
+  @override
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async => DateTime.utc(2020);
+
+  @override
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) async => const WebDavBackupDeviceInfo(
+    deviceId: 'other-device',
+    deviceName: 'Other Device',
+    revision: 'revision-1',
+  );
 }

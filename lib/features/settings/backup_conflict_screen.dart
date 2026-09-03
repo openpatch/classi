@@ -108,6 +108,13 @@ class _BackupConflictScreenState extends ConsumerState<BackupConflictScreen> {
           );
       if (!mounted) return;
       if (errorCode == null) {
+        // The canonical backup now carries this device's content, so the
+        // copy is reconciled: archive it out of the conflict namespace or
+        // every device keeps reporting the conflict.
+        await ref
+            .read(appSessionProvider)
+            .markConflictResolved(conflictFileName: widget.conflict.fileName);
+        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('conflict_resolved'.tr())));
@@ -143,6 +150,13 @@ class _BackupConflictScreenState extends ConsumerState<BackupConflictScreen> {
       );
       if (!mounted) return;
       if (errorCode == null) {
+        // This device took the server's side. The copy still holds the local
+        // changes that lost, so it is archived rather than deleted — but it
+        // is no longer an open conflict.
+        await session.markConflictResolved(
+          conflictFileName: widget.conflict.fileName,
+        );
+        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('backup_restored'.tr())));

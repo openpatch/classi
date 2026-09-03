@@ -56,6 +56,11 @@ enum WebDavSyncStatus {
   checking('webdav_sync_checking'),
   current('webdav_sync_current'),
   behind('webdav_sync_behind'),
+
+  /// This device's changes are parked in a `_CONFLICT_` copy on the server
+  /// because another device had moved the canonical backup on. Sticks until
+  /// the user resolves it — see [AppSessionController.pendingConflict].
+  conflict('webdav_sync_conflict'),
   offline('webdav_sync_offline');
 
   const WebDavSyncStatus(this.translationKey);
@@ -134,6 +139,8 @@ class AppSessionController extends ChangeNotifier {
   bool _pendingWebDavImport = false;
   DateTime? _pendingImportRemoteModifiedAt;
   String? _pendingImportDeviceName;
+  bool _hasPendingSyncConflict = false;
+  String? _pendingConflictDeviceName;
   DateTime? _lastExportedAt;
   DateTime? _lastImportedAt;
   String? _lastKnownRevision;
@@ -184,6 +191,17 @@ class AppSessionController extends ChangeNotifier {
   /// The device that uploaded the pending remote backup, or `null` when no
   /// import is pending or the uploading device could not be determined.
   String? get pendingImportDeviceName => _pendingImportDeviceName;
+
+  /// Whether this library has an unresolved sync conflict on the server.
+  ///
+  /// True on *both* sides of a conflict: the device that parked its changes
+  /// in the `_CONFLICT_` copy, and any other device that finds that copy
+  /// while checking sync status. A conflict never clears itself, so this
+  /// stays set until the user picks a side in `BackupConflictScreen`.
+  bool get hasPendingSyncConflict => _hasPendingSyncConflict;
+
+  /// The device holding the other side of the pending conflict, if known.
+  String? get pendingConflictDeviceName => _pendingConflictDeviceName;
 
   DateTime? get lastExportedAt => _lastExportedAt;
   DateTime? get lastImportedAt => _lastImportedAt;
@@ -1034,6 +1052,49 @@ class AppSessionController extends ChangeNotifier {
     );
   }
 
+  /// The unresolved conflict for the library currently open, or `null` if
+  /// there is none (or the server cannot be reached).
+  ///
+  /// Fetches the full backup listing, so call it when opening the resolution
+  /// screen rather than on every sync check — [hasPendingSyncConflict] is the
+  /// cheap signal.
+  Future<({WebDavBackupEntry canonical, WebDavBackupEntry conflict})?>
+  pendingConflict() async {
+    if (!isWebDavConfigured) return null;
+    final currentDatabasePath = await _databasePathService
+        .getCurrentDatabasePath();
+    final libraryName = LibraryBackupService.libraryNameForBackupFile(
+      LibraryBackupService.backupFileNameForDatabasePath(currentDatabasePath),
+    );
+    final backups = await listWebDavBackups();
+    final pairs = LibraryBackupService.pendingConflictPairs(
+      backups,
+      libraryName: libraryName,
+    );
+    return pairs.isEmpty ? null : pairs.first;
+  }
+
+  /// Marks a conflict copy as reconciled once the user has picked a side.
+  ///
+  /// The copy is archived rather than deleted — it may hold the only record
+  /// of the side that lost — but it stops counting as an open conflict, so
+  /// every device stops reporting one.
+  Future<void> markConflictResolved({required String conflictFileName}) async {
+    final client = await createWebDavClient();
+    if (client != null) {
+      await _libraryBackupService.archiveResolvedConflictCopy(
+        client: client,
+        serverPath: _webDavServerPath ?? '/',
+        conflictFileName: conflictFileName,
+      );
+    }
+    _clearPendingConflictState();
+    if (_webDavSyncStatus == WebDavSyncStatus.conflict) {
+      _webDavSyncStatus = WebDavSyncStatus.current;
+    }
+    notifyListeners();
+  }
+
   Future<String?> restoreWebDavBackup({
     required String remotePath,
     required String destinationPath,
@@ -1464,6 +1525,14 @@ class AppSessionController extends ChangeNotifier {
         'WebDAV export conflict: ${error.message}',
         name: 'classi.backup',
       );
+      // Do NOT adopt the remote revision here: this device has not seen the
+      // other side's changes, so the next export must conflict again rather
+      // than silently overwrite them. What must not repeat is the *upload* —
+      // the conflict copy is keyed on this device, so each attempt refreshes
+      // the one file instead of leaving another behind.
+      _hasPendingSyncConflict = true;
+      _pendingConflictDeviceName = error.conflictingDeviceName;
+      _webDavSyncStatus = WebDavSyncStatus.conflict;
       _setBackupMessage('backup_export_conflict', isError: true);
     } on WebDavSyncBusyException catch (error) {
       developer.log(
@@ -1481,19 +1550,22 @@ class AppSessionController extends ChangeNotifier {
     }
   }
 
+  void _clearPendingImportState() {
+    _pendingWebDavImport = false;
+    _pendingImportRemoteModifiedAt = null;
+    _pendingImportDeviceName = null;
+  }
+
+  void _clearPendingConflictState() {
+    _hasPendingSyncConflict = false;
+    _pendingConflictDeviceName = null;
+  }
+
   Future<void> _updatePendingAutoImportAvailability() async {
     if (!isWebDavConfigured) {
       _webDavSyncStatus = WebDavSyncStatus.notConfigured;
-      _pendingWebDavImport = false;
-      _pendingImportRemoteModifiedAt = null;
-      _pendingImportDeviceName = null;
-      return;
-    }
-    if (!_webDavAutoImportEnabled) {
-      _webDavSyncStatus = WebDavSyncStatus.disabled;
-      _pendingWebDavImport = false;
-      _pendingImportRemoteModifiedAt = null;
-      _pendingImportDeviceName = null;
+      _clearPendingImportState();
+      _clearPendingConflictState();
       return;
     }
 
@@ -1502,9 +1574,8 @@ class AppSessionController extends ChangeNotifier {
     final client = await createWebDavClient();
     if (client == null) {
       _webDavSyncStatus = WebDavSyncStatus.notConfigured;
-      _pendingWebDavImport = false;
-      _pendingImportRemoteModifiedAt = null;
-      _pendingImportDeviceName = null;
+      _clearPendingImportState();
+      _clearPendingConflictState();
       return;
     }
 
@@ -1514,6 +1585,49 @@ class AppSessionController extends ChangeNotifier {
       final backupFileName = LibraryBackupService.backupFileNameForDatabasePath(
         currentDatabasePath,
       );
+
+      // A conflict outranks everything else here, and is checked before the
+      // auto-import setting is consulted: it is about this device's own
+      // uploads, not about whether it pulls other devices' changes
+      // automatically, so switching auto-import off must not hide one.
+      //
+      // It is also the one state that never clears on its own, and the
+      // device that did *not* raise it can only learn about it this way:
+      // the conflicting changes live in a separate file, so the canonical
+      // backup below still looks untouched and would otherwise report
+      // "up to date" while newer work sits unmerged next to it.
+      final conflictNames = await _libraryBackupService.listConflictCopyNames(
+        client: client,
+        serverPath: _webDavServerPath ?? '/',
+        libraryName: LibraryBackupService.libraryNameForBackupFile(
+          backupFileName,
+        ),
+      );
+      if (conflictNames != null && conflictNames.isNotEmpty) {
+        _webDavSyncStatus = WebDavSyncStatus.conflict;
+        _hasPendingSyncConflict = true;
+        _clearPendingImportState();
+        final conflictInfo = await _libraryBackupService
+            .getRemoteBackupDeviceInfo(
+              client: client,
+              remotePath: LibraryBackupService.joinServerPath(
+                _webDavServerPath ?? '/',
+                conflictNames.last,
+              ),
+            );
+        _pendingConflictDeviceName = conflictInfo.deviceName;
+        return;
+      }
+      // Only a listing that actually came back clears the flag; a failed one
+      // leaves whatever this device already knows in place.
+      if (conflictNames != null) _clearPendingConflictState();
+
+      if (!_webDavAutoImportEnabled) {
+        _webDavSyncStatus = WebDavSyncStatus.disabled;
+        _clearPendingImportState();
+        return;
+      }
+
       final backupModified = await _libraryBackupService
           .getRemoteBackupModifiedAt(
             client: client,
@@ -1599,9 +1713,7 @@ class AppSessionController extends ChangeNotifier {
         stackTrace: stackTrace,
       );
       _webDavSyncStatus = WebDavSyncStatus.offline;
-      _pendingWebDavImport = false;
-      _pendingImportRemoteModifiedAt = null;
-      _pendingImportDeviceName = null;
+      _clearPendingImportState();
     }
   }
 

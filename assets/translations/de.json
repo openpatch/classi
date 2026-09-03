@@ -498,6 +498,7 @@
   "webdav_settings": "Verbinde einen WebDAV-Server für automatische Backups und Wiederherstellung. Speichere die Einstellungen, um die Automatik-Schalter zu aktivieren.",
   "webdav_sync_behind": "Ein neueres WebDAV-Backup ist verfügbar.",
   "webdav_sync_check_now": "WebDAV-Status prüfen",
+  "webdav_sync_conflict": "Sync-Konflikt — zwei Geräte haben diese Bibliothek geändert. Zum Lösen tippen.",
   "webdav_sync_checking": "WebDAV-Backup-Status wird geprüft…",
   "webdav_sync_current": "Deine lokale Bibliothek ist mit WebDAV aktuell.",
   "webdav_sync_disabled": "Die automatische WebDAV-Wiederherstellung ist deaktiviert.",
