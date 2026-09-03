@@ -820,31 +820,10 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
   /// Pairs each conflict copy with its canonical counterpart, newest
   /// conflict per library only (older conflict copies for the same library
   /// are superseded once the newest one is resolved).
-  List<(WebDavBackupEntry canonical, WebDavBackupEntry conflict)>
-  get _pendingConflicts {
-    final backups = _backups;
-    if (backups == null) return const [];
-
-    final seenLibraries = <String>{};
-    final pairs = <(WebDavBackupEntry, WebDavBackupEntry)>[];
-    for (final entry in backups) {
-      if (!entry.isConflict || !seenLibraries.add(entry.libraryName)) {
-        continue;
-      }
-      final canonicalFileName = '${entry.libraryName}$classiBackupExtension';
-      WebDavBackupEntry? canonical;
-      for (final candidate in backups) {
-        if (!candidate.isConflict && candidate.fileName == canonicalFileName) {
-          canonical = candidate;
-          break;
-        }
-      }
-      if (canonical != null) {
-        pairs.add((canonical, entry));
-      }
-    }
-    return pairs;
-  }
+  List<({WebDavBackupEntry canonical, WebDavBackupEntry conflict})>
+  get _pendingConflicts => LibraryBackupService.pendingConflictPairs(
+    _backups ?? const <WebDavBackupEntry>[],
+  );
 
   Future<void> _resolveConflict(
     WebDavBackupEntry canonical,
@@ -1093,9 +1072,9 @@ class _BackupsSectionState extends ConsumerState<_BackupsSection> {
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 12),
-          for (final (canonical, conflict) in _pendingConflicts) ...[
+          for (final pair in _pendingConflicts) ...[
             _ConflictBanner(
-              onResolve: () => _resolveConflict(canonical, conflict),
+              onResolve: () => _resolveConflict(pair.canonical, pair.conflict),
             ),
             const SizedBox(height: 12),
           ],

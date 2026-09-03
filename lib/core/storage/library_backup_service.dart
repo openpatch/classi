@@ -45,6 +45,8 @@ class WebDavSyncConflictException implements Exception {
   const WebDavSyncConflictException({
     required this.message,
     this.conflictingDeviceName,
+    this.conflictRemotePath,
+    this.canonicalRevision,
   });
 
   final String message;
@@ -52,6 +54,15 @@ class WebDavSyncConflictException implements Exception {
   /// The device that produced the remote revision this export conflicts
   /// with, if known.
   final String? conflictingDeviceName;
+
+  /// Where this device's own changes were parked, so callers can point the
+  /// user straight at the conflict instead of making them hunt for it in
+  /// the backup list.
+  final String? conflictRemotePath;
+
+  /// The canonical revision this export lost to. Resolving the conflict in
+  /// favour of this device means adopting this token first.
+  final String? canonicalRevision;
 
   @override
   String toString() => 'WebDavSyncConflictException: $message';
@@ -89,9 +100,7 @@ class WebDavBackupEntry {
   /// Whether this is a `_CONFLICT_` copy uploaded when a device's export
   /// found the canonical backup had moved on to a revision it never saw.
   bool get isConflict =>
-      LibraryBackupService._conflictTimestampPattern.hasMatch(
-        p.basenameWithoutExtension(fileName),
-      );
+      LibraryBackupService.isConflictBackupFileName(fileName);
 }
 
 /// Metadata read from a backup's `.meta.json` sidecar: which device
@@ -313,8 +322,14 @@ class LibraryBackupService {
           parentRevision: parentRevision,
         );
         final stem = p.basenameWithoutExtension(canonicalName);
+        // Key the conflict copy on the device rather than the moment it was
+        // made. A conflict does not clear itself — every sync until the user
+        // resolves it lands here again — so a timestamped name would leave a
+        // new file behind on each attempt. One file per device instead, which
+        // later syncs overwrite with the current local state.
+        final conflictToken = deviceId ?? _timestampStamp(exportedAt);
         final conflictName =
-            '${stem}_CONFLICT_${_timestampStamp(exportedAt)}$classiBackupExtension';
+            '${stem}_CONFLICT_$conflictToken$classiBackupExtension';
         final conflictPath = _joinServerPath(serverPath, conflictName);
         developer.log(
           'exportBackupToWebDav: conflict detected, uploading as $conflictName',
@@ -336,6 +351,8 @@ class LibraryBackupService {
               'synced. Saved local changes as a separate copy instead of '
               'overwriting the newer backup.',
           conflictingDeviceName: existingRemote.deviceName,
+          conflictRemotePath: conflictPath,
+          canonicalRevision: remoteRevision,
         );
       }
 
@@ -446,7 +463,10 @@ class LibraryBackupService {
       final archived = files
           .where((f) {
             final name = f.name ?? p.basename(f.path ?? '');
+            // `_CONFLICT_` copies share the `<stem>_` prefix but are not
+            // superseded history — they hold changes no other backup has.
             return name.startsWith('${stem}_') &&
+                !isConflictBackupFileName(name) &&
                 name.toLowerCase().endsWith(classiBackupExtension);
           })
           .toList();
@@ -595,6 +615,113 @@ class LibraryBackupService {
     return backups;
   }
 
+  /// Names of the unresolved `_CONFLICT_` copies for [libraryName] in
+  /// [serverPath], newest-name-last, or `null` if the listing could not be
+  /// performed.
+  ///
+  /// The `null` matters: an unreachable server must not read as "no
+  /// conflicts", or going offline would clear a conflict the user still has
+  /// to resolve.
+  ///
+  /// Deliberately lighter than [listRemoteBackups]: it reads the directory
+  /// and nothing else, so the sync-status check can ask "is there a conflict
+  /// here?" on every pass without a sidecar fetch per backup.
+  Future<List<String>?> listConflictCopyNames({
+    required webdav.Client client,
+    required String serverPath,
+    required String libraryName,
+  }) async {
+    try {
+      final files = await client.readDir(serverPath);
+      final conflicts = <String>[
+        for (final file in files)
+          if (file.isDir != true)
+            if (_conflictCopyNameFor(file, libraryName) case final String name)
+              name,
+      ]..sort();
+      return conflicts;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String? _conflictCopyNameFor(webdav.File file, String libraryName) {
+    final name = file.name ?? p.basename(file.path ?? '');
+    if (name.isEmpty ||
+        !isBackupFilePath(name) ||
+        !isConflictBackupFileName(name) ||
+        libraryNameForBackupFile(name) != libraryName) {
+      return null;
+    }
+    return name;
+  }
+
+  /// Moves a resolved `_CONFLICT_` copy out of the conflict namespace by
+  /// renaming it to an ordinary archived version.
+  ///
+  /// Resolving a conflict must not delete either side — the copy holds
+  /// changes the user may still want — but leaving it named `_CONFLICT_`
+  /// would keep every device reporting the conflict forever. Archiving it
+  /// keeps it restorable from the backup list while clearing the flag.
+  ///
+  /// Best-effort: a failure here leaves the conflict flagged, which is the
+  /// safe direction.
+  Future<void> archiveResolvedConflictCopy({
+    required webdav.Client client,
+    required String serverPath,
+    required String conflictFileName,
+    DateTime? resolvedAt,
+  }) async {
+    try {
+      final libraryName = libraryNameForBackupFile(conflictFileName);
+      final stamp = _timestampStamp(resolvedAt ?? DateTime.now().toUtc());
+      final archivedName = '${libraryName}_$stamp$classiBackupExtension';
+      final conflictPath = _joinServerPath(serverPath, conflictFileName);
+      final archivedPath = _joinServerPath(serverPath, archivedName);
+      developer.log(
+        'archiveResolvedConflictCopy: $conflictFileName → $archivedName',
+        name: 'classi.backup',
+      );
+      await client.rename(conflictPath, archivedPath, true);
+      await _renameMetaSidecar(
+        client: client,
+        fromBackupPath: conflictPath,
+        toBackupPath: archivedPath,
+      );
+    } catch (_) {
+      // Leaving the conflict in place is the safe failure.
+    }
+  }
+
+  /// Pairs each unresolved `_CONFLICT_` copy in [backups] with the canonical
+  /// backup of the same library.
+  ///
+  /// Only the newest conflict per library is returned — older ones are
+  /// superseded snapshots of the same device's local state. [backups] is
+  /// expected newest-first, as [listRemoteBackups] returns it.
+  ///
+  /// Pass [libraryName] to narrow the result to a single library.
+  static List<({WebDavBackupEntry canonical, WebDavBackupEntry conflict})>
+  pendingConflictPairs(List<WebDavBackupEntry> backups, {String? libraryName}) {
+    final seenLibraries = <String>{};
+    final pairs =
+        <({WebDavBackupEntry canonical, WebDavBackupEntry conflict})>[];
+    for (final entry in backups) {
+      if (!entry.isConflict) continue;
+      if (libraryName != null && entry.libraryName != libraryName) continue;
+      if (!seenLibraries.add(entry.libraryName)) continue;
+
+      final canonicalFileName = '${entry.libraryName}$classiBackupExtension';
+      for (final candidate in backups) {
+        if (!candidate.isConflict && candidate.fileName == canonicalFileName) {
+          pairs.add((canonical: candidate, conflict: entry));
+          break;
+        }
+      }
+    }
+    return pairs;
+  }
+
   /// Builds the full remote path for a backup from [serverPath] and [databasePath].
   static String remoteBackupPath(String serverPath, String databasePath) =>
       _joinServerPath(serverPath, backupFileNameForDatabasePath(databasePath));
@@ -602,20 +729,34 @@ class LibraryBackupService {
   static String backupFileNameForDatabasePath(String databasePath) =>
       '${_libraryNameForPath(databasePath)}$classiBackupExtension';
 
-  /// Matches the `_CONFLICT_<timestamp>` suffix appended to the canonical
-  /// library name for conflict copies, e.g. `MyClass_CONFLICT_20260507T080000Z`.
-  static final RegExp _conflictTimestampPattern = RegExp(
-    r'_CONFLICT_\d{8}T\d{6}Z$',
+  /// Matches the `_CONFLICT_<token>` suffix appended to the canonical
+  /// library name for conflict copies.
+  ///
+  /// The token is the uploading device's id
+  /// (`MyClass_CONFLICT_a1b2c3d4e5f60718`) so a device parks its unresolved
+  /// changes in one stable file instead of a new one per sync. Backups
+  /// written before that also match, where the token was a timestamp
+  /// (`MyClass_CONFLICT_20260507T080000Z`).
+  static final RegExp _conflictSuffixPattern = RegExp(
+    r'_CONFLICT_[A-Za-z0-9-]+$',
   );
+
+  /// Whether [fileName] names a `_CONFLICT_` copy rather than a canonical or
+  /// archived backup.
+  static bool isConflictBackupFileName(String fileName) =>
+      _conflictSuffixPattern.hasMatch(p.basenameWithoutExtension(fileName));
 
   /// Matches the `_<timestamp>` suffix appended to the canonical library name
   /// for archived copies, e.g. `MyClass_20260506T143200Z`.
-  static final RegExp _archivedTimestampPattern = RegExp(r'_\d{8}T\d{6}Z$');
+  ///
+  /// The trailing `Z` is optional: it was missing from names written by
+  /// earlier versions, and those files are still on people's servers.
+  static final RegExp _archivedTimestampPattern = RegExp(r'_\d{8}T\d{6}Z?$');
 
   static String libraryNameForBackupFile(String backupFilePath) {
     final stem = _libraryNameForPath(backupFilePath);
     final withoutConflictSuffix = stem.replaceFirst(
-      _conflictTimestampPattern,
+      _conflictSuffixPattern,
       '',
     );
     if (withoutConflictSuffix != stem) {
@@ -627,10 +768,14 @@ class LibraryBackupService {
   static bool isBackupFilePath(String path) =>
       p.basename(path).toLowerCase().endsWith(classiBackupExtension);
 
-  static String _joinServerPath(String dir, String fileName) {
+  /// Joins a WebDAV directory path and a file name into a full remote path.
+  static String joinServerPath(String dir, String fileName) {
     final normalized = dir.endsWith('/') ? dir : '$dir/';
     return '$normalized$fileName';
   }
+
+  static String _joinServerPath(String dir, String fileName) =>
+      joinServerPath(dir, fileName);
 
   static String _libraryNameForPath(String path) =>
       p.basenameWithoutExtension(p.normalize(path));
@@ -639,13 +784,10 @@ class LibraryBackupService {
 
   /// Formats [dt] as the compact UTC timestamp used in archived/conflict
   /// backup file names, e.g. `20260507T080000Z`.
-  static String _timestampStamp(DateTime dt) => dt
-      .toUtc()
-      .toIso8601String()
-      .replaceAll(':', '')
-      .replaceAll('-', '')
-      .split('.')
-      .first;
+  static String _timestampStamp(DateTime dt) {
+    final iso = dt.toUtc().toIso8601String();
+    return '${iso.replaceAll(':', '').replaceAll('-', '').split('.').first}Z';
+  }
 
   /// Uploads the attribution/revision sidecar for [backupPath]. Best-effort:
   /// this metadata is for display and conflict detection, so a failure here

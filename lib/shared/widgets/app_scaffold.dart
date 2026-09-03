@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers/app_providers.dart';
 import '../../features/school_years/school_year_switcher.dart';
+import '../../features/settings/backup_conflict_screen.dart';
 import 'library_health_banner.dart';
 
 class AppScaffold extends ConsumerWidget {
@@ -228,6 +229,11 @@ class _BackupStatusIndicator extends ConsumerWidget {
         session.lastBackupMessageIsError &&
         _exportErrorCodes.contains(session.lastBackupMessageCode);
 
+    // A conflict is the one state tapping "export now" cannot clear — it
+    // just conflicts again — so it gets its own affordance that opens the
+    // resolution screen instead.
+    final hasConflict = session.hasPendingSyncConflict;
+
     final IconData icon;
     final String labelKey;
     final Color color;
@@ -235,6 +241,10 @@ class _BackupStatusIndicator extends ConsumerWidget {
       icon = Icons.cloud_sync_outlined;
       labelKey = 'exporting_backup';
       color = colorScheme.onSurfaceVariant;
+    } else if (hasConflict) {
+      icon = Icons.sync_problem_outlined;
+      labelKey = 'webdav_sync_conflict';
+      color = colorScheme.error;
     } else if (hasExportError) {
       icon = Icons.cloud_off_outlined;
       labelKey = session.lastBackupMessageCode!;
@@ -256,9 +266,16 @@ class _BackupStatusIndicator extends ConsumerWidget {
           )
         : Icon(icon, color: color);
 
+    void Function()? onTap;
+    if (!isExporting) {
+      onTap = hasConflict
+          ? () => _resolveConflict(context, ref)
+          : () => _exportNow(context, ref);
+    }
+
     if (dense) {
       return IconButton(
-        onPressed: isExporting ? null : () => _exportNow(context, ref),
+        onPressed: onTap,
         tooltip: labelKey.tr(),
         icon: iconWidget,
       );
@@ -267,7 +284,7 @@ class _BackupStatusIndicator extends ConsumerWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: isExporting ? null : () => _exportNow(context, ref),
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
@@ -285,6 +302,27 @@ class _BackupStatusIndicator extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _resolveConflict(BuildContext context, WidgetRef ref) async {
+    final session = ref.read(appSessionProvider);
+    final pair = await session.pendingConflict();
+    if (!context.mounted) return;
+    if (pair == null) {
+      // Resolved elsewhere in the meantime, or the server is unreachable.
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('conflict_resolved'.tr())));
+      return;
+    }
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => BackupConflictScreen(
+          canonical: pair.canonical,
+          conflict: pair.conflict,
         ),
       ),
     );
