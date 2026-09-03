@@ -1,0 +1,5 @@
+Bug Fixes
+
+- Finish resolving a conflict after the restore locks the session
+
+
