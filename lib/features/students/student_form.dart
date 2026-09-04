@@ -227,6 +227,7 @@ class _StudentFormSheetState extends ConsumerState<_StudentFormSheet> {
         ? null
         : _originNoteController.text.trim(),
     createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
     avatarJson: _avatarJson,
   );
 

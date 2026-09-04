@@ -13,6 +13,7 @@ StudentRelation _relation({
     studentBId: studentBId,
     isPositive: isPositive,
     createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
   );
 }
 

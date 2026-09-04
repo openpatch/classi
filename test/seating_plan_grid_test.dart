@@ -459,5 +459,6 @@ Student _student({
     lastName: lastName,
     groupId: 1,
     createdAt: DateTime(2024),
+    updatedAt: DateTime(2024),
   );
 }

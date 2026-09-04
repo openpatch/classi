@@ -13,4 +13,9 @@ class MaterialLogsTable extends Table {
   BoolColumn get hadMaterial => boolean().withDefault(const Constant(true))();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// When this row was last modified. Used by the three-way sync merge to
+  /// resolve concurrent edits to the same row (last-write-wins per row).
+  DateTimeColumn get updatedAt =>
+      dateTime().withDefault(currentDateAndTime)();
 }

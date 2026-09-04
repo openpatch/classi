@@ -22,4 +22,9 @@ class ListsTable extends Table {
   /// removed. `null` for lists nobody has touched since the column existed,
   /// which sort as if they were last used when they were made.
   DateTimeColumn get touchedAt => dateTime().nullable()();
+
+  /// When this row was last modified. Used by the three-way sync merge to
+  /// resolve concurrent edits to the same row (last-write-wins per row).
+  DateTimeColumn get updatedAt =>
+      dateTime().withDefault(currentDateAndTime)();
 }

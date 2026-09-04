@@ -20,6 +20,15 @@ import '../sync/device_identity_service.dart';
 
 enum AppSessionStatus { loading, needsSetup, locked, ready, error }
 
+/// Default backoff schedule for sync retries after a transient export
+/// failure (busy lock or network error).
+const List<Duration> _defaultSyncRetryDelays = [
+  Duration(seconds: 5),
+  Duration(seconds: 15),
+  Duration(seconds: 60),
+  Duration(minutes: 5),
+];
+
 enum AppSessionErrorCode {
   generic('generic_error'),
   errorLoadingDatabase('error_loading_database'),
@@ -78,6 +87,7 @@ class AppSessionController extends ChangeNotifier {
     required BiometricService biometricService,
     DeviceIdentityService? deviceIdentityService,
     Duration periodicExportInterval = const Duration(minutes: 10),
+    List<Duration> syncRetryDelays = _defaultSyncRetryDelays,
   }) : _keyService = keyService,
        _databasePathService = databasePathService,
        _securityPreferencesService = securityPreferencesService,
@@ -85,7 +95,8 @@ class AppSessionController extends ChangeNotifier {
        _libraryBackupService = libraryBackupService,
        _biometricService = biometricService,
        _deviceIdentityService = deviceIdentityService ?? DeviceIdentityService(),
-       _periodicExportInterval = periodicExportInterval;
+       _periodicExportInterval = periodicExportInterval,
+       _syncRetryDelays = syncRetryDelays;
 
   final KeyService _keyService;
   final DatabasePathService _databasePathService;
@@ -127,7 +138,10 @@ class AppSessionController extends ChangeNotifier {
   /// the WebDAV backup can get even when a background export never
   /// completes.
   final Duration _periodicExportInterval;
+  final List<Duration> _syncRetryDelays;
   Timer? _periodicExportTimer;
+  Timer? _syncRetryTimer;
+  int _syncRetryAttempt = 0;
   String? _currentPassphrase;
   String? _pendingRecoveryKey;
   bool _webDavAutoExportEnabled = false;
@@ -139,6 +153,7 @@ class AppSessionController extends ChangeNotifier {
   bool _pendingWebDavImport = false;
   DateTime? _pendingImportRemoteModifiedAt;
   String? _pendingImportDeviceName;
+  String? _pendingImportRemoteRevision;
   bool _hasPendingSyncConflict = false;
   String? _pendingConflictDeviceName;
   DateTime? _lastExportedAt;
@@ -828,6 +843,7 @@ class AppSessionController extends ChangeNotifier {
     await _libraryBackupPreferencesService.setWebDavUrl(_webDavUrl);
     if (_webDavUrl == null) {
       _cancelPeriodicExportTimer();
+      _cancelSyncRetry();
     } else {
       _startPeriodicExportTimerIfNeeded();
     }
@@ -868,6 +884,7 @@ class AppSessionController extends ChangeNotifier {
       _startPeriodicExportTimerIfNeeded();
     } else {
       _cancelPeriodicExportTimer();
+      _cancelSyncRetry();
     }
     notifyListeners();
   }
@@ -915,8 +932,15 @@ class AppSessionController extends ChangeNotifier {
     await _libraryBackupPreferencesService.setPendingImportDismissedAt(
       remoteModifiedAt,
     );
+    final remoteRevision = _pendingImportRemoteRevision;
+    if (remoteRevision != null) {
+      await _libraryBackupPreferencesService.setPendingImportDismissedRevision(
+        remoteRevision,
+      );
+    }
     _pendingWebDavImport = false;
     _pendingImportRemoteModifiedAt = null;
+    _pendingImportRemoteRevision = null;
     notifyListeners();
   }
 
@@ -1324,6 +1348,7 @@ class AppSessionController extends ChangeNotifier {
     _cancelInactivityTimer();
     _cancelBackgroundLockGrace();
     _cancelPeriodicExportTimer();
+    _cancelSyncRetry();
     final database = _database;
     _database = null;
     _currentPassphrase = null;
@@ -1548,10 +1573,18 @@ class AppSessionController extends ChangeNotifier {
         await _libraryBackupPreferencesService.setLastKnownRevision(
           _lastKnownRevision,
         );
+        // Suppress the pending-import prompt for the backup we just uploaded.
+        // The revision check would catch this anyway (remoteRevision will match
+        // lastKnownRevision), but the mTime-based fallback for pre-revision
+        // backups also needs the dismiss record.
+        await _libraryBackupPreferencesService.setPendingImportDismissedRevision(
+          uploadedInfo.revision,
+        );
       }
 
       developer.log('WebDAV export succeeded', name: 'classi.backup');
       _setBackupMessage('backup_exported');
+      _cancelSyncRetry();
     } on WebDavSyncConflictException catch (error) {
       developer.log(
         'WebDAV export conflict: ${error.message}',
@@ -1566,12 +1599,15 @@ class AppSessionController extends ChangeNotifier {
       _pendingConflictDeviceName = error.conflictingDeviceName;
       _webDavSyncStatus = WebDavSyncStatus.conflict;
       _setBackupMessage('backup_export_conflict', isError: true);
+      // A conflict is not transient — it needs the user to pick a side.
+      _cancelSyncRetry();
     } on WebDavSyncBusyException catch (error) {
       developer.log(
         'WebDAV export skipped: ${error.message}',
         name: 'classi.backup',
       );
       _setBackupMessage('backup_export_busy', isError: true);
+      _scheduleSyncRetry();
     } catch (error, stackTrace) {
       _logUnexpectedError(
         operation: 'run auto WebDAV export',
@@ -1579,13 +1615,65 @@ class AppSessionController extends ChangeNotifier {
         stackTrace: stackTrace,
       );
       _setBackupMessage('backup_export_failed', isError: true);
+      _scheduleSyncRetry();
     }
+  }
+
+  /// Schedules a retry of the auto-export after a transient failure (busy
+  /// lock or network error). Conflicts are not retried — they need manual
+  /// resolution. The backoff grows exponentially: 5s, 15s, 60s, then 5m,
+  /// after which the periodic timer takes over.
+  void _scheduleSyncRetry() {
+    if (_disposed) return;
+    if (_status != AppSessionStatus.ready) return;
+    if (!_webDavAutoExportEnabled || !isWebDavConfigured) return;
+
+    _cancelSyncRetryTimer();
+    if (_syncRetryAttempt >= _syncRetryDelays.length) {
+      // Exhausted retries — the periodic timer will try again on its next tick.
+      developer.log(
+        'sync retry exhausted after $_syncRetryAttempt attempts',
+        name: 'classi.backup',
+      );
+      return;
+    }
+    final delay = _syncRetryDelays[_syncRetryAttempt];
+    _syncRetryAttempt++;
+    developer.log(
+      'scheduling sync retry #$_syncRetryAttempt in ${delay.inSeconds}s',
+      name: 'classi.backup',
+    );
+    _syncRetryTimer = Timer(delay, () {
+      _syncRetryTimer = null;
+      unawaited(_runSyncRetry());
+    });
+  }
+
+  Future<void> _runSyncRetry() async {
+    if (_status != AppSessionStatus.ready || _isExporting || _isBusy) return;
+    if (!_webDavAutoExportEnabled || !isWebDavConfigured) return;
+    developer.log(
+      'running sync retry #$_syncRetryAttempt',
+      name: 'classi.backup',
+    );
+    await _flushAndAutoExport();
+  }
+
+  void _cancelSyncRetry() {
+    _syncRetryAttempt = 0;
+    _cancelSyncRetryTimer();
+  }
+
+  void _cancelSyncRetryTimer() {
+    _syncRetryTimer?.cancel();
+    _syncRetryTimer = null;
   }
 
   void _clearPendingImportState() {
     _pendingWebDavImport = false;
     _pendingImportRemoteModifiedAt = null;
     _pendingImportDeviceName = null;
+    _pendingImportRemoteRevision = null;
   }
 
   void _clearPendingConflictState() {
@@ -1669,20 +1757,55 @@ class AppSessionController extends ChangeNotifier {
 
       if (backupModified == null) {
         _webDavSyncStatus = WebDavSyncStatus.current;
-        _pendingWebDavImport = false;
-        _pendingImportRemoteModifiedAt = null;
-        _pendingImportDeviceName = null;
+        _clearPendingImportState();
         return;
       }
 
-      // Check if the user already dismissed this exact remote version.
+      // Read the remote revision and device info in one sidecar fetch.
+      final remoteInfo = await _libraryBackupService.getRemoteBackupDeviceInfo(
+        client: client,
+        remotePath: LibraryBackupService.remoteBackupPath(
+          _webDavServerPath ?? '/',
+          currentDatabasePath,
+        ),
+      );
+      final remoteRevision = remoteInfo.revision;
+
+      // Prefer revision-based comparison when the remote carries a revision
+      // token. This is immune to clock skew between devices and the server,
+      // which the mTime comparison below is not. When the remote predates
+      // revision tracking (remoteRevision is null), fall back to timestamps.
+      if (remoteRevision != null) {
+        if (remoteRevision == _lastKnownRevision) {
+          _webDavSyncStatus = WebDavSyncStatus.current;
+          _clearPendingImportState();
+          return;
+        }
+        // The remote has moved on to a revision this device hasn't seen.
+        // Check whether the user already dismissed this exact revision.
+        final dismissedRevision = await _libraryBackupPreferencesService
+            .pendingImportDismissedRevision();
+        if (dismissedRevision != null &&
+            dismissedRevision == remoteRevision) {
+          _webDavSyncStatus = WebDavSyncStatus.current;
+          _clearPendingImportState();
+          return;
+        }
+        _pendingWebDavImport = true;
+        _webDavSyncStatus = WebDavSyncStatus.behind;
+        _pendingImportRemoteModifiedAt = backupModified;
+        _pendingImportDeviceName = remoteInfo.deviceName;
+        _pendingImportRemoteRevision = remoteRevision;
+        return;
+      }
+
+      // Fallback: timestamp comparison for backups that predate revision
+      // tracking.
       final dismissedAt = await _libraryBackupPreferencesService
           .pendingImportDismissedAt();
       if (dismissedAt != null && !backupModified.isAfter(dismissedAt)) {
         _webDavSyncStatus = WebDavSyncStatus.current;
-        _pendingWebDavImport = false;
-        _pendingImportRemoteModifiedAt = null;
-        _pendingImportDeviceName = null;
+        _clearPendingImportState();
         return;
       }
 
@@ -1726,18 +1849,7 @@ class AppSessionController extends ChangeNotifier {
           ? WebDavSyncStatus.behind
           : WebDavSyncStatus.current;
       _pendingImportRemoteModifiedAt = isNewer ? backupModified : null;
-      _pendingImportDeviceName = null;
-      if (isNewer) {
-        final deviceInfo = await _libraryBackupService
-            .getRemoteBackupDeviceInfo(
-              client: client,
-              remotePath: LibraryBackupService.remoteBackupPath(
-                _webDavServerPath ?? '/',
-                currentDatabasePath,
-              ),
-            );
-        _pendingImportDeviceName = deviceInfo.deviceName;
-      }
+      _pendingImportDeviceName = isNewer ? remoteInfo.deviceName : null;
     } catch (error, stackTrace) {
       _logUnexpectedError(
         operation: 'check WebDAV backup availability',
@@ -1809,6 +1921,9 @@ class AppSessionController extends ChangeNotifier {
       _lastImportedAt = importedAt;
       await _libraryBackupPreferencesService.setLastImportedAt(importedAt);
       await _libraryBackupPreferencesService.setPendingImportDismissedAt(null);
+      await _libraryBackupPreferencesService.setPendingImportDismissedRevision(
+        null,
+      );
       // Adopt the imported backup's revision as our own so the next export
       // is recognized as building on top of what we just restored, rather
       // than looking like a conflict with it.
@@ -1944,6 +2059,7 @@ class AppSessionController extends ChangeNotifier {
     _cancelInactivityTimer();
     _cancelBackgroundLockGrace();
     _cancelPeriodicExportTimer();
+    _cancelSyncRetryTimer();
     unawaited(_closeDatabase());
     super.dispose();
   }

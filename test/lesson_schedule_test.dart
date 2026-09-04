@@ -18,6 +18,7 @@ Session _session({
     periodStart: periodStart,
     periodEnd: periodEnd,
     createdAt: date,
+    updatedAt: date,
   );
 }
 

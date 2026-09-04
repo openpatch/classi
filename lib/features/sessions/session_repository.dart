@@ -407,6 +407,7 @@ class SessionRepository {
         s.period_start,
         s.period_end,
         s.created_at,
+        s.updated_at,
         (SELECT COUNT(*) FROM students_table WHERE group_id = s.group_id)
           AS total_students,
         (SELECT COUNT(*)
@@ -521,6 +522,9 @@ class SessionRepository {
       periodEnd: row.read<int>('period_end'),
       createdAt: DateTime.fromMillisecondsSinceEpoch(
         row.read<int>('created_at') * 1000,
+      ),
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(
+        row.read<int>('updated_at') * 1000,
       ),
     );
 

@@ -43,6 +43,7 @@ void main() {
             lastName: 'Hopper',
             groupId: 1,
             createdAt: DateTime(2024, 1, 1),
+            updatedAt: DateTime(2024, 1, 1),
           ),
           onSave: (avatarJson) async => saved = avatarJson,
         ),

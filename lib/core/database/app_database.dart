@@ -93,7 +93,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Exposed statically so callers can compare it against the version on disk
   /// before opening (and therefore migrating) a library.
-  static const int currentSchemaVersion = 27;
+  static const int currentSchemaVersion = 28;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -103,6 +103,7 @@ class AppDatabase extends _$AppDatabase {
     onCreate: (migrator) async {
       await migrator.createAll();
       await _createIndexes();
+      await _createUpdatedAtTriggers();
 
       // Start a fresh library off with the school year we are in, so groups
       // and timeframes have somewhere to live right away.
@@ -132,8 +133,15 @@ class AppDatabase extends _$AppDatabase {
         );
       }
       if (from < 4) {
+        // updated_at is a new column in v28; listing it here because
+        // alterTable copies all schema columns from the old table.
         // ignore: experimental_member_use
-        await migrator.alterTable(TableMigration(gradeEntriesTable));
+        await migrator.alterTable(
+          TableMigration(
+            gradeEntriesTable,
+            newColumns: [gradeEntriesTable.updatedAt],
+          ),
+        );
       }
       if (from < 5) {
         await migrator.createTable(homeworkLogsTable);
@@ -155,7 +163,16 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(studentsTable, studentsTable.seatIndex);
       }
       if (from < 11) {
-        await migrator.alterTable(TableMigration(listsTable));
+        // updated_at (v28) and touched_at (v27) are new columns that the
+        // current schema includes; alterTable copies all schema columns
+        // from the old table, so they must be listed or the copy fails.
+        // ignore: experimental_member_use
+        await migrator.alterTable(
+          TableMigration(
+            listsTable,
+            newColumns: [listsTable.updatedAt, listsTable.touchedAt],
+          ),
+        );
         await migrator.addColumn(listItemsTable, listItemsTable.studentIdsJson);
         await customStatement('''
           UPDATE list_items_table
@@ -254,11 +271,18 @@ class AppDatabase extends _$AppDatabase {
         // grew to include it so a group can hold two lessons on one day.
         // A unique key is part of the CREATE TABLE statement, so the table
         // has to be rewritten instead of just extended.
+        // updated_at is listed as a new column here because the v28 schema
+        // includes it — alterTable copies all schema columns from the old
+        // table, so it must be present or the copy fails.
         // ignore: experimental_member_use
         await migrator.alterTable(
           TableMigration(
             sessionsTable,
-            newColumns: [sessionsTable.periodStart, sessionsTable.periodEnd],
+            newColumns: [
+              sessionsTable.periodStart,
+              sessionsTable.periodEnd,
+              sessionsTable.updatedAt,
+            ],
           ),
         );
       }
@@ -286,6 +310,10 @@ class AppDatabase extends _$AppDatabase {
           await migrator.createTable(listsTable);
         }
       }
+
+      if (from < 28) {
+        await _migrateUpdatedAtColumns(migrator);
+      }
     },
   );
 
@@ -304,6 +332,123 @@ class AppDatabase extends _$AppDatabase {
       } on Object catch (error) {
         developer.log(
           'Skipped an index: $statement',
+          name: 'classi.database',
+          error: error,
+        );
+      }
+    }
+  }
+
+  /// Tables that have a `created_at` column, used to backfill `updated_at`
+  /// during the v28 migration.
+  static const List<String> _tablesWithCreatedAt = [
+    'attendance_logs_table',
+    'grade_entries_table',
+    'groups_table',
+    'homework_logs_table',
+    'lesson_slots_table',
+    'list_items_table',
+    'lists_table',
+    'material_logs_table',
+    'notes_table',
+    'school_years_table',
+    'seating_plans_table',
+    'sessions_table',
+    'student_relations_table',
+    'students_table',
+    'timeframes_table',
+  ];
+
+  /// Tables without a `created_at` column — `updated_at` is backfilled with
+  /// the current timestamp instead.
+  static const List<String> _tablesWithoutCreatedAt = [
+    'seating_plan_positions_table',
+    'timeframe_grades_table',
+  ];
+
+  /// All tables that receive an `updated_at` column and trigger.
+  static const List<String> _allUpdatedAtTables = [
+    ..._tablesWithCreatedAt,
+    ..._tablesWithoutCreatedAt,
+  ];
+
+  /// Adds `updated_at` to every table, backfills it from `created_at` (or
+  /// the current timestamp for tables without `created_at`), and creates
+  /// triggers that keep it current on every `UPDATE`.
+  ///
+  /// Each step is individually guarded so a missing or corrupted table does
+  /// not block the rest of the migration — a teacher opening their library
+  /// is more important than a perfectly consistent `updated_at`.
+  Future<void> _migrateUpdatedAtColumns(Migrator migrator) async {
+    for (final tableName in _allUpdatedAtTables) {
+      if (!await _hasTable(tableName)) continue;
+      final cols = await customSelect(
+        "PRAGMA table_info('$tableName')",
+      ).get();
+      final existing = {
+        for (final r in cols) r.data['name'] as String,
+      };
+      if (existing.contains('updated_at')) continue;
+
+      try {
+        // SQLite does not allow ALTER TABLE ADD COLUMN with a non-constant
+        // default (e.g. strftime('%s', 'now')). Use 0 as a placeholder
+        // constant default and backfill immediately below.
+        await customStatement(
+          'ALTER TABLE $tableName ADD COLUMN updated_at INTEGER '
+          'NOT NULL DEFAULT 0',
+        );
+      } on Object catch (error) {
+        developer.log(
+          'Could not add updated_at to $tableName',
+          name: 'classi.database',
+          error: error,
+        );
+        continue;
+      }
+
+      // Backfill: set updated_at to created_at where available, otherwise
+      // to the current timestamp.
+      final backfillSql = _tablesWithCreatedAt.contains(tableName)
+          ? "UPDATE $tableName SET updated_at = created_at"
+          : "UPDATE $tableName SET updated_at = "
+              "CAST(strftime('%s', 'now') AS INTEGER)";
+      try {
+        await customStatement(backfillSql);
+      } on Object catch (error) {
+        developer.log(
+          'Could not backfill updated_at on $tableName',
+          name: 'classi.database',
+          error: error,
+        );
+      }
+    }
+    await _createUpdatedAtTriggers();
+  }
+
+  /// Creates an `AFTER UPDATE` trigger for every table that sets
+  /// `updated_at` to the current Unix timestamp. SQLite's
+  /// `recursive_triggers` pragma is off by default, so the trigger's own
+  /// UPDATE does not fire it again.
+  Future<void> _createUpdatedAtTriggers() async {
+    for (final tableName in _allUpdatedAtTables) {
+      if (!await _hasTable(tableName)) continue;
+      final triggerName = '${tableName}_updated_at_trigger';
+      final sql = '''
+        CREATE TRIGGER IF NOT EXISTS $triggerName
+        AFTER UPDATE ON $tableName
+        FOR EACH ROW
+        BEGIN
+          UPDATE $tableName
+          SET updated_at = CAST(strftime('%s', 'now') AS INTEGER)
+          WHERE id = NEW.id;
+        END
+      ''';
+      try {
+        await customStatement(sql);
+      } on Object catch (error) {
+        developer.log(
+          'Could not create updated_at trigger for $tableName',
           name: 'classi.database',
           error: error,
         );
@@ -390,7 +535,7 @@ class AppDatabase extends _$AppDatabase {
     await migrator.alterTable(
       TableMigration(
         timeframesTable,
-        newColumns: [timeframesTable.schoolYearId],
+        newColumns: [timeframesTable.schoolYearId, timeframesTable.updatedAt],
         columnTransformer: {
           timeframesTable.schoolYearId: CustomExpression<int>(
             _schoolYearIdSql('start_date', yearIds),

@@ -8,6 +8,7 @@ SchoolYear _year() => SchoolYear(
   startDate: DateTime(2025, 8, 1),
   endDate: DateTime(2026, 7, 31),
   createdAt: DateTime(2025, 8, 1),
+  updatedAt: DateTime(2025, 8, 1),
 );
 
 Timeframe _timeframe(int id, DateTime start, DateTime end) => Timeframe(
@@ -17,6 +18,7 @@ Timeframe _timeframe(int id, DateTime start, DateTime end) => Timeframe(
   startDate: start,
   endDate: end,
   createdAt: DateTime(2025, 8, 1),
+  updatedAt: DateTime(2025, 8, 1),
 );
 
 void main() {

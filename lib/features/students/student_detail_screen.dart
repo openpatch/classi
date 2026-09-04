@@ -657,6 +657,7 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
               categoryId: 'timeframe-final',
               categoryName: 'Timeframe Final',
               createdAt: tg.timeframe.endDate,
+              updatedAt: tg.timeframe.endDate,
             );
             numericGrades.add((grade: syntheticGrade, value: parsed));
           }
