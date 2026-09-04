@@ -257,15 +257,23 @@ class GradeRepository {
     final normalizedCategoryName = categoryName.trim().isEmpty
         ? 'Sonstige Mitarbeit'
         : categoryName.trim();
-    final existing =
+    // (student, date, session, category) identifies one entry — that is what
+    // `clearSessionSelection` deletes on — but nothing in the schema enforces
+    // it and the sync merge can carry a second row across when two devices
+    // graded the same lesson. Read the whole set rather than
+    // `getSingleOrNull`, which throws on the second row, and fold any extras
+    // into the one this write keeps, as `updateEntry` already does.
+    final matches =
         await (_database.select(_database.gradeEntriesTable)
               ..where((table) => table.studentId.equals(studentId))
               ..where(
                 (table) => table.sessionLabel.equals(normalizedSessionLabel),
               )
               ..where((table) => table.categoryId.equals(normalizedCategoryId))
-              ..where((table) => table.date.equals(normalizedDate)))
-            .getSingleOrNull();
+              ..where((table) => table.date.equals(normalizedDate))
+              ..orderBy([(table) => OrderingTerm.asc(table.id)]))
+            .get();
+    final existing = matches.isEmpty ? null : matches.first;
 
     if (existing == null) {
       await _database
@@ -283,14 +291,19 @@ class GradeRepository {
       return;
     }
 
-    await (_database.update(
-      _database.gradeEntriesTable,
-    )..where((table) => table.id.equals(existing.id))).write(
-      GradeEntriesTableCompanion(
-        value: Value(normalizedValue),
-        categoryName: Value(normalizedCategoryName),
-      ),
-    );
+    await _database.transaction(() async {
+      await (_database.update(
+        _database.gradeEntriesTable,
+      )..where((table) => table.id.equals(existing.id))).write(
+        GradeEntriesTableCompanion(
+          value: Value(normalizedValue),
+          categoryName: Value(normalizedCategoryName),
+        ),
+      );
+      for (final duplicate in matches.skip(1)) {
+        await deleteEntry(duplicate.id);
+      }
+    });
   }
 
   Future<void> clearSessionSelection({

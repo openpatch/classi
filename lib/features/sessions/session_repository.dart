@@ -84,11 +84,15 @@ class SessionRepository {
     int periodStart = 0,
   }) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
+    // `limit(1)` rather than a bare `getSingleOrNull`, which throws if the
+    // sync merge ever carried a second session for the same slot across.
     return (_database.select(_database.sessionsTable)
           ..where((t) => t.groupId.equals(groupId))
           ..where((t) => t.date.equals(normalizedDate))
           ..where((t) => t.categoryId.equals(categoryId))
-          ..where((t) => t.periodStart.equals(periodStart)))
+          ..where((t) => t.periodStart.equals(periodStart))
+          ..orderBy([(t) => OrderingTerm.asc(t.id)])
+          ..limit(1))
         .getSingleOrNull();
   }
 

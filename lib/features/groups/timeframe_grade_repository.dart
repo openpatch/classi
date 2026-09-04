@@ -89,8 +89,13 @@ class TimeframeGradeRepository {
   }
 
   Future<TimeframeGrade?> getGrade(int timeframeId, int studentId) async {
+    // Nothing in the schema stops a second row for the same pair — the sync
+    // merge can carry one across — and `getSingleOrNull` would throw on it,
+    // so take the oldest deterministically instead.
     return (_database.select(_database.timeframeGradesTable)
-          ..where((t) => t.timeframeId.equals(timeframeId) & t.studentId.equals(studentId)))
+          ..where((t) => t.timeframeId.equals(timeframeId) & t.studentId.equals(studentId))
+          ..orderBy([(t) => OrderingTerm.asc(t.id)])
+          ..limit(1))
         .getSingleOrNull();
   }
 }
