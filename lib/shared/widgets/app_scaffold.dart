@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/app_providers.dart';
+import '../../core/storage/library_backup_service.dart';
 import '../../features/school_years/school_year_switcher.dart';
 import '../../features/settings/backup_conflict_screen.dart';
 import 'library_health_banner.dart';
@@ -309,10 +311,34 @@ class _BackupStatusIndicator extends ConsumerWidget {
 
   Future<void> _resolveConflict(BuildContext context, WidgetRef ref) async {
     final session = ref.read(appSessionProvider);
-    final pair = await session.pendingConflict();
+
+    final ({WebDavBackupEntry canonical, WebDavBackupEntry conflict})?
+    lookedUp;
+    try {
+      lookedUp = await session.pendingConflict();
+    } on Object catch (error, stackTrace) {
+      // A listing that never arrived says nothing about the conflict, so
+      // the indicator has to stay put. Reporting it as resolved here is how
+      // an unreachable server used to look like a fixed conflict.
+      developer.log(
+        'Could not look up the pending conflict',
+        name: 'classi.sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('webdav_sync_offline'.tr())),
+      );
+      return;
+    }
+
     if (!context.mounted) return;
+    final pair = lookedUp;
     if (pair == null) {
-      // Resolved elsewhere in the meantime, or the server is unreachable.
+      // The listing came back with nothing left to reconcile, and
+      // pendingConflict has already cleared this device's conflict state —
+      // so the indicator clears along with this message.
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('conflict_resolved'.tr())));
