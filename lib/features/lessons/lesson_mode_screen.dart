@@ -12,6 +12,7 @@ import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/quick_note_dialog.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/theme/app_ui.dart';
 import '../grades/grade_picker_dialog.dart';
@@ -711,7 +712,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       callName: student.callName,
       sortField: sortField,
     );
-    final body = await _showQuickNoteDialog(
+    final body = await showQuickNoteDialog(
       context: context,
       studentName: name,
     );
@@ -726,18 +727,6 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
           isTodo: false,
           createdAt: _selectedDate,
         );
-  }
-
-  Future<String?> _showQuickNoteDialog({
-    required BuildContext context,
-    required String studentName,
-  }) {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) =>
-          _QuickNoteDialog(studentName: studentName, controller: controller),
-    );
   }
 
   Future<void> _setMaterialValue({
@@ -877,45 +866,6 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       value: result.value!,
     );
   }
-}
-
-class _QuickNoteDialog extends StatelessWidget {
-  const _QuickNoteDialog({required this.studentName, required this.controller});
-
-  final String studentName;
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(studentName),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        minLines: 2,
-        maxLines: 5,
-        decoration: InputDecoration(
-          hintText: 'add_note'.tr(),
-          border: const OutlineInputBorder(),
-        ),
-        textCapitalization: TextCapitalization.sentences,
-        onSubmitted: (_) => _submit(context),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('cancel'.tr()),
-        ),
-        FilledButton(
-          onPressed: () => _submit(context),
-          child: Text('save'.tr()),
-        ),
-      ],
-    );
-  }
-
-  void _submit(BuildContext context) =>
-      Navigator.of(context).pop(controller.text);
 }
 
 enum _LessonViewMode { list, seatingPlan }
