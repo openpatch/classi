@@ -2,6 +2,8 @@ import 'dart:developer' as developer;
 
 import 'package:sqlite3/sqlite3.dart' as sqlite3;
 
+import '../database/encrypted_database_file.dart';
+
 /// The outcome of a three-way merge: a summary of what changed and whether
 /// any row-level conflicts were found that the merge could not resolve.
 class MergeResult {
@@ -51,6 +53,26 @@ class MergeConflict {
   String toString() => '$tableName#$rowId: $description';
 }
 
+/// Thrown when the three snapshots handed to [MergeService.merge] were not
+/// written at the same schema version. Merging across versions would write
+/// rows shaped for one schema into another, so the merge refuses to start.
+class MergeSchemaMismatch implements Exception {
+  const MergeSchemaMismatch({
+    required this.baseVersion,
+    required this.localVersion,
+    required this.remoteVersion,
+  });
+
+  final int baseVersion;
+  final int localVersion;
+  final int remoteVersion;
+
+  @override
+  String toString() =>
+      'MergeSchemaMismatch: base v$baseVersion, local v$localVersion, '
+      'remote v$remoteVersion';
+}
+
 /// Performs a three-way merge of two SQLite database snapshots against a
 /// common base, using the `updated_at` column on each table to resolve
 /// concurrent edits with last-write-wins per row.
@@ -94,6 +116,15 @@ class MergeService {
   /// it must be closed (or the merge must run on a copy) because the merge
   /// writes directly to it.
   ///
+  /// Each snapshot carries its own security metadata and therefore its own
+  /// SQLCipher key, so all three are passed separately. Pass `null` only for
+  /// a plaintext file (test fixtures); a real library opened without its key
+  /// fails on the first query.
+  ///
+  /// The write side runs in a single transaction: a merge that fails halfway
+  /// would otherwise leave the library holding a mix of both versions with no
+  /// way back.
+  ///
   /// Returns a [MergeResult] summarizing the merge. If [MergeResult.hasConflicts]
   /// is true, the caller should surface them to the user for manual
   /// resolution.
@@ -101,22 +132,34 @@ class MergeService {
     required String basePath,
     required String localPath,
     required String remotePath,
+    required String? baseKey,
+    required String? localKey,
+    required String? remoteKey,
   }) async {
     final result = MergeResult();
 
-    final base = sqlite3.sqlite3.open(basePath);
-    final local = sqlite3.sqlite3.open(localPath);
-    final remote = sqlite3.sqlite3.open(remotePath);
+    final base = openLibraryDatabaseFile(basePath, databaseKey: baseKey);
+    final local = openLibraryDatabaseFile(localPath, databaseKey: localKey);
+    final remote = openLibraryDatabaseFile(remotePath, databaseKey: remoteKey);
 
     try {
-      for (final tableName in _tableNames) {
-        _mergeTable(
-          base: base,
-          local: local,
-          remote: remote,
-          tableName: tableName,
-          result: result,
-        );
+      _requireMatchingSchemas(base: base, local: local, remote: remote);
+
+      local.execute('BEGIN IMMEDIATE');
+      try {
+        for (final tableName in _tableNames) {
+          _mergeTable(
+            base: base,
+            local: local,
+            remote: remote,
+            tableName: tableName,
+            result: result,
+          );
+        }
+        local.execute('COMMIT');
+      } on Object {
+        local.execute('ROLLBACK');
+        rethrow;
       }
     } finally {
       base.close();
@@ -132,6 +175,39 @@ class MergeService {
     );
 
     return result;
+  }
+
+  /// Refuses to merge snapshots that were written at different schema
+  /// versions.
+  ///
+  /// Column lists are read from the local database and applied to rows coming
+  /// from the others. If a snapshot is older, its rows are missing columns
+  /// the local schema requires and NULL gets written into `NOT NULL` columns;
+  /// if it is newer, its extra columns are dropped on the floor. Both are
+  /// silent data loss, so the merge stops instead and leaves the caller to
+  /// bring the snapshots to a common version first.
+  void _requireMatchingSchemas({
+    required sqlite3.Database base,
+    required sqlite3.Database local,
+    required sqlite3.Database remote,
+  }) {
+    final localVersion = _schemaVersionOf(local);
+    final baseVersion = _schemaVersionOf(base);
+    final remoteVersion = _schemaVersionOf(remote);
+    if (baseVersion != localVersion || remoteVersion != localVersion) {
+      throw MergeSchemaMismatch(
+        baseVersion: baseVersion,
+        localVersion: localVersion,
+        remoteVersion: remoteVersion,
+      );
+    }
+  }
+
+  int _schemaVersionOf(sqlite3.Database db) {
+    final rows = db.select('PRAGMA user_version');
+    if (rows.isEmpty) return 0;
+    final value = rows.first.values.first;
+    return value is int ? value : 0;
   }
 
   void _mergeTable({
@@ -250,7 +326,7 @@ class MergeService {
           result.rowsDeleted++;
         } else {
           // New on remote — insert it.
-          _insertRow(local, tableName, columns, remoteRow);
+          _insertRow(local, tableName, id, columns, remoteRow);
           result.rowsAdded++;
         }
       } else if (localRow != null && remoteRow == null) {
@@ -277,6 +353,10 @@ class MergeService {
   }
 
   /// Reads the column names (excluding `id` which is the PK) from the table.
+  ///
+  /// `id` is left out because it is what rows are matched on and must never
+  /// be rewritten by an UPDATE. Inserts add it back explicitly — see
+  /// [_insertRow].
   List<String> _columnsFor(sqlite3.Database db, String tableName) {
     final result = db.select("PRAGMA table_info('$tableName')");
     final cols = <String>[];
@@ -327,15 +407,23 @@ class MergeService {
     return true;
   }
 
+  /// Inserts a row that exists on one side only, keeping its primary key.
+  ///
+  /// The `id` has to be carried over verbatim: every child table stores the
+  /// parent's id, and those references are copied across by this same merge.
+  /// Letting SQLite hand out a fresh autoincrement id here would silently
+  /// repoint every one of them at a different row.
   void _insertRow(
     sqlite3.Database db,
     String tableName,
+    int id,
     List<String> columns,
     Map<String, dynamic> row,
   ) {
-    final colNames = columns.join(', ');
-    final placeholders = List.filled(columns.length, '?').join(', ');
-    final values = columns.map((c) => row[c]).toList();
+    final insertColumns = ['id', ...columns];
+    final colNames = insertColumns.join(', ');
+    final placeholders = List.filled(insertColumns.length, '?').join(', ');
+    final values = <Object?>[id, ...columns.map((c) => row[c])];
     db.execute(
       'INSERT INTO $tableName ($colNames) VALUES ($placeholders)',
       values,
