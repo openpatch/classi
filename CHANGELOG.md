@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.20.3] - 2026-09-04
+
+### Bug Fixes
+
+- *(database)* Keep an explicitly written updated_at through the trigger
+- *(sync)* Make the three-way merge usable against real libraries
+- *(sync)* Let the conflict diff read encrypted backups, off the UI isolate
+- *(sync)* Stop the export retry ladder from switching itself off
+- *(unlock)* Stop promising a tap the unlock screen cannot honour
+- *(sync)* Stop the conflict indicator surviving its own resolution
+- *(sync)* Stop pruning a second library's backup off the server
+- *(sync)* Survive the duplicate rows a merge leaves behind
+- *(notes)* Dispose the quick note dialog's controller
+- *(setup)* Guard setState after the folder picker returns
+
+
+### Features
+
+- Improve WebDAV sync robustness with revision-based detection, retry backoff, and updatedAt columns
+- Add three-way merge algorithm for row-level conflict resolution
+- Add conflict diff summary to conflict resolution screen
+
+
+### Refactoring
+
+- *(logs)* Fold the two identical log editor sheets into one
+- *(sync)* Drop an unused parameter from the merge row loader
+
+
 ## [1.20.2] - 2026-09-03
 
 ### Bug Fixes
