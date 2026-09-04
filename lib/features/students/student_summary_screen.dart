@@ -12,6 +12,7 @@ import '../../shared/utils/grade_categories.dart';
 import '../../shared/widgets/app_bar_title.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
+import '../../shared/widgets/quick_note_dialog.dart';
 import '../../shared/widgets/student_avatar.dart';
 
 /// A read-only overview of a student's performance for parent meetings.
@@ -130,16 +131,12 @@ class StudentSummaryScreen extends ConsumerWidget {
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
-              final controller = TextEditingController();
-              final body = await showDialog<String>(
+              final body = await showQuickNoteDialog(
                 context: context,
-                builder: (_) => _QuickNoteDialog(
-                  studentName: studentDisplayName(
-                    firstName: student.firstName,
-                    lastName: student.lastName,
-                    callName: student.callName,
-                  ),
-                  controller: controller,
+                studentName: studentDisplayName(
+                  firstName: student.firstName,
+                  lastName: student.lastName,
+                  callName: student.callName,
                 ),
               );
               if (body == null || body.trim().isEmpty) return;
@@ -732,47 +729,4 @@ class _StatChip extends StatelessWidget {
       ),
     );
   }
-}
-
-// ---------------------------------------------------------------------------
-// Quick note dialog
-// ---------------------------------------------------------------------------
-
-class _QuickNoteDialog extends StatelessWidget {
-  const _QuickNoteDialog({required this.studentName, required this.controller});
-
-  final String studentName;
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(studentName),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        minLines: 2,
-        maxLines: 5,
-        decoration: InputDecoration(
-          hintText: 'add_note'.tr(),
-          border: const OutlineInputBorder(),
-        ),
-        textCapitalization: TextCapitalization.sentences,
-        onSubmitted: (_) => _submit(context),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('cancel'.tr()),
-        ),
-        FilledButton(
-          onPressed: () => _submit(context),
-          child: Text('save'.tr()),
-        ),
-      ],
-    );
-  }
-
-  void _submit(BuildContext context) =>
-      Navigator.of(context).pop(controller.text);
 }
