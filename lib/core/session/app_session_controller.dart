@@ -1097,7 +1097,23 @@ class AppSessionController extends ChangeNotifier {
       backups,
       libraryName: libraryName,
     );
-    return pairs.isEmpty ? null : pairs.first;
+    if (pairs.isEmpty) {
+      // The listing came back and holds nothing to reconcile — another
+      // device cleaned up, or the pair is no longer complete. Either way
+      // this device must stop reporting a conflict it cannot act on;
+      // leaving the flag set is what strands the indicator after the UI
+      // reports the conflict as resolved.
+      if (_hasPendingSyncConflict ||
+          _webDavSyncStatus == WebDavSyncStatus.conflict) {
+        _clearPendingConflictState();
+        if (_webDavSyncStatus == WebDavSyncStatus.conflict) {
+          _webDavSyncStatus = WebDavSyncStatus.current;
+        }
+        notifyListeners();
+      }
+      return null;
+    }
+    return pairs.first;
   }
 
   /// Downloads both sides of a sync conflict and returns a summary of what
@@ -1790,7 +1806,25 @@ class AppSessionController extends ChangeNotifier {
           backupFileName,
         ),
       );
-      if (conflictNames != null && conflictNames.isNotEmpty) {
+      // Resolving means picking between the conflict copy and the canonical
+      // backup, so both have to be there. A conflict copy whose canonical
+      // counterpart has gone is not something this device can reconcile:
+      // reporting it would light the indicator permanently while the
+      // resolution screen — which needs the pair — refuses to open. The copy
+      // still shows up under "Available backups", so nothing is hidden.
+      final hasCanonicalBackup =
+          conflictNames != null && conflictNames.isNotEmpty
+          ? await _libraryBackupService.getRemoteBackupModifiedAt(
+                  client: client,
+                  serverPath: _webDavServerPath ?? '/',
+                  backupFileName: backupFileName,
+                ) !=
+                null
+          : false;
+
+      if (conflictNames != null &&
+          conflictNames.isNotEmpty &&
+          hasCanonicalBackup) {
         _webDavSyncStatus = WebDavSyncStatus.conflict;
         _hasPendingSyncConflict = true;
         _clearPendingImportState();
