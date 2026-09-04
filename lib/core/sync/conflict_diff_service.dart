@@ -1,8 +1,12 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite3;
+
+import '../database/encrypted_database_file.dart';
+import '../security/key_service.dart';
 
 /// A summary of what differs between two backup archives, shown on the
 /// conflict resolution screen to help the user pick a side.
@@ -10,8 +14,6 @@ class ConflictDiffSummary {
   ConflictDiffSummary({
     this.rowsOnlyOnThisDevice = 0,
     this.rowsOnlyOnServer = 0,
-    this.rowsChangedOnThisDevice = 0,
-    this.rowsChangedOnServer = 0,
     this.rowsChangedOnBoth = 0,
     this.tableSummaries = const [],
   });
@@ -22,13 +24,13 @@ class ConflictDiffSummary {
   /// Rows that exist only in the server's version (new or added remotely).
   final int rowsOnlyOnServer;
 
-  /// Rows that differ from the common state on this device only.
-  final int rowsChangedOnThisDevice;
-
-  /// Rows that differ from the common state on the server only.
-  final int rowsChangedOnServer;
-
-  /// Rows that were changed on both sides (potential conflicts).
+  /// Rows present on both sides whose content differs.
+  ///
+  /// This is a two-way comparison with no merge base, so there is no way to
+  /// tell which side moved — every differing row counts here, which is the
+  /// conservative reading for the UI. Once the merge base from step 6 is
+  /// available this can be split into one-sided and genuine both-sides
+  /// changes.
   final int rowsChangedOnBoth;
 
   /// Per-table breakdown of the differences.
@@ -39,89 +41,149 @@ class ConflictDiffSummary {
 
   /// Total number of differing rows across all tables.
   int get totalDifferences =>
-      rowsOnlyOnThisDevice +
-      rowsOnlyOnServer +
-      rowsChangedOnThisDevice +
-      rowsChangedOnServer +
-      rowsChangedOnBoth;
+      rowsOnlyOnThisDevice + rowsOnlyOnServer + rowsChangedOnBoth;
 }
 
 /// Per-table breakdown of differences between two backup versions.
 class ConflictDiffTableSummary {
   const ConflictDiffTableSummary({
     required this.tableName,
-    required this.displayName,
+    required this.displayNameKey,
     required this.onlyOnThisDevice,
     required this.onlyOnServer,
-    required this.changedOnThisDevice,
-    required this.changedOnServer,
     required this.changedOnBoth,
   });
 
   final String tableName;
 
-  /// A human-readable name for the table, e.g. "Students" for
-  /// `students_table`.
-  final String displayName;
+  /// Translation key for the table's user-facing name, e.g. `students` for
+  /// `students_table`. The UI resolves it — the service has no business
+  /// deciding which language the teacher reads.
+  final String displayNameKey;
 
   final int onlyOnThisDevice;
   final int onlyOnServer;
-  final int changedOnThisDevice;
-  final int changedOnServer;
   final int changedOnBoth;
 
   bool get hasDifferences =>
-      onlyOnThisDevice > 0 ||
-      onlyOnServer > 0 ||
-      changedOnThisDevice > 0 ||
-      changedOnServer > 0 ||
-      changedOnBoth > 0;
+      onlyOnThisDevice > 0 || onlyOnServer > 0 || changedOnBoth > 0;
 }
 
 /// Compares two backup archives and produces a summary of what differs.
 ///
-/// The comparison works by restoring both archives into in-memory SQLite
-/// databases and comparing row-by-row across every table. It does not need
-/// a merge base — it's a direct two-way comparison, which is what the user
-/// sees on the conflict screen.
+/// The comparison works by unpacking both archives to disk, opening them as
+/// SQLite databases and comparing row-by-row across every table. It does not
+/// need a merge base — it's a direct two-way comparison, which is what the
+/// user sees on the conflict screen.
 class ConflictDiffService {
+  ConflictDiffService({KeyService? keyService})
+      : _keyService = keyService ?? KeyService();
+
+  final KeyService _keyService;
+
   /// Compares [thisDeviceBytes] (the conflict copy) against
   /// [serverBytes] (the canonical backup) and returns a summary.
   ///
   /// Both are `.classi-backup` ZIP archives containing a `data.db` SQLite
-  /// file. The comparison loads both into memory, so it should not be used
-  /// for very large libraries.
-  ConflictDiffSummary compare({
+  /// file. Library databases are SQLCipher-encrypted, so each archive's own
+  /// security metadata is unpacked alongside it and [passphrase] is used to
+  /// derive that snapshot's key — a backup written by another device carries
+  /// its own salt, so the key has to be derived per archive rather than
+  /// reused from the open library.
+  ///
+  /// The comparison loads every row of both databases into memory and does
+  /// so synchronously, so callers run it off the UI isolate — see
+  /// `AppSessionController.conflictDiff`. Nothing on this path may reach for
+  /// a platform channel or that stops being possible.
+  Future<ConflictDiffSummary> compare({
     required Uint8List thisDeviceBytes,
     required Uint8List serverBytes,
-  }) {
-    final thisDeviceDb = _extractDatabase(thisDeviceBytes);
-    final serverDb = _extractDatabase(serverBytes);
-
+    required String? passphrase,
+  }) async {
+    final workspace = await Directory.systemTemp.createTemp('classi-diff');
     try {
-      return _compareDatabases(thisDeviceDb, serverDb);
+      final thisDeviceDb = await _extractDatabase(
+        archiveBytes: thisDeviceBytes,
+        directory: Directory('${workspace.path}/this-device'),
+        passphrase: passphrase,
+      );
+      try {
+        final serverDb = await _extractDatabase(
+          archiveBytes: serverBytes,
+          directory: Directory('${workspace.path}/server'),
+          passphrase: passphrase,
+        );
+        try {
+          return _compareDatabases(thisDeviceDb, serverDb);
+        } finally {
+          serverDb.close();
+        }
+      } finally {
+        thisDeviceDb.close();
+      }
     } finally {
-      thisDeviceDb.close();
-      serverDb.close();
+      // Only now that every handle is closed: deleting a file that SQLite
+      // still has open fails outright on Windows, and elsewhere it leaves
+      // SQLite reading from a file nothing can recover if it needs to.
+      try {
+        await workspace.delete(recursive: true);
+      } on Object catch (error) {
+        developer.log(
+          'Could not clean up the conflict diff workspace',
+          name: 'classi.sync',
+          error: error,
+        );
+      }
     }
   }
 
-  sqlite3.Database _extractDatabase(Uint8List archiveBytes) {
+  /// Unpacks a backup archive into [directory] and opens its database.
+  ///
+  /// Every entry is written out, not just `data.db`: the key is derived from
+  /// the `.security.json` sidecar that sits next to the database, and the
+  /// `-wal` file may still hold committed rows.
+  Future<sqlite3.Database> _extractDatabase({
+    required Uint8List archiveBytes,
+    required Directory directory,
+    required String? passphrase,
+  }) async {
+    await directory.create(recursive: true);
     final archive = ZipDecoder().decodeBytes(archiveBytes);
-    final dbFile = archive.findFile('data.db');
-    if (dbFile == null) {
+
+    var foundDatabase = false;
+    for (final file in archive.files) {
+      if (!file.isFile) continue;
+      // Guard against entry names that would escape the workspace.
+      if (file.name.contains('/') || file.name.contains('\\')) continue;
+      if (file.name == 'data.db') foundDatabase = true;
+      File('${directory.path}/${file.name}')
+          .writeAsBytesSync(Uint8List.fromList(file.content as List<int>));
+    }
+    if (!foundDatabase) {
       throw StateError('Backup archive does not contain data.db');
     }
-    final dbBytes = Uint8List.fromList(dbFile.content as List<int>);
 
-    // Write to a temp file because sqlite3 can't open from bytes directly.
-    final tempPath = '${Directory.systemTemp.path}/conflict-diff-${DateTime.now().microsecondsSinceEpoch}.db';
-    File(tempPath).writeAsBytesSync(dbBytes);
-    final db = sqlite3.sqlite3.open(tempPath);
-    // Clean up the temp file after opening; SQLite has already read the
-    // header and the database is now in memory via the page cache.
-    File(tempPath).deleteSync();
-    return db;
+    final dbFile = File('${directory.path}/data.db');
+    return openLibraryDatabaseFile(
+      dbFile.path,
+      databaseKey: await _databaseKeyFor(dbFile: dbFile, passphrase: passphrase),
+    );
+  }
+
+  /// Derives the SQLCipher key for an unpacked snapshot.
+  ///
+  /// Returns `null` when the snapshot has no security metadata, which means
+  /// it is not encrypted — only ever the case for test fixtures.
+  Future<String?> _databaseKeyFor({
+    required File dbFile,
+    required String? passphrase,
+  }) async {
+    if (passphrase == null) return null;
+    if (!await _keyService.hasSecuritySetup(dbFile)) return null;
+    return _keyService.deriveDatabaseKey(
+      dbFile: dbFile,
+      passphrase: passphrase,
+    );
   }
 
   ConflictDiffSummary _compareDatabases(
@@ -130,14 +192,12 @@ class ConflictDiffService {
   ) {
     var onlyOnThisDevice = 0;
     var onlyOnServer = 0;
-    var changedOnThisDevice = 0;
-    var changedOnServer = 0;
     var changedOnBoth = 0;
     final tableSummaries = <ConflictDiffTableSummary>[];
 
-    for (final entry in _tableDisplayNames.entries) {
+    for (final entry in _tableDisplayNameKeys.entries) {
       final tableName = entry.key;
-      final displayName = entry.value;
+      final displayNameKey = entry.value;
 
       if (!_tableExists(thisDevice, tableName) ||
           !_tableExists(server, tableName)) {
@@ -152,8 +212,6 @@ class ConflictDiffService {
 
       var tOnly = 0;
       var sOnly = 0;
-      var tChanged = 0;
-      var sChanged = 0;
       var both = 0;
 
       final allIds = <int>{
@@ -183,21 +241,12 @@ class ConflictDiffService {
         }
       }
 
-      // For tables where both rows exist and differ, we count them as
-      // "changed on both" since we don't have a base. This is conservative
-      // — some of these might be one-sided changes — but it's the safe
-      // classification for the UI.
-      tChanged = 0;
-      sChanged = 0;
-
       if (tOnly > 0 || sOnly > 0 || both > 0) {
         tableSummaries.add(ConflictDiffTableSummary(
           tableName: tableName,
-          displayName: displayName,
+          displayNameKey: displayNameKey,
           onlyOnThisDevice: tOnly,
           onlyOnServer: sOnly,
-          changedOnThisDevice: tChanged,
-          changedOnServer: sChanged,
           changedOnBoth: both,
         ));
       }
@@ -206,31 +255,30 @@ class ConflictDiffService {
     return ConflictDiffSummary(
       rowsOnlyOnThisDevice: onlyOnThisDevice,
       rowsOnlyOnServer: onlyOnServer,
-      rowsChangedOnThisDevice: changedOnThisDevice,
-      rowsChangedOnServer: changedOnServer,
       rowsChangedOnBoth: changedOnBoth,
       tableSummaries: tableSummaries,
     );
   }
 
-  static const Map<String, String> _tableDisplayNames = {
-    'school_years_table': 'School Years',
-    'groups_table': 'Groups',
-    'timeframes_table': 'Timeframes',
-    'students_table': 'Students',
-    'sessions_table': 'Lessons',
-    'grade_entries_table': 'Grades',
-    'attendance_logs_table': 'Attendance',
-    'homework_logs_table': 'Homework',
-    'material_logs_table': 'Materials',
-    'lesson_slots_table': 'Schedule',
-    'lists_table': 'Lists',
-    'list_items_table': 'List Items',
-    'notes_table': 'Notes',
-    'seating_plans_table': 'Seating Plans',
-    'seating_plan_positions_table': 'Seating Positions',
-    'student_relations_table': 'Seating Rules',
-    'timeframe_grades_table': 'Timeframe Grades',
+  /// Translation keys for each table's user-facing name.
+  static const Map<String, String> _tableDisplayNameKeys = {
+    'school_years_table': 'school_years',
+    'groups_table': 'groups',
+    'timeframes_table': 'timeframes',
+    'students_table': 'students',
+    'sessions_table': 'conflict_diff_lessons',
+    'grade_entries_table': 'grades',
+    'attendance_logs_table': 'attendance',
+    'homework_logs_table': 'homework',
+    'material_logs_table': 'conflict_diff_materials',
+    'lesson_slots_table': 'conflict_diff_schedule',
+    'lists_table': 'lists',
+    'list_items_table': 'conflict_diff_list_items',
+    'notes_table': 'notes',
+    'seating_plans_table': 'seating_plans',
+    'seating_plan_positions_table': 'conflict_diff_seating_positions',
+    'student_relations_table': 'conflict_diff_seating_rules',
+    'timeframe_grades_table': 'timeframe_grades',
   };
 
   List<String> _columnsFor(sqlite3.Database db, String tableName) {
