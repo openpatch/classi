@@ -332,10 +332,11 @@ class _CreateDatabaseDialogState extends State<_CreateDatabaseDialog> {
     } finally {
       session.resumeBackgroundLock();
     }
-    if (folder != null) {
-      setState(() => _selectedFolder = folder!);
-      await _checkPathExists();
-    }
+    // The native folder picker can stay open for as long as the user wants,
+    // and the sheet behind it can be gone by the time it returns.
+    if (!mounted || folder == null) return;
+    setState(() => _selectedFolder = folder!);
+    await _checkPathExists();
   }
 
   @override
