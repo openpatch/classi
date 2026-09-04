@@ -114,6 +114,9 @@ void main() {
       basePath: basePath,
       localPath: localPath,
       remotePath: remotePath,
+      baseKey: null,
+      localKey: null,
+      remoteKey: null,
     );
 
     expect(result.hasConflicts, isFalse);
@@ -160,6 +163,9 @@ void main() {
       basePath: basePath,
       localPath: localPath,
       remotePath: remotePath,
+      baseKey: null,
+      localKey: null,
+      remoteKey: null,
     );
 
     expect(result.hasConflicts, isFalse);
@@ -203,6 +209,9 @@ void main() {
       basePath: basePath,
       localPath: localPath,
       remotePath: remotePath,
+      baseKey: null,
+      localKey: null,
+      remoteKey: null,
     );
 
     expect(result.hasConflicts, isFalse);
@@ -252,6 +261,9 @@ void main() {
       basePath: basePath,
       localPath: localPath,
       remotePath: remotePath,
+      baseKey: null,
+      localKey: null,
+      remoteKey: null,
     );
 
     expect(result.hasConflicts, isFalse);
@@ -296,6 +308,9 @@ void main() {
       basePath: basePath,
       localPath: localPath,
       remotePath: remotePath,
+      baseKey: null,
+      localKey: null,
+      remoteKey: null,
     );
 
     expect(result.hasConflicts, isTrue);
@@ -329,6 +344,9 @@ void main() {
       basePath: basePath,
       localPath: localPath,
       remotePath: remotePath,
+      baseKey: null,
+      localKey: null,
+      remoteKey: null,
     );
 
     expect(result.hasConflicts, isFalse);
@@ -368,10 +386,151 @@ void main() {
       basePath: basePath,
       localPath: localPath,
       remotePath: remotePath,
+      baseKey: null,
+      localKey: null,
+      remoteKey: null,
     );
 
     expect(result.hasConflicts, isTrue);
     expect(result.conflicts.length, 1);
     expect(result.conflicts.first.description, contains('deleted locally'));
+  });
+
+  test('an inserted row keeps the primary key it had on the remote', () async {
+    // Child tables store the parent's id and are copied across by this same
+    // merge, so a row that arrives under a fresh autoincrement id silently
+    // repoints every reference to it.
+    final base = _createTestDatabase();
+    final local = _createTestDatabase();
+    final remote = _createTestDatabase();
+
+    for (final db in [base, local, remote]) {
+      db.execute(
+        "INSERT INTO groups_table (id, name, created_at, updated_at) "
+        "VALUES (1, 'Class A', 1000, 1000)",
+      );
+      db.execute(
+        "INSERT INTO students_table (id, first_name, last_name, group_id, "
+        "created_at, updated_at) VALUES (1, 'Anna', 'Schmidt', 1, 1000, 1000)",
+      );
+      db.execute(
+        "INSERT INTO students_table (id, first_name, last_name, group_id, "
+        "created_at, updated_at) VALUES (2, 'Ben', 'Klein', 1, 1000, 1000)",
+      );
+    }
+
+    // Local drops a student, so the ids it would hand out no longer line up
+    // with the remote's.
+    local.execute('DELETE FROM students_table WHERE id = 2');
+
+    // Remote adds a student well above the local high-water mark.
+    remote.execute(
+      "INSERT INTO students_table (id, first_name, last_name, group_id, "
+      "created_at, updated_at) VALUES (9, 'Zoe', 'Wagner', 1, 2000, 2000)",
+    );
+
+    final basePath = _dbToFile(base, _tempDbPath(tempDir, 'base'));
+    final localPath = _dbToFile(local, _tempDbPath(tempDir, 'local'));
+    final remotePath = _dbToFile(remote, _tempDbPath(tempDir, 'remote'));
+
+    await MergeService().merge(
+      basePath: basePath,
+      localPath: localPath,
+      remotePath: remotePath,
+      baseKey: null,
+      localKey: null,
+      remoteKey: null,
+    );
+
+    final merged = sqlite3.sqlite3.open(localPath);
+    final zoe = merged.select(
+      "SELECT id FROM students_table WHERE first_name = 'Zoe'",
+    );
+    expect(zoe.length, 1);
+    expect(zoe.first['id'], 9);
+    merged.close();
+  });
+
+  test('a failed merge leaves the local library untouched', () async {
+    final base = _createTestDatabase();
+    final local = _createTestDatabase();
+    final remote = _createTestDatabase();
+
+    for (final db in [base, local, remote]) {
+      db.execute(
+        "INSERT INTO groups_table (id, name, created_at, updated_at) "
+        "VALUES (1, 'Class A', 1000, 1000)",
+      );
+    }
+    // Remote adds a group and a student; the student cannot be written
+    // because local's students_table is missing by the time it is reached.
+    remote.execute(
+      "INSERT INTO groups_table (id, name, created_at, updated_at) "
+      "VALUES (2, 'Class B', 2000, 2000)",
+    );
+    remote.execute(
+      "INSERT INTO students_table (id, first_name, last_name, group_id, "
+      "created_at, updated_at) VALUES (1, 'Anna', 'Schmidt', 2, 2000, 2000)",
+    );
+
+    final basePath = _dbToFile(base, _tempDbPath(tempDir, 'base'));
+    final localPath = _dbToFile(local, _tempDbPath(tempDir, 'local'));
+    final remotePath = _dbToFile(remote, _tempDbPath(tempDir, 'remote'));
+
+    // Give local a NOT NULL column the remote snapshot knows nothing about,
+    // so writing the student throws — after groups_table has already been
+    // written.
+    final sabotaged = sqlite3.sqlite3.open(localPath);
+    sabotaged.execute(
+      "ALTER TABLE students_table ADD COLUMN required_note TEXT NOT NULL "
+      "DEFAULT ''",
+    );
+    sabotaged.close();
+
+    await expectLater(
+      MergeService().merge(
+        basePath: basePath,
+        localPath: localPath,
+        remotePath: remotePath,
+        baseKey: null,
+        localKey: null,
+        remoteKey: null,
+      ),
+      throwsA(anything),
+    );
+
+    // The group written before the failure must have been rolled back.
+    final merged = sqlite3.sqlite3.open(localPath);
+    final groups = merged.select('SELECT id FROM groups_table ORDER BY id');
+    expect(groups.map((r) => r['id']), [1]);
+    merged.close();
+  });
+
+  test('a merge across schema versions is refused', () async {
+    final base = _createTestDatabase();
+    final local = _createTestDatabase();
+    final remote = _createTestDatabase();
+
+    final basePath = _dbToFile(base, _tempDbPath(tempDir, 'base'));
+    final localPath = _dbToFile(local, _tempDbPath(tempDir, 'local'));
+    final remotePath = _dbToFile(remote, _tempDbPath(tempDir, 'remote'));
+
+    for (final entry in {basePath: 28, localPath: 29, remotePath: 29}.entries) {
+      final db = sqlite3.sqlite3.open(entry.key);
+      db.execute('PRAGMA user_version = ${entry.value}');
+      db.close();
+    }
+
+    await expectLater(
+      MergeService().merge(
+        basePath: basePath,
+        localPath: localPath,
+        remotePath: remotePath,
+        baseKey: null,
+        localKey: null,
+        remoteKey: null,
+      ),
+      throwsA(isA<MergeSchemaMismatch>()),
+    );
   });
 }
