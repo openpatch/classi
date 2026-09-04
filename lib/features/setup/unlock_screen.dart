@@ -110,8 +110,22 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        session.webDavSyncStatus.translationKey
-                                            .tr(),
+                                        // The shared conflict copy ends in
+                                        // "tap to resolve", which is true in
+                                        // the app shell where the same status
+                                        // is a button. Here it is plain text,
+                                        // and resolving needs the library
+                                        // open anyway — keeping this device's
+                                        // version exports the live database.
+                                        // So this says what actually helps.
+                                        session.webDavSyncStatus ==
+                                                WebDavSyncStatus.conflict
+                                            ? 'webdav_sync_conflict_locked'
+                                                  .tr()
+                                            : session
+                                                  .webDavSyncStatus
+                                                  .translationKey
+                                                  .tr(),
                                       ),
                                       if (session
                                               .pendingImportRemoteModifiedAt !=
