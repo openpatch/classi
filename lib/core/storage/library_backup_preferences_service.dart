@@ -16,6 +16,8 @@ class LibraryBackupPreferencesService {
   static const String _lastImportedAtKey = 'backup.last_imported_at';
   static const String _pendingImportDismissedAtKey =
       'backup.pending_import_dismissed_at';
+  static const String _pendingImportDismissedRevisionKey =
+      'backup.pending_import_dismissed_revision';
   static const String _maxVersionsKey = 'backup.max_versions';
   static const String _lastKnownRevisionKey = 'backup.last_known_revision';
   static const List<String> _autoExportEnabledPath = [
@@ -37,6 +39,10 @@ class LibraryBackupPreferencesService {
   static const List<String> _pendingImportDismissedAtPath = [
     'backup',
     'pendingImportDismissedAt',
+  ];
+  static const List<String> _pendingImportDismissedRevisionPath = [
+    'backup',
+    'pendingImportDismissedRevision',
   ];
   static const List<String> _maxVersionsPath = ['backup', 'maxVersions'];
   static const List<String> _lastKnownRevisionPath = [
@@ -216,6 +222,32 @@ class LibraryBackupPreferencesService {
       path: _pendingImportDismissedAtPath,
       value: value.toUtc().toIso8601String(),
       removeLegacyKey: _pendingImportDismissedAtKey,
+    );
+  }
+
+  /// The revision token of the remote backup the user dismissed without
+  /// restoring, or `null` when nothing was dismissed. When the remote
+  /// revision matches this, the pending-import prompt stays suppressed
+  /// until a newer revision appears.
+  Future<String?> pendingImportDismissedRevision() async {
+    return _readString(
+      path: _pendingImportDismissedRevisionPath,
+      legacyKey: _pendingImportDismissedRevisionKey,
+    );
+  }
+
+  Future<void> setPendingImportDismissedRevision(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _removePath(
+        path: _pendingImportDismissedRevisionPath,
+        removeLegacyKey: _pendingImportDismissedRevisionKey,
+      );
+      return;
+    }
+    await _writeString(
+      path: _pendingImportDismissedRevisionPath,
+      value: value,
+      removeLegacyKey: _pendingImportDismissedRevisionKey,
     );
   }
 

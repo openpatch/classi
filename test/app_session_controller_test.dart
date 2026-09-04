@@ -824,6 +824,267 @@ void main() {
   );
 
   test(
+    'a remote revision matching the device\'s last known revision reports '
+    'current even when the server mTime is newer',
+    () async {
+      // First, export to establish a lastKnownRevision on the device.
+      final exportService = _ExportingLibraryBackupService(
+        exportedAt: DateTime.utc(2026, 5, 7, 8, 0),
+        remoteModifiedAt: DateTime.utc(2026, 5, 7, 8, 0),
+      );
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+      await controller.setWebDavAutoImportEnabled(true);
+
+      expect(await controller.exportNow(), isNull);
+      // The export set lastKnownRevision to 'revision-1'. The fake also
+      // returns 'revision-1' for the remote, so the device is current.
+      expect(controller.hasPendingAutoImport, isFalse);
+      expect(controller.webDavSyncStatus, WebDavSyncStatus.current);
+    },
+  );
+
+  test(
+    'a remote revision differing from the device\'s last known revision '
+    'reports behind',
+    () async {
+      // First, export to establish a lastKnownRevision of 'revision-1'.
+      final exportService = _ExportingLibraryBackupService(
+        exportedAt: DateTime.utc(2026, 5, 7, 8, 0),
+        remoteModifiedAt: DateTime.utc(2026, 5, 7, 8, 0),
+      );
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+      await controller.setWebDavAutoImportEnabled(true);
+
+      expect(await controller.exportNow(), isNull);
+      expect(controller.lastKnownRevision, 'revision-1');
+
+      // Now switch to a fake that returns a different remote revision.
+      final behindService = _RevisionBehindLibraryBackupService(
+        remoteRevision: 'revision-2',
+        remoteModifiedAt: DateTime.utc(2026, 5, 7, 9, 0),
+        deviceName: 'Classroom iPad',
+      );
+      controller.dispose();
+      final reloadPathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: reloadPathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          reloadPathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          reloadPathService,
+        ),
+        libraryBackupService: behindService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+
+      expect(controller.hasPendingAutoImport, isTrue);
+      expect(controller.webDavSyncStatus, WebDavSyncStatus.behind);
+      expect(controller.pendingImportDeviceName, 'Classroom iPad');
+    },
+  );
+
+  test(
+    'dismissing a pending import suppresses the prompt until a newer '
+    'revision appears',
+    () async {
+      // First, export to establish a lastKnownRevision of 'revision-1'.
+      final exportService = _ExportingLibraryBackupService(
+        exportedAt: DateTime.utc(2026, 5, 7, 8, 0),
+        remoteModifiedAt: DateTime.utc(2026, 5, 7, 8, 0),
+      );
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+      await controller.setWebDavAutoImportEnabled(true);
+
+      expect(await controller.exportNow(), isNull);
+
+      // Switch to a fake with a different remote revision.
+      final behindService = _RevisionBehindLibraryBackupService(
+        remoteRevision: 'revision-2',
+        remoteModifiedAt: DateTime.utc(2026, 5, 7, 9, 0),
+      );
+      controller.dispose();
+      final behindPathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: behindPathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          behindPathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          behindPathService,
+        ),
+        libraryBackupService: behindService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      expect(controller.hasPendingAutoImport, isTrue);
+
+      await controller.dismissPendingImport();
+      expect(controller.hasPendingAutoImport, isFalse);
+
+      // Refresh: the same revision should stay dismissed.
+      await controller.refreshWebDavSyncStatus();
+      expect(
+        controller.hasPendingAutoImport,
+        isFalse,
+        reason: 'the dismissed revision should suppress the prompt',
+      );
+      expect(controller.webDavSyncStatus, WebDavSyncStatus.current);
+
+      // Now switch to a newer revision — the prompt should reappear.
+      final newerService = _RevisionBehindLibraryBackupService(
+        remoteRevision: 'revision-3',
+        remoteModifiedAt: DateTime.utc(2026, 5, 7, 10, 0),
+      );
+      controller.dispose();
+      final newerPathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: newerPathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          newerPathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          newerPathService,
+        ),
+        libraryBackupService: newerService,
+        biometricService: BiometricService(),
+      );
+
+      await controller.initialize();
+      expect(
+        controller.hasPendingAutoImport,
+        isTrue,
+        reason: 'a newer revision should clear the dismissal',
+      );
+    },
+  );
+
+  test(
+    'a transient export failure triggers a retry that succeeds',
+    () async {
+      final exportService = _RetryThenSucceedLibraryBackupService(
+        failCount: 1,
+      );
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+        periodicExportInterval: const Duration(minutes: 30),
+        syncRetryDelays: const [Duration(milliseconds: 50)],
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      // The first export fails with a busy exception.
+      expect(await controller.exportNow(), isNull);
+      expect(exportService.exportCalls, 1);
+      expect(controller.lastBackupMessageCode, 'backup_export_busy');
+      expect(controller.lastBackupMessageIsError, isTrue);
+
+      // Wait for the retry timer to fire and the retry to succeed.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      expect(
+        exportService.exportCalls,
+        2,
+        reason: 'the retry should have triggered a second export attempt',
+      );
+      expect(
+        controller.lastBackupMessageCode,
+        'backup_exported',
+        reason: 'the retry should have succeeded',
+      );
+    },
+  );
+
+  test(
     'a periodic timer re-exports while the app stays open, independent of '
     'backgrounding',
     () async {
@@ -1553,6 +1814,7 @@ class _WebDavAppSessionController extends AppSessionController {
     required super.libraryBackupService,
     required super.biometricService,
     super.periodicExportInterval,
+    super.syncRetryDelays,
   });
 
   @override
@@ -1743,4 +2005,76 @@ class _ParkedConflictLibraryBackupService extends LibraryBackupService {
     deviceName: 'Other Device',
     revision: 'revision-1',
   );
+}
+
+/// A remote backup whose revision differs from the device's last known
+/// revision, exercising the revision-based "behind" detection.
+class _RevisionBehindLibraryBackupService extends LibraryBackupService {
+  _RevisionBehindLibraryBackupService({
+    required this.remoteRevision,
+    required this.remoteModifiedAt,
+    this.deviceName = 'Other Device',
+  });
+
+  final String remoteRevision;
+  final DateTime remoteModifiedAt;
+  final String deviceName;
+
+  @override
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async => remoteModifiedAt;
+
+  @override
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) async => WebDavBackupDeviceInfo(
+    deviceId: 'other-device',
+    deviceName: deviceName,
+    revision: remoteRevision,
+  );
+}
+
+/// Fails the first [failCount] export attempts with a busy lock, then
+/// succeeds. Used to exercise the sync-retry backoff.
+class _RetryThenSucceedLibraryBackupService extends LibraryBackupService {
+  _RetryThenSucceedLibraryBackupService({this.failCount = 1});
+
+  int failCount;
+  int exportCalls = 0;
+
+  @override
+  Future<DateTime> exportBackupToWebDav({
+    required webdav.Client client,
+    required String sourceDatabasePath,
+    required String serverPath,
+    int maxVersions = 3,
+    String? deviceId,
+    String? deviceName,
+    String? parentRevision,
+  }) async {
+    exportCalls++;
+    if (exportCalls <= failCount) {
+      throw const WebDavSyncBusyException(
+        'Another device is syncing this library right now.',
+      );
+    }
+    return DateTime.now().toUtc();
+  }
+
+  @override
+  Future<DateTime?> getRemoteBackupModifiedAt({
+    required webdav.Client client,
+    required String serverPath,
+    required String backupFileName,
+  }) async => DateTime.now().toUtc();
+
+  @override
+  Future<WebDavBackupDeviceInfo> getRemoteBackupDeviceInfo({
+    required webdav.Client client,
+    required String remotePath,
+  }) async => const WebDavBackupDeviceInfo(revision: 'revision-1');
 }

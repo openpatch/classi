@@ -31,6 +31,11 @@ class SessionsTable extends Table {
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// When this row was last modified. Used by the three-way sync merge to
+  /// resolve concurrent edits to the same row (last-write-wins per row).
+  DateTimeColumn get updatedAt =>
+      dateTime().withDefault(currentDateAndTime)();
+
   /// A group can hold the same lesson twice on one day as long as the two sit
   /// in different periods, so the period is part of what identifies a lesson.
   /// [periodEnd] is left out: two lessons starting in the same period are the

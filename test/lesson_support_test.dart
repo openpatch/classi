@@ -22,6 +22,7 @@ void main() {
           isTodo: false,
           todoDone: false,
           createdAt: DateTime(2025, 3, 14, 8),
+          updatedAt: DateTime(2025, 3, 14, 8),
           archivedAt: null,
         ),
         TeacherNote(
@@ -32,6 +33,7 @@ void main() {
           isTodo: false,
           todoDone: false,
           createdAt: DateTime(2025, 3, 15, 9),
+          updatedAt: DateTime(2025, 3, 15, 9),
           archivedAt: null,
         ),
         TeacherNote(
@@ -42,6 +44,7 @@ void main() {
           isTodo: true,
           todoDone: false,
           createdAt: DateTime(2025, 3, 14, 12),
+          updatedAt: DateTime(2025, 3, 14, 12),
           archivedAt: null,
         ),
       ];
