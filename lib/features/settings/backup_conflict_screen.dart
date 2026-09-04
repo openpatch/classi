@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/app_providers.dart';
 import '../../core/storage/library_backup_service.dart';
+import '../../core/sync/conflict_diff_service.dart';
 import '../../shared/theme/app_ui.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/content_constraints.dart';
@@ -38,6 +39,29 @@ class BackupConflictScreen extends ConsumerStatefulWidget {
 
 class _BackupConflictScreenState extends ConsumerState<BackupConflictScreen> {
   bool _resolving = false;
+  ConflictDiffSummary? _diff;
+  bool _loadingDiff = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDiff();
+  }
+
+  Future<void> _loadDiff() async {
+    setState(() => _loadingDiff = true);
+    try {
+      final summary = await ref
+          .read(appSessionProvider)
+          .conflictDiff(
+            conflictRemotePath: widget.conflict.remotePath,
+            canonicalRemotePath: widget.canonical.remotePath,
+          );
+      if (mounted) setState(() => _diff = summary);
+    } finally {
+      if (mounted) setState(() => _loadingDiff = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +97,15 @@ class _BackupConflictScreenState extends ConsumerState<BackupConflictScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.large),
+            if (_loadingDiff)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.medium),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_diff != null)
+              _DiffSummaryCard(summary: _diff!),
+            if (_loadingDiff || _diff != null)
+              const SizedBox(height: AppSpacing.large),
             _ConflictOptionCard(
               icon: Icons.smartphone_outlined,
               title: 'this_device_version'.tr(),
@@ -249,5 +282,111 @@ class _ConflictOptionCard extends StatelessWidget {
       return '${(bytes / 1024).toStringAsFixed(1)} KB';
     }
     return '$bytes B';
+  }
+}
+
+class _DiffSummaryCard extends StatelessWidget {
+  const _DiffSummaryCard({required this.summary});
+
+  final ConflictDiffSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      child: Padding(
+        padding: appCardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.compare_arrows, color: colorScheme.primary),
+                const SizedBox(width: AppSpacing.medium),
+                Text(
+                  'What changed',
+                  style: textTheme.titleMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.medium),
+            if (summary.totalDifferences == 0)
+              Text(
+                'Both versions are identical.',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              )
+            else ...[
+              _DiffStatRow(
+                icon: Icons.add_circle_outline,
+                color: colorScheme.primary,
+                label: 'Only on this device',
+                count: summary.rowsOnlyOnThisDevice,
+              ),
+              _DiffStatRow(
+                icon: Icons.cloud_download_outlined,
+                color: colorScheme.primary,
+                label: 'Only on server',
+                count: summary.rowsOnlyOnServer,
+              ),
+              if (summary.rowsChangedOnBoth > 0)
+                _DiffStatRow(
+                  icon: Icons.warning_amber_outlined,
+                  color: colorScheme.error,
+                  label: 'Changed on both sides',
+                  count: summary.rowsChangedOnBoth,
+                ),
+              const SizedBox(height: AppSpacing.small),
+              ...summary.tableSummaries.map(
+                (t) => Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xSmall),
+                  child: Text(
+                    '${t.displayName}: '
+                    '${t.onlyOnThisDevice} new here, '
+                    '${t.onlyOnServer} new on server'
+                    '${t.changedOnBoth > 0 ? ", ${t.changedOnBoth} conflicting" : ""}',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DiffStatRow extends StatelessWidget {
+  const _DiffStatRow({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.count,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count == 0) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xSmall),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: AppSpacing.small),
+          Text('$count $label'),
+        ],
+      ),
+    );
   }
 }

@@ -16,6 +16,7 @@ import '../security/security_preferences_service.dart';
 import '../storage/database_path_service.dart';
 import '../storage/library_backup_preferences_service.dart';
 import '../storage/library_backup_service.dart';
+import '../sync/conflict_diff_service.dart';
 import '../sync/device_identity_service.dart';
 
 enum AppSessionStatus { loading, needsSetup, locked, ready, error }
@@ -1096,6 +1097,42 @@ class AppSessionController extends ChangeNotifier {
       libraryName: libraryName,
     );
     return pairs.isEmpty ? null : pairs.first;
+  }
+
+  /// Downloads both sides of a sync conflict and returns a summary of what
+  /// differs between them. Shown on the conflict resolution screen so the
+  /// teacher can make an informed choice.
+  ///
+  /// Returns `null` if either backup cannot be downloaded.
+  Future<ConflictDiffSummary?> conflictDiff({
+    required String conflictRemotePath,
+    required String canonicalRemotePath,
+  }) async {
+    final client = await createWebDavClient();
+    if (client == null) return null;
+
+    try {
+      final conflictBytes = await _libraryBackupService.downloadBackupFromWebDav(
+        client: client,
+        remotePath: conflictRemotePath,
+      );
+      final canonicalBytes =
+          await _libraryBackupService.downloadBackupFromWebDav(
+        client: client,
+        remotePath: canonicalRemotePath,
+      );
+      return ConflictDiffService().compare(
+        thisDeviceBytes: conflictBytes,
+        serverBytes: canonicalBytes,
+      );
+    } catch (error, stackTrace) {
+      _logUnexpectedError(
+        operation: 'compute conflict diff',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
   }
 
   /// Marks a conflict copy as reconciled once the user has picked a side.
