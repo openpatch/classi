@@ -83,6 +83,27 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.20.3" date="2026-09-04">
+      <description>
+        <ul>
+          <li>Keep an explicitly written updated_at through the trigger</li>
+          <li>Make the three-way merge usable against real libraries</li>
+          <li>Let the conflict diff read encrypted backups, off the UI isolate</li>
+          <li>Stop the export retry ladder from switching itself off</li>
+          <li>Stop promising a tap the unlock screen cannot honour</li>
+          <li>Stop the conflict indicator surviving its own resolution</li>
+          <li>Stop pruning a second library's backup off the server</li>
+          <li>Survive the duplicate rows a merge leaves behind</li>
+          <li>Dispose the quick note dialog's controller</li>
+          <li>Guard setState after the folder picker returns</li>
+          <li>Improve WebDAV sync robustness with revision-based detection, retry backoff, and updatedAt columns</li>
+          <li>Add three-way merge algorithm for row-level conflict resolution</li>
+          <li>Add conflict diff summary to conflict resolution screen</li>
+          <li>Fold the two identical log editor sheets into one</li>
+          <li>Drop an unused parameter from the merge row loader</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.20.2" date="2026-09-03">
       <description>
         <ul>
