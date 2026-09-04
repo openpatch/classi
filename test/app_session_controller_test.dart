@@ -1085,6 +1085,63 @@ void main() {
   );
 
   test(
+    'exhausting the retry ladder does not switch retries off for good',
+    () async {
+      // Four failures in a row used to leave the attempt counter pinned at
+      // its ceiling, so every later failure — however long afterwards —
+      // reported "exhausted" and scheduled nothing at all.
+      final exportService = _RetryThenSucceedLibraryBackupService(
+        failCount: 2,
+      );
+      controller.dispose();
+      final databasePathService = _TestDatabasePathService(
+        '${tempDirectory.path}/test.classi',
+      );
+      controller = _WebDavAppSessionController(
+        keyService: keyService,
+        databasePathService: databasePathService,
+        securityPreferencesService: _securityPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupPreferencesService: _libraryBackupPreferencesServiceFor(
+          databasePathService,
+        ),
+        libraryBackupService: exportService,
+        biometricService: BiometricService(),
+        periodicExportInterval: const Duration(minutes: 30),
+        // A single-rung ladder is exhausted after one retry.
+        syncRetryDelays: const [Duration(milliseconds: 50)],
+      );
+
+      await controller.initialize();
+      await controller.createDatabase('test');
+      controller.clearPendingRecoveryKey();
+      await controller.setWebDavUrl('https://example.invalid/remote.php/dav');
+      await controller.setWebDavAutoExportEnabled(true);
+
+      // First failure schedules the only retry; that retry fails too and
+      // exhausts the ladder.
+      expect(await controller.exportNow(), isNull);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(exportService.exportCalls, 2);
+      expect(controller.lastBackupMessageCode, 'backup_export_busy');
+
+      // A later failure has to get its own retry, which now succeeds.
+      exportService.failCount = 3;
+      expect(await controller.exportNow(), isNull);
+      expect(exportService.exportCalls, 3);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      expect(
+        exportService.exportCalls,
+        4,
+        reason: 'a failure after the ladder ran out should still be retried',
+      );
+      expect(controller.lastBackupMessageCode, 'backup_exported');
+    },
+  );
+
+  test(
     'a periodic timer re-exports while the app stays open, independent of '
     'backgrounding',
     () async {

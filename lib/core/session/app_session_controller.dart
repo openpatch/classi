@@ -1685,11 +1685,15 @@ class AppSessionController extends ChangeNotifier {
 
     _cancelSyncRetryTimer();
     if (_syncRetryAttempt >= _syncRetryDelays.length) {
-      // Exhausted retries — the periodic timer will try again on its next tick.
+      // Exhausted retries — the periodic timer will try again on its next
+      // tick. Reset the ladder so that failure gets a fresh set of retries:
+      // leaving the counter at its ceiling would switch retries off for the
+      // rest of the session, however long ago the bad patch was.
       developer.log(
         'sync retry exhausted after $_syncRetryAttempt attempts',
         name: 'classi.backup',
       );
+      _syncRetryAttempt = 0;
       return;
     }
     final delay = _syncRetryDelays[_syncRetryAttempt];
@@ -1705,8 +1709,16 @@ class AppSessionController extends ChangeNotifier {
   }
 
   Future<void> _runSyncRetry() async {
-    if (_status != AppSessionStatus.ready || _isExporting || _isBusy) return;
     if (!_webDavAutoExportEnabled || !isWebDavConfigured) return;
+    if (_status != AppSessionStatus.ready || _isExporting || _isBusy) {
+      // Something else is mid-flight. Move to the next rung of the ladder
+      // rather than dropping the chain — the export that is running may
+      // itself fail, and abandoning the retry here would leave nothing to
+      // pick it up until the next periodic tick. Advancing rather than
+      // repeating keeps this bounded: it still runs out of rungs.
+      _scheduleSyncRetry();
+      return;
+    }
     developer.log(
       'running sync retry #$_syncRetryAttempt',
       name: 'classi.backup',
