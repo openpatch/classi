@@ -228,9 +228,9 @@ class MergeService {
     final columns = _columnsFor(local, tableName);
     if (columns.isEmpty) return;
 
-    final baseRows = _loadRows(base, tableName, columns);
-    final localRows = _loadRows(local, tableName, columns);
-    final remoteRows = _loadRows(remote, tableName, columns);
+    final baseRows = _loadRows(base, tableName);
+    final localRows = _loadRows(local, tableName);
+    final remoteRows = _loadRows(remote, tableName);
 
     final allIds = <int>{
       ...baseRows.keys,
@@ -373,7 +373,6 @@ class MergeService {
   Map<int, Map<String, dynamic>> _loadRows(
     sqlite3.Database db,
     String tableName,
-    List<String> columns,
   ) {
     final result = db.select('SELECT * FROM $tableName');
     final rows = <int, Map<String, dynamic>>{};
