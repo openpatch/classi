@@ -463,11 +463,14 @@ class LibraryBackupService {
       final archived = files
           .where((f) {
             final name = f.name ?? p.basename(f.path ?? '');
-            // `_CONFLICT_` copies share the `<stem>_` prefix but are not
-            // superseded history — they hold changes no other backup has.
-            return name.startsWith('${stem}_') &&
-                !isConflictBackupFileName(name) &&
-                name.toLowerCase().endsWith(classiBackupExtension);
+            // Match on the archived-timestamp suffix, not on a `<stem>_`
+            // prefix: a second library called `MyClass_2026` shares that
+            // prefix and its canonical backup is not our history to delete.
+            // `_CONFLICT_` copies are excluded too — they are not superseded
+            // history, they hold changes no other backup has.
+            return isBackupFilePath(name) &&
+                isArchivedBackupFileName(name) &&
+                libraryNameForBackupFile(name) == stem;
           })
           .toList();
 
@@ -752,6 +755,12 @@ class LibraryBackupService {
   /// The trailing `Z` is optional: it was missing from names written by
   /// earlier versions, and those files are still on people's servers.
   static final RegExp _archivedTimestampPattern = RegExp(r'_\d{8}T\d{6}Z?$');
+
+  /// Whether [fileName] names an archived (superseded) copy of a backup
+  /// rather than a canonical or `_CONFLICT_` one.
+  static bool isArchivedBackupFileName(String fileName) =>
+      !isConflictBackupFileName(fileName) &&
+      _archivedTimestampPattern.hasMatch(p.basenameWithoutExtension(fileName));
 
   static String libraryNameForBackupFile(String backupFilePath) {
     final stem = _libraryNameForPath(backupFilePath);

@@ -156,4 +156,49 @@ void main() {
       isTrue,
     );
   });
+
+  test('archived backups are recognised by their timestamp suffix', () {
+    expect(
+      LibraryBackupService.isArchivedBackupFileName(
+        'MyClass_20260506T143200Z.classi-backup',
+      ),
+      isTrue,
+    );
+    // Written before the trailing Z was added; still on people's servers.
+    expect(
+      LibraryBackupService.isArchivedBackupFileName(
+        'MyClass_20260506T143200.classi-backup',
+      ),
+      isTrue,
+    );
+  });
+
+  test('a canonical backup is not an archived one', () {
+    expect(
+      LibraryBackupService.isArchivedBackupFileName('MyClass.classi-backup'),
+      isFalse,
+    );
+    expect(
+      LibraryBackupService.isArchivedBackupFileName(
+        'MyClass_CONFLICT_a1b2c3d4.classi-backup',
+      ),
+      isFalse,
+    );
+  });
+
+  test(
+    'a second library sharing the prefix is not history of the first',
+    () {
+      // Pruning used to match on a bare `<stem>_` prefix, which made
+      // `MyClass_2026`'s own backup look like a superseded copy of
+      // `MyClass` and deleted it off the server.
+      const sibling = 'MyClass_2026.classi-backup';
+
+      expect(LibraryBackupService.isArchivedBackupFileName(sibling), isFalse);
+      expect(
+        LibraryBackupService.libraryNameForBackupFile(sibling),
+        'MyClass_2026',
+      );
+    },
+  );
 }
