@@ -83,6 +83,13 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.20.2" date="2026-09-03">
+      <description>
+        <ul>
+          <li>Finish resolving a conflict after the restore locks the session</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.20.1" date="2026-09-03">
       <description>
         <ul>

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.20.2] - 2026-09-03
+
+### Bug Fixes
+
+- *(sync)* Finish resolving a conflict after the restore locks the session
+
+
 ## [1.20.1] - 2026-09-03
 
 ### Bug Fixes
