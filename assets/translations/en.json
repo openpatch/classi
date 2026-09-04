@@ -499,6 +499,7 @@
   "webdav_sync_behind": "A newer WebDAV backup is available.",
   "webdav_sync_check_now": "Check WebDAV status",
   "webdav_sync_conflict": "Sync conflict — two devices changed this library. Tap to resolve.",
+  "webdav_sync_conflict_locked": "Sync conflict — two devices changed this library. Unlock it to resolve.",
   "webdav_sync_checking": "Checking WebDAV backup status…",
   "webdav_sync_current": "Your local library is up to date with WebDAV.",
   "webdav_sync_disabled": "Automatic WebDAV import is disabled.",

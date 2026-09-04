@@ -126,10 +126,45 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('library missing'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+
+      // A conflict cannot be resolved from the unlock screen — keeping this
+      // device's version exports the live database, which needs the library
+      // open — so the status must not repeat the app shell's "tap to
+      // resolve", which is only true where the same status is a button.
+      await tester.pumpWidget(
+        _buildTestScreen(
+          session: _FakeAppSessionController(
+            statusValue: AppSessionStatus.locked,
+            currentDatabasePathValue: '/tmp/classi/test.classi',
+            isWebDavConfiguredValue: true,
+            webDavSyncStatusValue: WebDavSyncStatus.conflict,
+          ),
+          child: const UnlockScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Sync conflict — two devices changed this library. '
+          'Unlock it to resolve.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Sync conflict — two devices changed this library. Tap to resolve.',
+        ),
+        findsNothing,
+        reason: 'nothing on the unlock screen resolves a conflict',
+      );
     },
   );
-
 }
+
 
 Widget _buildTestScreen({
   required AppSessionController session,
@@ -161,6 +196,8 @@ class _FakeAppSessionController extends AppSessionController {
     this.pendingRecoveryKeyValue,
     this.supportsRecoveryValue = false,
     this.currentDatabasePathValue = '/tmp/classi/test.classi',
+    this.webDavSyncStatusValue = WebDavSyncStatus.notConfigured,
+    this.isWebDavConfiguredValue = false,
   }) : super(
          keyService: KeyService(),
          databasePathService: DatabasePathService(),
@@ -176,6 +213,14 @@ class _FakeAppSessionController extends AppSessionController {
   final String? pendingRecoveryKeyValue;
   final bool supportsRecoveryValue;
   final String currentDatabasePathValue;
+  final WebDavSyncStatus webDavSyncStatusValue;
+  final bool isWebDavConfiguredValue;
+
+  @override
+  WebDavSyncStatus get webDavSyncStatus => webDavSyncStatusValue;
+
+  @override
+  bool get isWebDavConfigured => isWebDavConfiguredValue;
 
   @override
   AppSessionStatus get status => statusValue;
