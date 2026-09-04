@@ -103,11 +103,18 @@ class AttendanceRepository {
     required DateTime date,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    final existing =
+    // A day holds at most one attendance row per student, but nothing in the
+    // schema enforces that and the sync merge can carry a second one across
+    // when two devices logged the same day. Read the whole set rather than
+    // `getSingleOrNull`, which throws on the second row, and fold any extras
+    // into the one this write keeps.
+    final existingLogs =
         await (_database.select(_database.attendanceLogsTable)
               ..where((table) => table.studentId.equals(studentId))
-              ..where((table) => table.date.equals(normalizedDate)))
-            .getSingleOrNull();
+              ..where((table) => table.date.equals(normalizedDate))
+              ..orderBy([(table) => OrderingTerm.asc(table.id)]))
+            .get();
+    final existing = existingLogs.isEmpty ? null : existingLogs.first;
 
     await _database.transaction(() async {
       if (existing == null) {
@@ -120,10 +127,17 @@ class AttendanceRepository {
                 isAbsent: const Value(true),
               ),
             );
-      } else if (!existing.isAbsent) {
-        await (_database.update(_database.attendanceLogsTable)
-              ..where((t) => t.id.equals(existing.id)))
-            .write(const AttendanceLogsTableCompanion(isAbsent: Value(true)));
+      } else {
+        if (!existing.isAbsent) {
+          await (_database.update(_database.attendanceLogsTable)
+                ..where((t) => t.id.equals(existing.id)))
+              .write(const AttendanceLogsTableCompanion(isAbsent: Value(true)));
+        }
+        for (final duplicate in existingLogs.skip(1)) {
+          await (_database.delete(_database.attendanceLogsTable)
+                ..where((t) => t.id.equals(duplicate.id)))
+              .go();
+        }
       }
 
       // Homework and material stay untouched. Marking a student absent used to

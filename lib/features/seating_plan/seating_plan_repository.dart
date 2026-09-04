@@ -234,11 +234,16 @@ class SeatingPlanRepository {
     // before the write is committed would only redraw the seating it had.
     await _database.transaction(() async {
       final source =
-          await (_database.select(_database.seatingPlanPositionsTable)..where(
-                (t) =>
-                    t.seatingPlanId.equals(planId) &
-                    t.studentId.equals(studentId),
-              ))
+          await (_database.select(_database.seatingPlanPositionsTable)
+                ..where(
+                  (t) =>
+                      t.seatingPlanId.equals(planId) &
+                      t.studentId.equals(studentId),
+                )
+                // A plan seats a student once, but the sync merge can carry a
+                // second position across and `getSingleOrNull` throws on it.
+                ..orderBy([(t) => OrderingTerm.asc(t.id)])
+                ..limit(1))
               .getSingleOrNull();
 
       if (source == null) {

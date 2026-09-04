@@ -93,11 +93,18 @@ class MaterialRepository {
     required bool hadMaterial,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    final existing =
+    // A day holds at most one log per student, but nothing in the schema
+    // enforces that and the sync merge can carry a second row across when two
+    // devices logged the same day independently. Read the whole set rather
+    // than `getSingleOrNull`, which throws on the second row, and fold any
+    // extras into the one this write keeps.
+    final existingLogs =
         await (_database.select(_database.materialLogsTable)
               ..where((table) => table.studentId.equals(studentId))
-              ..where((table) => table.date.equals(normalizedDate)))
-            .getSingleOrNull();
+              ..where((table) => table.date.equals(normalizedDate))
+              ..orderBy([(table) => OrderingTerm.asc(table.id)]))
+            .get();
+    final existing = existingLogs.isEmpty ? null : existingLogs.first;
 
     if (existing == null) {
       await _database
@@ -112,9 +119,14 @@ class MaterialRepository {
       return;
     }
 
-    await (_database.update(_database.materialLogsTable)
-          ..where((table) => table.id.equals(existing.id)))
-        .write(MaterialLogsTableCompanion(hadMaterial: Value(hadMaterial)));
+    await _database.transaction(() async {
+      await (_database.update(_database.materialLogsTable)
+            ..where((table) => table.id.equals(existing.id)))
+          .write(MaterialLogsTableCompanion(hadMaterial: Value(hadMaterial)));
+      for (final duplicate in existingLogs.skip(1)) {
+        await deleteLog(duplicate.id);
+      }
+    });
   }
 
   Future<void> updateLog({
