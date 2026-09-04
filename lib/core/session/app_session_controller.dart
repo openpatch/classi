@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -1103,13 +1104,19 @@ class AppSessionController extends ChangeNotifier {
   /// differs between them. Shown on the conflict resolution screen so the
   /// teacher can make an informed choice.
   ///
-  /// Returns `null` if either backup cannot be downloaded.
+  /// Returns `null` if either backup cannot be downloaded or read — the
+  /// screen still offers both sides, it just cannot say what is in them.
   Future<ConflictDiffSummary?> conflictDiff({
     required String conflictRemotePath,
     required String canonicalRemotePath,
   }) async {
     final client = await createWebDavClient();
     if (client == null) return null;
+
+    // Both archives are SQLCipher-encrypted; the diff cannot read a single
+    // row without the passphrase to derive each snapshot's key from.
+    final passphrase = _currentPassphrase;
+    if (passphrase == null) return null;
 
     try {
       final conflictBytes = await _libraryBackupService.downloadBackupFromWebDav(
@@ -1121,9 +1128,20 @@ class AppSessionController extends ChangeNotifier {
         client: client,
         remotePath: canonicalRemotePath,
       );
-      return ConflictDiffService().compare(
-        thisDeviceBytes: conflictBytes,
-        serverBytes: canonicalBytes,
+      // Unpacking the archives, opening two SQLCipher databases and
+      // scanning every row is synchronous work that would otherwise stall
+      // the frame pump for a few hundred milliseconds at a stretch. None of
+      // it touches a platform channel or the open database, so it runs off
+      // the UI isolate. Nothing from `this` may be captured here — the
+      // closure is copied into the new isolate, and the controller is not
+      // sendable. KeyService holds no instance state, so the isolate builds
+      // its own.
+      return await Isolate.run(
+        () => ConflictDiffService().compare(
+          thisDeviceBytes: conflictBytes,
+          serverBytes: canonicalBytes,
+          passphrase: passphrase,
+        ),
       );
     } catch (error, stackTrace) {
       _logUnexpectedError(

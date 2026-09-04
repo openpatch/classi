@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,6 +60,17 @@ class _BackupConflictScreenState extends ConsumerState<BackupConflictScreen> {
             canonicalRemotePath: widget.canonical.remotePath,
           );
       if (mounted) setState(() => _diff = summary);
+    } on Object catch (error, stackTrace) {
+      // The summary is an aid, not a prerequisite: both options stay on
+      // screen without it. Swallowing the error here keeps an unawaited
+      // future from tearing down the screen the user needs.
+      developer.log(
+        'Could not load the conflict diff',
+        name: 'classi.sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) setState(() => _diff = null);
     } finally {
       if (mounted) setState(() => _loadingDiff = false);
     }
@@ -306,7 +319,7 @@ class _DiffSummaryCard extends StatelessWidget {
                 Icon(Icons.compare_arrows, color: colorScheme.primary),
                 const SizedBox(width: AppSpacing.medium),
                 Text(
-                  'What changed',
+                  'conflict_diff_title'.tr(),
                   style: textTheme.titleMedium,
                 ),
               ],
@@ -314,7 +327,7 @@ class _DiffSummaryCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.medium),
             if (summary.totalDifferences == 0)
               Text(
-                'Both versions are identical.',
+                'conflict_diff_identical'.tr(),
                 style: textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -323,20 +336,20 @@ class _DiffSummaryCard extends StatelessWidget {
               _DiffStatRow(
                 icon: Icons.add_circle_outline,
                 color: colorScheme.primary,
-                label: 'Only on this device',
+                label: 'conflict_diff_only_here'.tr(),
                 count: summary.rowsOnlyOnThisDevice,
               ),
               _DiffStatRow(
                 icon: Icons.cloud_download_outlined,
                 color: colorScheme.primary,
-                label: 'Only on server',
+                label: 'conflict_diff_only_server'.tr(),
                 count: summary.rowsOnlyOnServer,
               ),
               if (summary.rowsChangedOnBoth > 0)
                 _DiffStatRow(
                   icon: Icons.warning_amber_outlined,
                   color: colorScheme.error,
-                  label: 'Changed on both sides',
+                  label: 'conflict_diff_changed_both'.tr(),
                   count: summary.rowsChangedOnBoth,
                 ),
               const SizedBox(height: AppSpacing.small),
@@ -344,10 +357,22 @@ class _DiffSummaryCard extends StatelessWidget {
                 (t) => Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.xSmall),
                   child: Text(
-                    '${t.displayName}: '
-                    '${t.onlyOnThisDevice} new here, '
-                    '${t.onlyOnServer} new on server'
-                    '${t.changedOnBoth > 0 ? ", ${t.changedOnBoth} conflicting" : ""}',
+                    t.changedOnBoth > 0
+                        ? 'conflict_diff_table_line_conflicting'.tr(
+                            namedArgs: {
+                              'table': t.displayNameKey.tr(),
+                              'here': '${t.onlyOnThisDevice}',
+                              'server': '${t.onlyOnServer}',
+                              'both': '${t.changedOnBoth}',
+                            },
+                          )
+                        : 'conflict_diff_table_line'.tr(
+                            namedArgs: {
+                              'table': t.displayNameKey.tr(),
+                              'here': '${t.onlyOnThisDevice}',
+                              'server': '${t.onlyOnServer}',
+                            },
+                          ),
                     style: textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
