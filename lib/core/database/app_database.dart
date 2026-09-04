@@ -93,7 +93,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Exposed statically so callers can compare it against the version on disk
   /// before opening (and therefore migrating) a library.
-  static const int currentSchemaVersion = 28;
+  static const int currentSchemaVersion = 29;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -314,6 +314,14 @@ class AppDatabase extends _$AppDatabase {
       if (from < 28) {
         await _migrateUpdatedAtColumns(migrator);
       }
+
+      if (from < 29) {
+        // v28 shipped the updated_at triggers without the `WHEN` guard, so
+        // they overwrote any timestamp a write supplied itself — including
+        // the one the sync merge carries across. Triggers are recreated
+        // rather than patched: SQLite has no ALTER TRIGGER.
+        await _createUpdatedAtTriggers();
+      }
     },
   );
 
@@ -426,18 +434,25 @@ class AppDatabase extends _$AppDatabase {
     await _createUpdatedAtTriggers();
   }
 
-  /// Creates an `AFTER UPDATE` trigger for every table that sets
-  /// `updated_at` to the current Unix timestamp. SQLite's
+  /// Creates an `AFTER UPDATE` trigger for every table that stamps
+  /// `updated_at` with the current Unix timestamp. SQLite's
   /// `recursive_triggers` pragma is off by default, so the trigger's own
   /// UPDATE does not fire it again.
+  ///
+  /// The `WHEN` guard makes the stamp a fallback rather than an override: an
+  /// UPDATE that writes `updated_at` itself keeps the value it wrote. The
+  /// sync merge depends on that — it carries the winning side's timestamp
+  /// across, and a trigger that overwrote it with wall-clock time would let a
+  /// merged row outrank a peer's genuinely newer edit on the next round.
   Future<void> _createUpdatedAtTriggers() async {
     for (final tableName in _allUpdatedAtTables) {
       if (!await _hasTable(tableName)) continue;
       final triggerName = '${tableName}_updated_at_trigger';
       final sql = '''
-        CREATE TRIGGER IF NOT EXISTS $triggerName
+        CREATE TRIGGER $triggerName
         AFTER UPDATE ON $tableName
         FOR EACH ROW
+        WHEN NEW.updated_at = OLD.updated_at
         BEGIN
           UPDATE $tableName
           SET updated_at = CAST(strftime('%s', 'now') AS INTEGER)
@@ -445,6 +460,7 @@ class AppDatabase extends _$AppDatabase {
         END
       ''';
       try {
+        await customStatement('DROP TRIGGER IF EXISTS $triggerName');
         await customStatement(sql);
       } on Object catch (error) {
         developer.log(
