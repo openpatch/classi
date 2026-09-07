@@ -550,5 +550,18 @@
   "conflict_diff_table_line_conflicting": "{table}: {here} neu hier, {server} neu auf dem Server, {both} widersprüchlich",
   "unknown_device": "Unbekanntes Gerät",
   "call_name": "Rufname",
-  "call_name_hint": "Falls abweichend vom Vornamen"
+  "call_name_hint": "Falls abweichend vom Vornamen",
+  "random_student": "Zufallsschüler:in",
+  "spin": "Drehen",
+  "selected_student": "Ausgewählt",
+  "picker_memory": "Speicher",
+  "memory_off": "Aus",
+  "memory_lesson": "Stunde",
+  "memory_school_year": "Schuljahr",
+  "reset_memory": "Speicher zurücksetzen",
+  "picked_progress": "{picked} von {total} gezogen",
+  "picker_absent_excluded": "Nicht auf dem Rad: {count} abwesend",
+  "picker_all_absent": "Alle sind für diese Stunde als abwesend markiert.",
+  "confirm_reset_picker_memory": "Speicher des Rads zurücksetzen?",
+  "confirm_reset_picker_memory_body": "Alle kommen wieder aufs Rad – für diese Stunde und für das Schuljahr."
 }

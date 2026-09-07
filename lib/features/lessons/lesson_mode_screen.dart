@@ -22,6 +22,7 @@ import '../seating_plan/lesson_seating_view.dart';
 import 'lesson_sections.dart';
 import 'lesson_support.dart';
 import 'lesson_widgets.dart';
+import 'student_picker/student_picker_sheet.dart';
 
 class LessonModeScreen extends ConsumerStatefulWidget {
   const LessonModeScreen({
@@ -121,6 +122,13 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                   : '${group.name} · $sessionLabel',
             ),
             actions: [
+              IconButton(
+                onPressed: studentsValue.hasValue
+                    ? () => _openStudentPicker(context)
+                    : null,
+                icon: const Icon(Icons.casino_outlined),
+                tooltip: 'random_student'.tr(),
+              ),
               IconButton(
                 onPressed: () async {
                   await ref
@@ -864,6 +872,17 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       studentId: studentId,
       category: category,
       value: result.value!,
+    );
+  }
+
+  void _openStudentPicker(BuildContext context) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => StudentPickerSheet(
+          groupId: widget.groupId,
+          date: _selectedDate,
+        ),
+      ),
     );
   }
 }
