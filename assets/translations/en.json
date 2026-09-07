@@ -550,5 +550,18 @@
   "conflict_diff_table_line_conflicting": "{table}: {here} new here, {server} new on the server, {both} conflicting",
   "unknown_device": "Unknown device",
   "call_name": "Call name",
-  "call_name_hint": "If different from the first name"
+  "call_name_hint": "If different from the first name",
+  "random_student": "Random student",
+  "spin": "Spin",
+  "selected_student": "Selected",
+  "picker_memory": "Memory",
+  "memory_off": "Off",
+  "memory_lesson": "Lesson",
+  "memory_school_year": "School year",
+  "reset_memory": "Reset memory",
+  "picked_progress": "{picked} of {total} picked",
+  "picker_absent_excluded": "Not on the wheel: {count} absent",
+  "picker_all_absent": "Everyone is marked absent for this lesson.",
+  "confirm_reset_picker_memory": "Reset the wheel memory?",
+  "confirm_reset_picker_memory_body": "Everyone goes back on the wheel, for this lesson and for the school year."
 }
