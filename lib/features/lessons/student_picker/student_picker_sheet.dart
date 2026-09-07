@@ -150,12 +150,27 @@ class _StudentPickerSheetState extends ConsumerState<StudentPickerSheet> {
                   const SizedBox(height: AppSpacing.large),
                   _MemoryModeSelector(args: _pickerArgs, enabled: !_isSpinning),
                   const SizedBox(height: AppSpacing.medium),
-                  // Offered whatever the scope is: the school year cannot be
-                  // reached from here otherwise.
-                  TextButton.icon(
-                    onPressed: _isSpinning ? null : _resetMemory,
-                    icon: const Icon(Icons.refresh),
-                    label: Text('reset_memory'.tr()),
+                  // Both are offered whatever the scope is: the school year
+                  // cannot be reached from here otherwise, and today's picks
+                  // are recorded even while the year is the one being used.
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: AppSpacing.small,
+                    children: [
+                      TextButton.icon(
+                        onPressed:
+                            _isSpinning || controller.lessonPickedIds.isEmpty
+                            ? null
+                            : _resetLesson,
+                        icon: const Icon(Icons.restore),
+                        label: Text('reset_lesson'.tr()),
+                      ),
+                      TextButton.icon(
+                        onPressed: _isSpinning ? null : _resetMemory,
+                        icon: const Icon(Icons.refresh),
+                        label: Text('reset_memory'.tr()),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -222,18 +237,34 @@ class _StudentPickerSheetState extends ConsumerState<StudentPickerSheet> {
     });
   }
 
-  Future<void> _resetMemory() async {
+  Future<void> _resetLesson() => _confirmAndReset(
+    title: 'confirm_reset_picker_lesson'.tr(),
+    body: 'confirm_reset_picker_lesson_body'.tr(),
+    reset: (controller) => controller.resetLesson(),
+  );
+
+  Future<void> _resetMemory() => _confirmAndReset(
+    title: 'confirm_reset_picker_memory'.tr(),
+    body: 'confirm_reset_picker_memory_body'.tr(),
+    reset: (controller) => controller.resetMemory(),
+  );
+
+  Future<void> _confirmAndReset({
+    required String title,
+    required String body,
+    required Future<void> Function(StudentPickerController controller) reset,
+  }) async {
     final confirmed = await showConfirmDialog(
       context: context,
-      title: 'confirm_reset_picker_memory'.tr(),
-      body: 'confirm_reset_picker_memory_body'.tr(),
+      title: title,
+      body: body,
       confirmKey: 'reset',
     );
     if (!confirmed || !mounted) return;
 
-    await ref
-        .read(studentPickerControllerProvider(_pickerArgs).notifier)
-        .resetMemory();
+    await reset(
+      ref.read(studentPickerControllerProvider(_pickerArgs).notifier),
+    );
     if (!mounted) return;
     setState(() {
       _result = null;
