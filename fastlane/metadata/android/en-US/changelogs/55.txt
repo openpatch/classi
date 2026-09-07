@@ -1,0 +1,27 @@
+Bug Fixes
+
+- Keep an explicitly written updated_at through the trigger
+- Make the three-way merge usable against real libraries
+- Let the conflict diff read encrypted backups, off the UI isolate
+- Stop the export retry ladder from switching itself off
+- Stop promising a tap the unlock screen cannot honour
+- Stop the conflict indicator surviving its own resolution
+- Stop pruning a second library's backup off the server
+- Survive the duplicate rows a merge leaves behind
+- Dispose the quick note dialog's controller
+- Guard setState after the folder picker returns
+
+
+Features
+
+- Improve WebDAV sync robustness with revision-based detection, retry backoff, and updatedAt columns
+- Add three-way merge algorithm for row-level conflict resolution
+- Add conflict diff summary to conflict resolution screen
+
+
+Refactoring
+
+- Fold the two identical log editor sheets into one
+- Drop an unused parameter from the merge row loader
+
+
