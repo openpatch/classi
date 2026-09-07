@@ -1,0 +1,6 @@
+Features
+
+- Pick a random student with a spinning wheel
+- Forget a single lesson's picks on the wheel
+
+
