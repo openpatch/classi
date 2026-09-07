@@ -32,6 +32,7 @@ class StudentPickerController extends ChangeNotifier {
 
   StudentPickerMemoryMode _memoryMode = StudentPickerMemoryMode.off;
   Set<int> _pickedStudentIds = const {};
+  Set<int> _lessonPickedIds = const {};
   bool _isLoaded = false;
 
   // Settings writes are read-modify-write over one shared file, so they run
@@ -40,6 +41,13 @@ class StudentPickerController extends ChangeNotifier {
 
   StudentPickerMemoryMode get memoryMode => _memoryMode;
   Set<int> get pickedStudentIds => UnmodifiableSetView(_pickedStudentIds);
+
+  /// The students picked during this lesson, whatever the scope is.
+  ///
+  /// Tracked next to [pickedStudentIds] so a lesson can be forgotten on its
+  /// own without giving up the school year.
+  Set<int> get lessonPickedIds => UnmodifiableSetView(_lessonPickedIds);
+
   bool get isLoaded => _isLoaded;
 
   Future<void> initialize() async {
@@ -48,6 +56,7 @@ class StudentPickerController extends ChangeNotifier {
       ProjectSettingsStore.stringAt(settings, _modePath),
     );
     _pickedStudentIds = _readPickedIds(settings, _memoryMode);
+    _lessonPickedIds = _readIds(settings, _lessonPath);
     _isLoaded = true;
     notifyListeners();
   }
@@ -69,10 +78,23 @@ class StudentPickerController extends ChangeNotifier {
 
   Future<void> markPicked(int studentId) async {
     if (_memoryMode == StudentPickerMemoryMode.off) return;
-    if (_pickedStudentIds.contains(studentId)) return;
+    if (_pickedStudentIds.contains(studentId) &&
+        _lessonPickedIds.contains(studentId)) {
+      return;
+    }
     _pickedStudentIds = {..._pickedStudentIds, studentId};
+    _lessonPickedIds = {..._lessonPickedIds, studentId};
     notifyListeners();
-    await _write((settings) => _writePickedIds(settings, _memoryMode));
+    await _write(_writePicked);
+  }
+
+  /// Forgets the picks made during this lesson, keeping the rest of the year.
+  Future<void> resetLesson() async {
+    if (_lessonPickedIds.isEmpty) return;
+    _pickedStudentIds = _pickedStudentIds.difference(_lessonPickedIds);
+    _lessonPickedIds = const {};
+    notifyListeners();
+    await _write(_writePicked);
   }
 
   /// Clears the memory once every student in [rosterIds] has had a turn, so
@@ -90,6 +112,7 @@ class StudentPickerController extends ChangeNotifier {
   /// whenever the picker is set to something else.
   Future<void> resetMemory() async {
     _pickedStudentIds = const {};
+    _lessonPickedIds = const {};
     notifyListeners();
     await _write(
       (settings) => ProjectSettingsStore.removePath(settings, _groupMemoryPath),
@@ -100,8 +123,12 @@ class StudentPickerController extends ChangeNotifier {
   Future<void> _startNewRound() async {
     if (_pickedStudentIds.isEmpty) return;
     _pickedStudentIds = const {};
+    if (_memoryMode == StudentPickerMemoryMode.lesson) {
+      // In this scope both sets are the same bucket.
+      _lessonPickedIds = const {};
+    }
     notifyListeners();
-    await _write((settings) => _removePickedIds(settings, _memoryMode));
+    await _write(_writePicked);
   }
 
   /// The students still eligible to be picked, given the full student list.
@@ -130,15 +157,21 @@ class StudentPickerController extends ChangeNotifier {
     'group_$_groupId',
   ];
 
+  List<String> get _byDatePath => [..._groupMemoryPath, 'byDate'];
+
+  List<String> get _lessonPath => [..._byDatePath, _lessonDateKey];
+
+  List<String> get _schoolYearPath => [..._groupMemoryPath, 'schoolYear'];
+
   /// Where the picked ids of [mode] live, or `null` when the mode stores none.
   List<String>? _pickedPath(StudentPickerMemoryMode mode) {
     switch (mode) {
       case StudentPickerMemoryMode.off:
         return null;
       case StudentPickerMemoryMode.lesson:
-        return [..._groupMemoryPath, 'byDate', _lessonDateKey];
+        return _lessonPath;
       case StudentPickerMemoryMode.schoolYear:
-        return [..._groupMemoryPath, 'schoolYear'];
+        return _schoolYearPath;
     }
   }
 
@@ -147,7 +180,10 @@ class StudentPickerController extends ChangeNotifier {
     StudentPickerMemoryMode mode,
   ) {
     final path = _pickedPath(mode);
-    if (path == null) return const {};
+    return path == null ? const {} : _readIds(settings, path);
+  }
+
+  Set<int> _readIds(Map<String, dynamic> settings, List<String> path) {
     final list = ProjectSettingsStore.listAt(settings, path);
     if (list == null) return const {};
     return {
@@ -156,34 +192,24 @@ class StudentPickerController extends ChangeNotifier {
     };
   }
 
-  void _writePickedIds(
-    Map<String, dynamic> settings,
-    StudentPickerMemoryMode mode,
-  ) {
-    final path = _pickedPath(mode);
-    if (path == null) return;
-    final ids = _pickedStudentIds.toList()..sort();
-    if (mode == StudentPickerMemoryMode.lesson) {
-      // Lesson memory only covers the lesson at hand, so replacing the whole
-      // map drops the entries of earlier dates as a side effect.
+  void _writePicked(Map<String, dynamic> settings) {
+    if (_memoryMode == StudentPickerMemoryMode.off) return;
+    // Today's picks are stored whatever the scope, and the whole map is
+    // replaced so the entries of earlier dates go with it.
+    ProjectSettingsStore.setPath(settings, _byDatePath, {
+      if (_lessonPickedIds.isNotEmpty)
+        _lessonDateKey: _sorted(_lessonPickedIds),
+    });
+    if (_memoryMode == StudentPickerMemoryMode.schoolYear) {
       ProjectSettingsStore.setPath(
         settings,
-        [..._groupMemoryPath, 'byDate'],
-        {_lessonDateKey: ids},
+        _schoolYearPath,
+        _sorted(_pickedStudentIds),
       );
-      return;
     }
-    ProjectSettingsStore.setPath(settings, path, ids);
   }
 
-  void _removePickedIds(
-    Map<String, dynamic> settings,
-    StudentPickerMemoryMode mode,
-  ) {
-    final path = _pickedPath(mode);
-    if (path == null) return;
-    ProjectSettingsStore.removePath(settings, path);
-  }
+  static List<int> _sorted(Set<int> ids) => ids.toList()..sort();
 
   /// Applies [mutate] to the settings sidecar behind any write still in
   /// flight, so two updates cannot read the same state and overwrite each

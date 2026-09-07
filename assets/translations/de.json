@@ -563,5 +563,8 @@
   "picker_absent_excluded": "Nicht auf dem Rad: {count} abwesend",
   "picker_all_absent": "Alle sind für diese Stunde als abwesend markiert.",
   "confirm_reset_picker_memory": "Speicher des Rads zurücksetzen?",
-  "confirm_reset_picker_memory_body": "Alle kommen wieder aufs Rad – für diese Stunde und für das Schuljahr."
+  "confirm_reset_picker_memory_body": "Alle kommen wieder aufs Rad – für diese Stunde und für das Schuljahr.",
+  "reset_lesson": "Diese Stunde vergessen",
+  "confirm_reset_picker_lesson": "Ziehungen dieser Stunde vergessen?",
+  "confirm_reset_picker_lesson_body": "Die heute gezogenen Schüler:innen kommen wieder aufs Rad. Der Schuljahresspeicher bleibt erhalten."
 }

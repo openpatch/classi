@@ -198,6 +198,27 @@ void main() {
     expect(find.text('0 of 3 picked'), findsOneWidget);
     expect(wheelSegments(), hasLength(roster.length));
 
+    // Forgetting the lesson takes today's picks back out of the school year.
+    await tester.tap(find.text('School year'));
+    await tester.pumpAndSettle();
+    await spin();
+    expect(find.text('1 of 3 picked'), findsOneWidget);
+
+    final forget = find.widgetWithText(TextButton, 'Forget this lesson');
+    await tester.ensureVisible(forget);
+    await tester.tap(forget);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Reset'));
+    await tester.pumpAndSettle();
+    expect(find.text('0 of 3 picked'), findsOneWidget);
+
+    // With nothing picked today there is nothing to forget.
+    expect(
+      tester.widget<TextButton>(forget).onPressed,
+      isNull,
+      reason: 'the lesson reset should be disabled with an empty lesson',
+    );
+
     // Nobody to pick from at all.
     await setAbsent({for (final value in roster) value.id});
     expect(

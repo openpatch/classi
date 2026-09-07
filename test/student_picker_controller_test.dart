@@ -147,15 +147,17 @@ void main() {
       await controller.setMemoryMode(StudentPickerMemoryMode.schoolYear);
       await controller.markPicked(1);
 
+      // A pick made today counts for this lesson whichever scope recorded it.
       await controller.setMemoryMode(StudentPickerMemoryMode.lesson);
-      expect(controller.pickedStudentIds, isEmpty);
+      expect(controller.pickedStudentIds, {1});
       await controller.markPicked(2);
 
+      // Picking within the lesson does not add to the year.
       await controller.setMemoryMode(StudentPickerMemoryMode.schoolYear);
       expect(controller.pickedStudentIds, {1});
 
       await controller.setMemoryMode(StudentPickerMemoryMode.lesson);
-      expect(controller.pickedStudentIds, {2});
+      expect(controller.pickedStudentIds, {1, 2});
     });
 
     test('turning the memory off leaves the stored history alone', () async {
@@ -194,6 +196,49 @@ void main() {
       await controller.startRound([1, 2, 3]);
 
       expect(controller.pickedStudentIds, {1});
+    });
+
+    test('resetLesson takes today out of the school year', () async {
+      final monday_ = await controllerFor();
+      await monday_.setMemoryMode(StudentPickerMemoryMode.schoolYear);
+      await monday_.markPicked(1);
+
+      final today = await controllerFor(date: tuesday);
+      await today.markPicked(2);
+      expect(today.pickedStudentIds, {1, 2});
+      expect(today.lessonPickedIds, {2});
+
+      await today.resetLesson();
+
+      expect(today.pickedStudentIds, {1});
+      expect(today.lessonPickedIds, isEmpty);
+
+      final reloaded = await controllerFor(date: tuesday);
+      expect(reloaded.pickedStudentIds, {1});
+      expect(reloaded.lessonPickedIds, isEmpty);
+    });
+
+    test('resetLesson clears the round in the lesson scope', () async {
+      final controller = await controllerFor();
+      await controller.setMemoryMode(StudentPickerMemoryMode.lesson);
+      await controller.markPicked(1);
+
+      await controller.resetLesson();
+
+      expect(controller.pickedStudentIds, isEmpty);
+      final reloaded = await controllerFor();
+      expect(reloaded.pickedStudentIds, isEmpty);
+    });
+
+    test('a lesson of another day is not forgotten', () async {
+      final monday_ = await controllerFor();
+      await monday_.setMemoryMode(StudentPickerMemoryMode.schoolYear);
+      await monday_.markPicked(1);
+
+      final today = await controllerFor(date: tuesday);
+      await today.resetLesson();
+
+      expect(today.pickedStudentIds, {1});
     });
 
     test('resetMemory clears every scope of the group', () async {
