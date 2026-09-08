@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.21.0] - 2026-09-07
+
+### Features
+
+- *(lessons)* Pick a random student with a spinning wheel
+- *(lessons)* Forget a single lesson's picks on the wheel
+
+
 ## [1.20.3] - 2026-09-04
 
 ### Bug Fixes
