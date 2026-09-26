@@ -15,10 +15,14 @@ import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/quick_note_dialog.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/theme/app_ui.dart';
+import '../attendance/attendance_state.dart';
 import '../grades/grade_picker_dialog.dart';
 import '../notes/note_editor.dart';
 import '../notes/note_links.dart';
 import '../seating_plan/lesson_seating_view.dart';
+import '../webuntis/webuntis_lesson_day.dart';
+import '../webuntis/webuntis_link.dart';
+import 'lesson_periods.dart';
 import 'lesson_sections.dart';
 import 'lesson_support.dart';
 import 'lesson_widgets.dart';
@@ -30,6 +34,7 @@ class LessonModeScreen extends ConsumerStatefulWidget {
     required this.initialDate,
     this.initialSessionLabel,
     this.initialCategoryId,
+    this.initialPeriods,
     super.key,
   });
 
@@ -37,6 +42,10 @@ class LessonModeScreen extends ConsumerStatefulWidget {
   final DateTime initialDate;
   final String? initialSessionLabel;
   final String? initialCategoryId;
+
+  /// The lesson to open, when the caller knows it. Otherwise lesson mode
+  /// works it out from the group's timetable and the clock.
+  final LessonPeriods? initialPeriods;
 
   @override
   ConsumerState<LessonModeScreen> createState() => _LessonModeScreenState();
@@ -48,6 +57,11 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
   late final TextEditingController _sessionController;
   late DateTime _selectedDate;
   String? _selectedCategoryId;
+
+  /// The lesson being held, `null` for a whole-day entry.
+  LessonPeriods? _periods;
+
+  int get _periodStart => _periods?.start ?? 0;
   _LessonViewMode _viewMode = _LessonViewMode.list;
 
   @override
@@ -55,10 +69,16 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     super.initState();
     _selectedDate = normalizeLessonDate(widget.initialDate);
     _selectedCategoryId = widget.initialCategoryId;
+    _periods = widget.initialPeriods;
     _sessionController = TextEditingController(
       text: widget.initialSessionLabel,
     );
-    Future<void>.microtask(_restoreSessionLabelForCurrentSelection);
+    Future<void>.microtask(() async {
+      if (_periods == null) {
+        await _resolveCurrentLesson();
+      }
+      await _restoreSessionLabelForCurrentSelection();
+    });
   }
 
   @override
@@ -72,16 +92,19 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     final groupValue = ref.watch(lessonGroupProvider(widget.groupId));
     final studentsValue = ref.watch(lessonStudentsProvider(widget.groupId));
     final materialSelectionsValue = ref.watch(
-      lessonMaterialSelectionsProvider((widget.groupId, _selectedDate)),
+      lessonMaterialSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
     );
     final homeworkSelectionsValue = ref.watch(
-      lessonHomeworkSelectionsProvider((widget.groupId, _selectedDate)),
+      lessonHomeworkSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
     );
     final absenceSelectionsValue = ref.watch(
-      lessonAbsenceSelectionsProvider((widget.groupId, _selectedDate)),
+      lessonAbsenceSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
     );
     final excusedSelectionsValue = ref.watch(
-      lessonExcusedSelectionsProvider((widget.groupId, _selectedDate)),
+      lessonExcusedSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+    );
+    final lateSelectionsValue = ref.watch(
+      lessonLateSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
     );
     final notesValue = ref.watch(lessonNotesProvider(widget.groupId));
 
@@ -131,20 +154,33 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
               ),
               IconButton(
                 onPressed: () async {
-                  await ref
-                      .read(sessionRepositoryProvider)
-                      .upsertSessionForDate(
-                        groupId: widget.groupId,
-                        date: _selectedDate,
-                        categoryId: selectedCategory.id,
-                        categoryName: selectedCategory.name,
-                        label: _sessionController.text.trim(),
-                      );
+                  final sessions = ref.read(sessionRepositoryProvider);
+                  final periods = _periods;
+                  if (periods == null) {
+                    await sessions.upsertSessionForDate(
+                      groupId: widget.groupId,
+                      date: _selectedDate,
+                      categoryId: selectedCategory.id,
+                      categoryName: selectedCategory.name,
+                      label: _sessionController.text.trim(),
+                    );
+                  } else {
+                    await sessions.upsertSession(
+                      groupId: widget.groupId,
+                      date: _selectedDate,
+                      categoryId: selectedCategory.id,
+                      categoryName: selectedCategory.name,
+                      label: _sessionController.text.trim(),
+                      periodStart: periods.start,
+                      periodEnd: periods.end,
+                    );
+                  }
                   await ref
                       .read(attendanceRepositoryProvider)
                       .savePresenceForDate(
                         groupId: widget.groupId,
                         date: _selectedDate,
+                        periodStart: _periodStart,
                       );
                   if (context.mounted) {
                     if (context.canPop()) {
@@ -190,6 +226,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                   absenceSelectionsValue.value ?? const <int>{};
               final excusedStudents =
                   excusedSelectionsValue.value ?? const <int>{};
+              final lateStudents = lateSelectionsValue.value ?? const <int>{};
               final gradeSelections =
                   gradeSelectionsValue.value ?? const <int, String>{};
               final lessonNotes = notesForLessonDate(
@@ -229,6 +266,38 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                       selectedDate: _selectedDate,
                       onSessionChanged: (_) => setState(() {}),
                       onPickDate: _pickDate,
+                      lessonSelector: LessonPicker(
+                        lessons:
+                            ref
+                                .watch(
+                                  lessonsOnDateProvider((
+                                    widget.groupId,
+                                    _selectedDate,
+                                  )),
+                                )
+                                .value ??
+                            const [],
+                        selected: _periods,
+                        weekday: _selectedDate.weekday,
+                        bellTimes:
+                            ref.watch(bellTimesProvider).value ?? const {},
+                        onSelected: _selectLesson,
+                      ),
+                      topicSource: switch (WebUntisGroupLink.ofGroup(group)) {
+                        final link? => WebUntisLessonPanel(
+                          link: link,
+                          date: _selectedDate,
+                          periods: _periods,
+                          localTopic: _sessionController.text,
+                          onApplyTopic: (topic) =>
+                              setState(() => _sessionController.text = topic),
+                          students: students,
+                          absentStudents: absentStudents,
+                          excusedStudents: excusedStudents,
+                          lateStudents: lateStudents,
+                        ),
+                        null => null,
+                      },
                       action: absentStudents.isNotEmpty
                           ? OutlinedButton.icon(
                               onPressed: () => _clearAbsencesForDate(context),
@@ -287,16 +356,39 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         students: students,
                         absentStudents: absentStudents,
                         excusedStudents: excusedStudents,
+                        lateStudents: lateStudents,
                         materialSelections: materialSelections,
                         homeworkSelections: homeworkSelections,
                         gradeSelections: gradeSelections,
                         noteCountsByStudent: noteCountsByStudent,
                         onOpenStudent: (student) =>
                             context.push('/students/${student.id}'),
-                        onSetAbsent: (student) =>
-                            _setAbsent(studentId: student.id, absent: true),
-                        onSetPresent: (student) =>
-                            _setAbsent(studentId: student.id, absent: false),
+                        onSwipeAbsent: (student) => _setAttendance(
+                          context: context,
+                          group: group,
+                          student: student,
+                          from: _attendanceOf(
+                            student,
+                            absentStudents,
+                            lateStudents,
+                          ),
+                          to: absentStudents.contains(student.id)
+                              ? AttendanceState.present
+                              : AttendanceState.absent,
+                        ),
+                        onSwipeLate: (student) => _setAttendance(
+                          context: context,
+                          group: group,
+                          student: student,
+                          from: _attendanceOf(
+                            student,
+                            absentStudents,
+                            lateStudents,
+                          ),
+                          to: lateStudents.contains(student.id)
+                              ? AttendanceState.present
+                              : AttendanceState.late,
+                        ),
                         onToggleExcused: (student, excused) => _toggleExcused(
                           studentId: student.id,
                           excused: excused,
@@ -341,10 +433,28 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         homeworkSelections: homeworkSelections,
                         gradeSelections: gradeSelections,
                         noteCountsByStudent: noteCountsByStudent,
-                        onSetAbsent: (student) =>
-                            _setAbsent(studentId: student.id, absent: true),
-                        onSetPresent: (student) =>
-                            _setAbsent(studentId: student.id, absent: false),
+                        onSetAbsent: (student) => _setAttendance(
+                          context: context,
+                          group: group,
+                          student: student,
+                          from: _attendanceOf(
+                            student,
+                            absentStudents,
+                            lateStudents,
+                          ),
+                          to: AttendanceState.absent,
+                        ),
+                        onSetPresent: (student) => _setAttendance(
+                          context: context,
+                          group: group,
+                          student: student,
+                          from: _attendanceOf(
+                            student,
+                            absentStudents,
+                            lateStudents,
+                          ),
+                          to: AttendanceState.present,
+                        ),
                         onToggleExcused: (student, excused) => _toggleExcused(
                           studentId: student.id,
                           excused: excused,
@@ -439,6 +549,50 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     );
   }
 
+  /// Opens the group's lesson that is running now, or the day's first one
+  /// on another day. Stays on a whole-day entry when the group has no lesson
+  /// in its timetable that day.
+  Future<void> _resolveCurrentLesson() async {
+    final date = _selectedDate;
+    // Straight from the repositories: reading an auto-disposing provider's
+    // future before anything listens to it can leave the future pending.
+    final slots = await ref
+        .read(lessonSlotRepositoryProvider)
+        .slots(widget.groupId);
+    final sessions = await ref
+        .read(sessionRepositoryProvider)
+        .watchSessionsOnDate(groupId: widget.groupId, date: date)
+        .first;
+    final bellTimes = await ref
+        .read(webUntisSettingsServiceProvider)
+        .readBellTimes();
+    final lessons = lessonsOnDate(
+      date: date,
+      slots: slots,
+      sessions: sessions,
+    );
+    if (!mounted || _selectedDate != date) return;
+    final picked = pickCurrentLesson(
+      lessons: lessons,
+      date: date,
+      now: DateTime.now(),
+      bellTimes: bellTimes,
+    );
+    if (picked != _periods) {
+      setState(() => _periods = picked);
+    }
+  }
+
+  /// Switches to another lesson of the same day.
+  Future<void> _selectLesson(LessonPeriods? periods) async {
+    if (periods == _periods) return;
+    setState(() {
+      _periods = periods;
+      _sessionController.clear();
+    });
+    await _restoreSessionLabelForCurrentSelection();
+  }
+
   Future<void> _restoreSessionLabelForCurrentSelection({
     String? categoryId,
     DateTime? date,
@@ -454,13 +608,23 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     final targetDate = normalizeLessonDate(date ?? _selectedDate);
 
     // First try to restore from an existing session record.
-    final session = await ref
-        .read(sessionRepositoryProvider)
-        .sessionForDate(
-          groupId: widget.groupId,
-          date: targetDate,
-          categoryId: targetCategoryId,
-        );
+    final periods = _periods;
+    final session = periods == null
+        ? await ref
+              .read(sessionRepositoryProvider)
+              .sessionForDate(
+                groupId: widget.groupId,
+                date: targetDate,
+                categoryId: targetCategoryId,
+              )
+        : await ref
+              .read(sessionRepositoryProvider)
+              .getSession(
+                groupId: widget.groupId,
+                date: targetDate,
+                categoryId: targetCategoryId,
+                periodStart: periods.start,
+              );
     if (!mounted ||
         _sessionController.text.trim().isNotEmpty ||
         _selectedCategoryId != targetCategoryId ||
@@ -564,7 +728,10 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
 
     setState(() {
       _selectedDate = normalizeLessonDate(selected);
+      _periods = null;
+      _sessionController.clear();
     });
+    await _resolveCurrentLesson();
     await _restoreSessionLabelForCurrentSelection(date: _selectedDate);
   }
 
@@ -743,17 +910,30 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
   }) async {
     await ref
         .read(attendanceRepositoryProvider)
-        .clearAbsence(studentId: studentId, date: _selectedDate);
+        .clearAbsenceOnly(
+          studentId: studentId,
+          date: _selectedDate,
+          periodStart: _periodStart,
+        );
     if (value == null) {
       await ref
           .read(materialRepositoryProvider)
-          .clearLog(studentId: studentId, date: _selectedDate);
+          .clearLog(
+            studentId: studentId,
+            date: _selectedDate,
+            periodStart: _periodStart,
+          );
       return;
     }
 
     await ref
         .read(materialRepositoryProvider)
-        .saveLog(studentId: studentId, date: _selectedDate, hadMaterial: value);
+        .saveLog(
+          studentId: studentId,
+          date: _selectedDate,
+          periodStart: _periodStart,
+          hadMaterial: value,
+        );
   }
 
   Future<void> _setHomeworkValue({
@@ -762,29 +942,109 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
   }) async {
     await ref
         .read(attendanceRepositoryProvider)
-        .clearAbsence(studentId: studentId, date: _selectedDate);
+        .clearAbsenceOnly(
+          studentId: studentId,
+          date: _selectedDate,
+          periodStart: _periodStart,
+        );
     if (value == null) {
       await ref
           .read(homeworkRepositoryProvider)
-          .clearLog(studentId: studentId, date: _selectedDate);
+          .clearLog(
+            studentId: studentId,
+            date: _selectedDate,
+            periodStart: _periodStart,
+          );
       return;
     }
 
     await ref
         .read(homeworkRepositoryProvider)
-        .saveLog(studentId: studentId, date: _selectedDate, hadHomework: value);
+        .saveLog(
+          studentId: studentId,
+          date: _selectedDate,
+          periodStart: _periodStart,
+          hadHomework: value,
+        );
   }
 
-  Future<void> _setAbsent({required int studentId, required bool absent}) {
-    if (absent) {
-      return ref
-          .read(attendanceRepositoryProvider)
-          .markAbsent(studentId: studentId, date: _selectedDate);
+  static AttendanceState _attendanceOf(
+    Student student,
+    Set<int> absentStudents,
+    Set<int> lateStudents,
+  ) {
+    if (absentStudents.contains(student.id)) {
+      return AttendanceState.absent;
+    }
+    if (lateStudents.contains(student.id)) {
+      return AttendanceState.late;
+    }
+    return AttendanceState.present;
+  }
+
+  /// Records [to] for [student] in this lesson, with a snackbar to take it
+  /// back. Classi never writes attendance to WebUntis.
+  Future<void> _setAttendance({
+    required BuildContext context,
+    required Group group,
+    required Student student,
+    required AttendanceState from,
+    required AttendanceState to,
+    bool offerUndo = true,
+  }) async {
+    if (from == to) return;
+    final date = _selectedDate;
+    final periodStart = _periodStart;
+    final attendance = ref.read(attendanceRepositoryProvider);
+    switch (to) {
+      case AttendanceState.present:
+        await attendance.clearAbsence(
+          studentId: student.id,
+          date: date,
+          periodStart: periodStart,
+        );
+      case AttendanceState.absent:
+        await attendance.markAbsent(
+          studentId: student.id,
+          date: date,
+          periodStart: periodStart,
+        );
+      case AttendanceState.late:
+        await attendance.markLate(
+          studentId: student.id,
+          date: date,
+          periodStart: periodStart,
+        );
     }
 
-    return ref
-        .read(attendanceRepositoryProvider)
-        .clearAbsence(studentId: studentId, date: _selectedDate);
+    if (!context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    if (offerUndo) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              switch (to) {
+                AttendanceState.present => 'marked_present',
+                AttendanceState.absent => 'marked_absent',
+                AttendanceState.late => 'marked_late',
+              }.tr(namedArgs: {'name': student.callName ?? student.firstName}),
+            ),
+            action: SnackBarAction(
+              label: 'undo'.tr(),
+              onPressed: () => _setAttendance(
+                context: context,
+                group: group,
+                student: student,
+                from: to,
+                to: from,
+                offerUndo: false,
+              ),
+            ),
+          ),
+        );
+    }
   }
 
   Future<void> _toggleExcused({required int studentId, required bool excused}) {
@@ -793,6 +1053,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
         .setExcused(
           studentId: studentId,
           date: _selectedDate,
+          periodStart: _periodStart,
           excused: excused,
         );
   }
@@ -810,6 +1071,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
         .clearGroupAbsencesForDate(
           groupId: widget.groupId,
           date: _selectedDate,
+          periodStart: _periodStart,
         );
   }
 
@@ -881,6 +1143,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
         builder: (_) => StudentPickerSheet(
           groupId: widget.groupId,
           date: _selectedDate,
+          periodStart: _periodStart,
         ),
       ),
     );

@@ -12,6 +12,7 @@ import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/student_link_chip.dart';
 import '../../shared/widgets/surface_list_tile.dart';
 import '../notes/note_links.dart';
+import '../webuntis/webuntis_badge.dart';
 import 'lesson_support.dart';
 
 class LessonSummaryCard extends StatelessWidget {
@@ -171,13 +172,14 @@ class LessonStudentsTable extends StatelessWidget {
     required this.students,
     required this.absentStudents,
     required this.excusedStudents,
+    required this.lateStudents,
     required this.materialSelections,
     required this.homeworkSelections,
     required this.gradeSelections,
     required this.noteCountsByStudent,
     required this.onOpenStudent,
-    required this.onSetAbsent,
-    required this.onSetPresent,
+    required this.onSwipeAbsent,
+    required this.onSwipeLate,
     required this.onToggleExcused,
     required this.onMaterialChanged,
     required this.onHomeworkChanged,
@@ -190,13 +192,20 @@ class LessonStudentsTable extends StatelessWidget {
   final List<Student> students;
   final Set<int> absentStudents;
   final Set<int> excusedStudents;
+  final Set<int> lateStudents;
   final Map<int, bool> materialSelections;
   final Map<int, bool> homeworkSelections;
   final Map<int, String> gradeSelections;
   final Map<int, int> noteCountsByStudent;
   final ValueChanged<Student> onOpenStudent;
-  final ValueChanged<Student> onSetAbsent;
-  final ValueChanged<Student> onSetPresent;
+
+  /// Swipe left, as in Untis Mobile: absent, or back to present when the
+  /// student already is.
+  final ValueChanged<Student> onSwipeAbsent;
+
+  /// Swipe right, as in Untis Mobile: late, or back to present when the
+  /// student already is.
+  final ValueChanged<Student> onSwipeLate;
   final void Function(Student student, bool excused) onToggleExcused;
   final void Function(Student student, bool? value) onMaterialChanged;
   final void Function(Student student, bool? value) onHomeworkChanged;
@@ -235,13 +244,14 @@ class LessonStudentsTable extends StatelessWidget {
               student: students[index],
               absent: absentStudents.contains(students[index].id),
               excused: excusedStudents.contains(students[index].id),
+              late: lateStudents.contains(students[index].id),
               materialValue: materialSelections[students[index].id],
               homeworkValue: homeworkSelections[students[index].id],
               gradeValue: gradeSelections[students[index].id],
               noteCount: noteCountsByStudent[students[index].id] ?? 0,
               onOpenStudent: () => onOpenStudent(students[index]),
-              onSetAbsent: () => onSetAbsent(students[index]),
-              onSetPresent: () => onSetPresent(students[index]),
+              onSwipeAbsent: () => onSwipeAbsent(students[index]),
+              onSwipeLate: () => onSwipeLate(students[index]),
               onToggleExcused: (excused) =>
                   onToggleExcused(students[index], excused),
               onMaterialChanged: (value) =>
@@ -441,9 +451,10 @@ class _LessonStudentRow extends StatelessWidget {
     required this.homeworkValue,
     required this.gradeValue,
     required this.noteCount,
+    required this.late,
     required this.onOpenStudent,
-    required this.onSetAbsent,
-    required this.onSetPresent,
+    required this.onSwipeAbsent,
+    required this.onSwipeLate,
     required this.onToggleExcused,
     required this.onMaterialChanged,
     required this.onHomeworkChanged,
@@ -459,9 +470,10 @@ class _LessonStudentRow extends StatelessWidget {
   final bool? homeworkValue;
   final String? gradeValue;
   final int noteCount;
+  final bool late;
   final VoidCallback onOpenStudent;
-  final VoidCallback onSetAbsent;
-  final VoidCallback onSetPresent;
+  final VoidCallback onSwipeAbsent;
+  final VoidCallback onSwipeLate;
   final ValueChanged<bool> onToggleExcused;
   final ValueChanged<bool?> onMaterialChanged;
   final ValueChanged<bool?> onHomeworkChanged;
@@ -479,10 +491,10 @@ class _LessonStudentRow extends StatelessWidget {
       confirmDismiss: (direction) async {
         switch (direction) {
           case DismissDirection.startToEnd:
-            onSetAbsent();
+            onSwipeLate();
             return false;
           case DismissDirection.endToStart:
-            onSetPresent();
+            onSwipeAbsent();
             return false;
           case DismissDirection.none:
           case DismissDirection.down:
@@ -492,18 +504,34 @@ class _LessonStudentRow extends StatelessWidget {
             return false;
         }
       },
-      background: _SwipeAttendanceBackground(
-        alignment: Alignment.centerLeft,
-        color: colorScheme.errorContainer,
-        icon: Icons.person_off_outlined,
-        label: 'absent'.tr(),
-      ),
-      secondaryBackground: _SwipeAttendanceBackground(
-        alignment: Alignment.centerRight,
-        color: colorScheme.primaryContainer,
-        icon: Icons.check_circle_outline,
-        label: 'present'.tr(),
-      ),
+      // Untis Mobile's gestures: right is late, left is absent. Swiping a
+      // student who already is either takes it back.
+      background: late
+          ? _SwipeAttendanceBackground(
+              alignment: Alignment.centerLeft,
+              color: colorScheme.primaryContainer,
+              icon: Icons.check_circle_outline,
+              label: 'present'.tr(),
+            )
+          : _SwipeAttendanceBackground(
+              alignment: Alignment.centerLeft,
+              color: colorScheme.tertiaryContainer,
+              icon: Icons.schedule_outlined,
+              label: 'late'.tr(),
+            ),
+      secondaryBackground: absent
+          ? _SwipeAttendanceBackground(
+              alignment: Alignment.centerRight,
+              color: colorScheme.primaryContainer,
+              icon: Icons.check_circle_outline,
+              label: 'present'.tr(),
+            )
+          : _SwipeAttendanceBackground(
+              alignment: Alignment.centerRight,
+              color: colorScheme.errorContainer,
+              icon: Icons.person_off_outlined,
+              label: 'absent'.tr(),
+            ),
       child: Container(
         color: absent
             ? colorScheme.errorContainer.withValues(alpha: 0.24)
@@ -520,6 +548,7 @@ class _LessonStudentRow extends StatelessWidget {
                 student: student,
                 absent: absent,
                 excused: excused,
+                late: late,
                 noteCount: noteCount,
                 onOpenStudent: onOpenStudent,
                 onToggleExcused: absent ? onToggleExcused : null,
@@ -570,12 +599,14 @@ class _LessonNameCell extends ConsumerWidget {
     required this.excused,
     required this.noteCount,
     required this.onOpenStudent,
+    this.late = false,
     this.onToggleExcused,
   });
 
   final Student student;
   final bool absent;
   final bool excused;
+  final bool late;
   final int noteCount;
   final VoidCallback onOpenStudent;
   final ValueChanged<bool>? onToggleExcused;
@@ -617,9 +648,17 @@ class _LessonNameCell extends ConsumerWidget {
                   _LessonMetaBadge(
                     icon: absent
                         ? Icons.person_off_outlined
+                        : late
+                        ? Icons.schedule_outlined
                         : Icons.check_circle_outline,
-                    label: absent ? 'absent'.tr() : 'present'.tr(),
+                    label: absent
+                        ? 'absent'.tr()
+                        : late
+                        ? 'late'.tr()
+                        : 'present'.tr(),
                   ),
+                  if (student.webuntisStudentId != null)
+                    const WebUntisBadge(tooltip: 'webuntis_student_linked'),
                   if (absent && onToggleExcused != null)
                     FilterChip(
                       label: Text('excused'.tr()),

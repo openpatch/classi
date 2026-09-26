@@ -6,6 +6,7 @@ import '../../core/session/app_session_controller.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/groups/groups_screen.dart';
 import '../../features/lessons/lesson_mode_screen.dart';
+import '../../features/lessons/lesson_periods.dart';
 import '../../features/lessons/lesson_support.dart';
 import '../../features/lists/list_detail_screen.dart';
 import '../../features/lists/lists_screen.dart';
@@ -134,6 +135,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                       ),
                       initialSessionLabel: state.uri.queryParameters['session'],
                       initialCategoryId: state.uri.queryParameters['category'],
+                      initialPeriods: parseLessonPeriods(
+                        state.uri.queryParameters['periods'],
+                      ),
                     ),
                   ),
                   GoRoute(

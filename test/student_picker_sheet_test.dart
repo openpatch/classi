@@ -133,6 +133,7 @@ void main() {
           lessonAbsenceSelectionsProvider((
             groupId,
             date,
+            0,
           )).overrideWith((ref) => absences.stream),
         ],
         child: EasyLocalization(

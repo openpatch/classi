@@ -12,6 +12,7 @@ import '../../shared/utils/grade_categories.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../lessons/lesson_periods.dart';
 import '../lessons/lesson_support.dart';
 import 'lesson_schedule.dart';
 import 'lesson_schedule_editor_sheet.dart';
@@ -93,6 +94,11 @@ class _WeeklyTimetableScreenState extends ConsumerState<WeeklyTimetableScreen> {
           'date': encodeLessonDate(lesson.date),
           if (lesson.categoryId.isNotEmpty) 'category': lesson.categoryId,
           if (lesson.label.isNotEmpty) 'session': lesson.label,
+          if (lesson.periodStart > 0)
+            'periods': encodeLessonPeriods((
+              start: lesson.periodStart,
+              end: lesson.periodEnd,
+            )),
         },
       ).toString(),
     );
