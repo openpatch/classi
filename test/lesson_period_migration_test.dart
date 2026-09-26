@@ -34,6 +34,22 @@ AppDatabase openLegacyDatabase(void Function(Database db) seed) {
               ON DELETE SET NULL
           );
         ''');
+        // Not used by the lesson migration itself, but a real version 23
+        // database has it, and later steps do alter it.
+        db.execute('''
+          CREATE TABLE students_table (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            call_name TEXT NULL,
+            group_id INTEGER NOT NULL REFERENCES groups_table (id)
+              ON DELETE CASCADE,
+            origin_note TEXT NULL,
+            created_at INTEGER NOT NULL,
+            avatar_json TEXT NULL,
+            seat_index INTEGER NULL
+          );
+        ''');
         db.execute('''
           CREATE TABLE sessions_table (
             id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
