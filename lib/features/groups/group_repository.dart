@@ -59,6 +59,8 @@ class GroupRepository {
     required List<GradeScaleEntry> gradeScale,
     List<GradeCategory> gradeCategories = defaultGradeCategories,
     int? schoolYearId,
+    int? webuntisKlasseId,
+    String? webuntisLessonIds,
   }) {
     return _database
         .into(_database.groupsTable)
@@ -69,8 +71,64 @@ class GroupRepository {
             colorHex: Value(normalizeColorHex(colorHex, fallback: '#FF1E88E5')),
             gradeScaleJson: Value(encodeGradeScaleEntries(gradeScale)),
             gradeCategoriesJson: Value(encodeGradeCategories(gradeCategories)),
+            webuntisKlasseId: Value(webuntisKlasseId),
+            webuntisLessonIds: Value(webuntisLessonIds),
           ),
         );
+  }
+
+  /// Links an existing group to a WebUntis class, so student and attendance
+  /// syncs know which register to read. Pass `null` to unlink.
+  Future<void> setWebUntisKlasseId({
+    required int groupId,
+    required int? klasseId,
+  }) {
+    return (_database.update(_database.groupsTable)
+          ..where((table) => table.id.equals(groupId)))
+        .write(
+          GroupsTableCompanion(
+            webuntisKlasseId: Value(klasseId),
+            webuntisLessonIds: const Value(null),
+          ),
+        );
+  }
+
+  /// Links a group to a WebUntis course, given by its lesson ids, or clears
+  /// the course link with `null`. A class link is cleared along with setting
+  /// a course, so a group never stands for both.
+  Future<void> setWebUntisLessonIds({
+    required int groupId,
+    required String? lessonIds,
+  }) {
+    return (_database.update(
+      _database.groupsTable,
+    )..where((table) => table.id.equals(groupId))).write(
+      GroupsTableCompanion(
+        webuntisLessonIds: Value(lessonIds),
+        webuntisKlasseId: lessonIds == null
+            ? const Value.absent()
+            : const Value(null),
+      ),
+    );
+  }
+
+  /// The groups linked to a WebUntis course. Lets the import picker mark
+  /// courses that already have a group.
+  Future<List<Group>> groupsWithWebUntisCourse() {
+    return (_database.select(
+      _database.groupsTable,
+    )..where((table) => table.webuntisLessonIds.isNotNull())).get();
+  }
+
+  /// Which WebUntis classes are already represented by a group, keyed by the
+  /// WebUntis class id. Lets the import picker mark them instead of creating
+  /// a second group for the same class.
+  Future<Map<int, Group>> groupsByWebUntisKlasseId() async {
+    final groups = await (_database.select(
+      _database.groupsTable,
+    )..where((table) => table.webuntisKlasseId.isNotNull())).get();
+
+    return {for (final group in groups) ?group.webuntisKlasseId: group};
   }
 
   Future<void> updateGroup({

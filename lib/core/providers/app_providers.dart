@@ -27,6 +27,9 @@ import '../../features/settings/list_sort_controller.dart';
 import '../../features/settings/student_sort_controller.dart';
 import '../../features/settings/theme_controller.dart';
 import '../../features/students/student_repository.dart';
+import '../../features/lessons/lesson_periods.dart';
+import '../../features/webuntis/webuntis_service.dart';
+import '../../features/webuntis/webuntis_settings_service.dart';
 import '../../features/students/student_sorting.dart';
 import '../database/app_database.dart';
 import '../security/biometric_service.dart';
@@ -68,6 +71,37 @@ final libraryBackupPreferencesServiceProvider =
 final libraryBackupServiceProvider = Provider<LibraryBackupService>(
   (ref) => LibraryBackupService(),
 );
+
+final webUntisSettingsServiceProvider = Provider<WebUntisSettingsService>(
+  (ref) => WebUntisSettingsService(
+    projectSettingsStore: ref.watch(projectSettingsStoreProvider),
+  ),
+);
+
+final webUntisServiceProvider = Provider<WebUntisService>(
+  (ref) => WebUntisService(
+    keyService: ref.watch(keyServiceProvider),
+    databasePathService: ref.watch(databasePathServiceProvider),
+    settingsService: ref.watch(webUntisSettingsServiceProvider),
+  ),
+);
+
+/// The WebUntis connection of the open library, or `null` when there is none.
+///
+/// Re-read when the library changes, since the connection lives inside the
+/// `.classi` project rather than in global preferences.
+final webUntisConnectionProvider =
+    FutureProvider.autoDispose<WebUntisConnectionSettings?>((ref) {
+      ref.watch(selectedDatabasePathProvider);
+      return ref.watch(webUntisServiceProvider).connectionSettings();
+    });
+
+/// The school's bell times, as last read from WebUntis. Empty without a
+/// WebUntis connection.
+final bellTimesProvider = FutureProvider.autoDispose<BellTimes>((ref) {
+  ref.watch(selectedDatabasePathProvider);
+  return ref.watch(webUntisSettingsServiceProvider).readBellTimes();
+});
 
 final biometricServiceProvider = Provider<BiometricService>(
   (ref) => BiometricService(),
