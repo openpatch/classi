@@ -581,6 +581,29 @@ class $GroupsTableTable extends GroupsTable
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _webuntisKlasseIdMeta = const VerificationMeta(
+    'webuntisKlasseId',
+  );
+  @override
+  late final GeneratedColumn<int> webuntisKlasseId = GeneratedColumn<int>(
+    'webuntis_klasse_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _webuntisLessonIdsMeta = const VerificationMeta(
+    'webuntisLessonIds',
+  );
+  @override
+  late final GeneratedColumn<String> webuntisLessonIds =
+      GeneratedColumn<String>(
+        'webuntis_lesson_ids',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -592,6 +615,8 @@ class $GroupsTableTable extends GroupsTable
     archivedAt,
     schoolYearId,
     updatedAt,
+    webuntisKlasseId,
+    webuntisLessonIds,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -667,6 +692,24 @@ class $GroupsTableTable extends GroupsTable
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('webuntis_klasse_id')) {
+      context.handle(
+        _webuntisKlasseIdMeta,
+        webuntisKlasseId.isAcceptableOrUnknown(
+          data['webuntis_klasse_id']!,
+          _webuntisKlasseIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('webuntis_lesson_ids')) {
+      context.handle(
+        _webuntisLessonIdsMeta,
+        webuntisLessonIds.isAcceptableOrUnknown(
+          data['webuntis_lesson_ids']!,
+          _webuntisLessonIdsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -712,6 +755,14 @@ class $GroupsTableTable extends GroupsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      webuntisKlasseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}webuntis_klasse_id'],
+      ),
+      webuntisLessonIds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}webuntis_lesson_ids'],
+      ),
     );
   }
 
@@ -734,6 +785,22 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
   /// When this row was last modified. Used by the three-way sync merge to
   /// resolve concurrent edits to the same row (last-write-wins per row).
   final DateTime updatedAt;
+
+  /// The id of the WebUntis class ("Klasse") this group was imported from.
+  ///
+  /// Kept so a later student or attendance sync knows which class register to
+  /// read without asking the teacher to pick it again. `null` for groups that
+  /// were created by hand.
+  final int? webuntisKlasseId;
+
+  /// The WebUntis lesson ids ("Unterricht") of the course this group stands
+  /// for, comma-separated.
+  ///
+  /// A course, unlike a class, can hold part of one class or students of
+  /// several, and its register lists exactly its own students. Takes
+  /// precedence over [webuntisKlasseId]. `null` for groups not linked to a
+  /// course.
+  final String? webuntisLessonIds;
   const GroupsTableData({
     required this.id,
     required this.name,
@@ -744,6 +811,8 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
     this.archivedAt,
     this.schoolYearId,
     required this.updatedAt,
+    this.webuntisKlasseId,
+    this.webuntisLessonIds,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -761,6 +830,12 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
       map['school_year_id'] = Variable<int>(schoolYearId);
     }
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || webuntisKlasseId != null) {
+      map['webuntis_klasse_id'] = Variable<int>(webuntisKlasseId);
+    }
+    if (!nullToAbsent || webuntisLessonIds != null) {
+      map['webuntis_lesson_ids'] = Variable<String>(webuntisLessonIds);
+    }
     return map;
   }
 
@@ -779,6 +854,12 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
           ? const Value.absent()
           : Value(schoolYearId),
       updatedAt: Value(updatedAt),
+      webuntisKlasseId: webuntisKlasseId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(webuntisKlasseId),
+      webuntisLessonIds: webuntisLessonIds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(webuntisLessonIds),
     );
   }
 
@@ -799,6 +880,10 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
       archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
       schoolYearId: serializer.fromJson<int?>(json['schoolYearId']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      webuntisKlasseId: serializer.fromJson<int?>(json['webuntisKlasseId']),
+      webuntisLessonIds: serializer.fromJson<String?>(
+        json['webuntisLessonIds'],
+      ),
     );
   }
   @override
@@ -814,6 +899,8 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
       'archivedAt': serializer.toJson<DateTime?>(archivedAt),
       'schoolYearId': serializer.toJson<int?>(schoolYearId),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'webuntisKlasseId': serializer.toJson<int?>(webuntisKlasseId),
+      'webuntisLessonIds': serializer.toJson<String?>(webuntisLessonIds),
     };
   }
 
@@ -827,6 +914,8 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
     Value<DateTime?> archivedAt = const Value.absent(),
     Value<int?> schoolYearId = const Value.absent(),
     DateTime? updatedAt,
+    Value<int?> webuntisKlasseId = const Value.absent(),
+    Value<String?> webuntisLessonIds = const Value.absent(),
   }) => GroupsTableData(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -837,6 +926,12 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
     schoolYearId: schoolYearId.present ? schoolYearId.value : this.schoolYearId,
     updatedAt: updatedAt ?? this.updatedAt,
+    webuntisKlasseId: webuntisKlasseId.present
+        ? webuntisKlasseId.value
+        : this.webuntisKlasseId,
+    webuntisLessonIds: webuntisLessonIds.present
+        ? webuntisLessonIds.value
+        : this.webuntisLessonIds,
   );
   GroupsTableData copyWithCompanion(GroupsTableCompanion data) {
     return GroupsTableData(
@@ -857,6 +952,12 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
           ? data.schoolYearId.value
           : this.schoolYearId,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      webuntisKlasseId: data.webuntisKlasseId.present
+          ? data.webuntisKlasseId.value
+          : this.webuntisKlasseId,
+      webuntisLessonIds: data.webuntisLessonIds.present
+          ? data.webuntisLessonIds.value
+          : this.webuntisLessonIds,
     );
   }
 
@@ -871,7 +972,9 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
           ..write('createdAt: $createdAt, ')
           ..write('archivedAt: $archivedAt, ')
           ..write('schoolYearId: $schoolYearId, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('webuntisKlasseId: $webuntisKlasseId, ')
+          ..write('webuntisLessonIds: $webuntisLessonIds')
           ..write(')'))
         .toString();
   }
@@ -887,6 +990,8 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
     archivedAt,
     schoolYearId,
     updatedAt,
+    webuntisKlasseId,
+    webuntisLessonIds,
   );
   @override
   bool operator ==(Object other) =>
@@ -900,7 +1005,9 @@ class GroupsTableData extends DataClass implements Insertable<GroupsTableData> {
           other.createdAt == this.createdAt &&
           other.archivedAt == this.archivedAt &&
           other.schoolYearId == this.schoolYearId &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.webuntisKlasseId == this.webuntisKlasseId &&
+          other.webuntisLessonIds == this.webuntisLessonIds);
 }
 
 class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
@@ -913,6 +1020,8 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
   final Value<DateTime?> archivedAt;
   final Value<int?> schoolYearId;
   final Value<DateTime> updatedAt;
+  final Value<int?> webuntisKlasseId;
+  final Value<String?> webuntisLessonIds;
   const GroupsTableCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -923,6 +1032,8 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     this.archivedAt = const Value.absent(),
     this.schoolYearId = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.webuntisKlasseId = const Value.absent(),
+    this.webuntisLessonIds = const Value.absent(),
   });
   GroupsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -934,6 +1045,8 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     this.archivedAt = const Value.absent(),
     this.schoolYearId = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.webuntisKlasseId = const Value.absent(),
+    this.webuntisLessonIds = const Value.absent(),
   }) : name = Value(name);
   static Insertable<GroupsTableData> custom({
     Expression<int>? id,
@@ -945,6 +1058,8 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     Expression<DateTime>? archivedAt,
     Expression<int>? schoolYearId,
     Expression<DateTime>? updatedAt,
+    Expression<int>? webuntisKlasseId,
+    Expression<String>? webuntisLessonIds,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -957,6 +1072,8 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
       if (archivedAt != null) 'archived_at': archivedAt,
       if (schoolYearId != null) 'school_year_id': schoolYearId,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (webuntisKlasseId != null) 'webuntis_klasse_id': webuntisKlasseId,
+      if (webuntisLessonIds != null) 'webuntis_lesson_ids': webuntisLessonIds,
     });
   }
 
@@ -970,6 +1087,8 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     Value<DateTime?>? archivedAt,
     Value<int?>? schoolYearId,
     Value<DateTime>? updatedAt,
+    Value<int?>? webuntisKlasseId,
+    Value<String?>? webuntisLessonIds,
   }) {
     return GroupsTableCompanion(
       id: id ?? this.id,
@@ -981,6 +1100,8 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
       archivedAt: archivedAt ?? this.archivedAt,
       schoolYearId: schoolYearId ?? this.schoolYearId,
       updatedAt: updatedAt ?? this.updatedAt,
+      webuntisKlasseId: webuntisKlasseId ?? this.webuntisKlasseId,
+      webuntisLessonIds: webuntisLessonIds ?? this.webuntisLessonIds,
     );
   }
 
@@ -1016,6 +1137,12 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (webuntisKlasseId.present) {
+      map['webuntis_klasse_id'] = Variable<int>(webuntisKlasseId.value);
+    }
+    if (webuntisLessonIds.present) {
+      map['webuntis_lesson_ids'] = Variable<String>(webuntisLessonIds.value);
+    }
     return map;
   }
 
@@ -1030,7 +1157,9 @@ class GroupsTableCompanion extends UpdateCompanion<GroupsTableData> {
           ..write('createdAt: $createdAt, ')
           ..write('archivedAt: $archivedAt, ')
           ..write('schoolYearId: $schoolYearId, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('webuntisKlasseId: $webuntisKlasseId, ')
+          ..write('webuntisLessonIds: $webuntisLessonIds')
           ..write(')'))
         .toString();
   }
@@ -1167,6 +1296,17 @@ class $StudentsTableTable extends StudentsTable
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _webuntisStudentIdMeta = const VerificationMeta(
+    'webuntisStudentId',
+  );
+  @override
+  late final GeneratedColumn<int> webuntisStudentId = GeneratedColumn<int>(
+    'webuntis_student_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1179,6 +1319,7 @@ class $StudentsTableTable extends StudentsTable
     avatarJson,
     seatIndex,
     updatedAt,
+    webuntisStudentId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1255,6 +1396,15 @@ class $StudentsTableTable extends StudentsTable
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('webuntis_student_id')) {
+      context.handle(
+        _webuntisStudentIdMeta,
+        webuntisStudentId.isAcceptableOrUnknown(
+          data['webuntis_student_id']!,
+          _webuntisStudentIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1304,6 +1454,10 @@ class $StudentsTableTable extends StudentsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      webuntisStudentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}webuntis_student_id'],
+      ),
     );
   }
 
@@ -1332,6 +1486,14 @@ class StudentsTableData extends DataClass
   /// When this row was last modified. Used by the three-way sync merge to
   /// resolve concurrent edits to the same row (last-write-wins per row).
   final DateTime updatedAt;
+
+  /// The id this student has in WebUntis.
+  ///
+  /// This is what makes an attendance sync stable: absences come back keyed by
+  /// WebUntis student id, and matching those on names alone would break on
+  /// every marriage, umlaut and spelling correction. `null` for students that
+  /// were not imported from WebUntis.
+  final int? webuntisStudentId;
   const StudentsTableData({
     required this.id,
     required this.firstName,
@@ -1343,6 +1505,7 @@ class StudentsTableData extends DataClass
     this.avatarJson,
     this.seatIndex,
     required this.updatedAt,
+    this.webuntisStudentId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1365,6 +1528,9 @@ class StudentsTableData extends DataClass
       map['seat_index'] = Variable<int>(seatIndex);
     }
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || webuntisStudentId != null) {
+      map['webuntis_student_id'] = Variable<int>(webuntisStudentId);
+    }
     return map;
   }
 
@@ -1388,6 +1554,9 @@ class StudentsTableData extends DataClass
           ? const Value.absent()
           : Value(seatIndex),
       updatedAt: Value(updatedAt),
+      webuntisStudentId: webuntisStudentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(webuntisStudentId),
     );
   }
 
@@ -1407,6 +1576,7 @@ class StudentsTableData extends DataClass
       avatarJson: serializer.fromJson<String?>(json['avatarJson']),
       seatIndex: serializer.fromJson<int?>(json['seatIndex']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      webuntisStudentId: serializer.fromJson<int?>(json['webuntisStudentId']),
     );
   }
   @override
@@ -1423,6 +1593,7 @@ class StudentsTableData extends DataClass
       'avatarJson': serializer.toJson<String?>(avatarJson),
       'seatIndex': serializer.toJson<int?>(seatIndex),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'webuntisStudentId': serializer.toJson<int?>(webuntisStudentId),
     };
   }
 
@@ -1437,6 +1608,7 @@ class StudentsTableData extends DataClass
     Value<String?> avatarJson = const Value.absent(),
     Value<int?> seatIndex = const Value.absent(),
     DateTime? updatedAt,
+    Value<int?> webuntisStudentId = const Value.absent(),
   }) => StudentsTableData(
     id: id ?? this.id,
     firstName: firstName ?? this.firstName,
@@ -1448,6 +1620,9 @@ class StudentsTableData extends DataClass
     avatarJson: avatarJson.present ? avatarJson.value : this.avatarJson,
     seatIndex: seatIndex.present ? seatIndex.value : this.seatIndex,
     updatedAt: updatedAt ?? this.updatedAt,
+    webuntisStudentId: webuntisStudentId.present
+        ? webuntisStudentId.value
+        : this.webuntisStudentId,
   );
   StudentsTableData copyWithCompanion(StudentsTableCompanion data) {
     return StudentsTableData(
@@ -1465,6 +1640,9 @@ class StudentsTableData extends DataClass
           : this.avatarJson,
       seatIndex: data.seatIndex.present ? data.seatIndex.value : this.seatIndex,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      webuntisStudentId: data.webuntisStudentId.present
+          ? data.webuntisStudentId.value
+          : this.webuntisStudentId,
     );
   }
 
@@ -1480,7 +1658,8 @@ class StudentsTableData extends DataClass
           ..write('createdAt: $createdAt, ')
           ..write('avatarJson: $avatarJson, ')
           ..write('seatIndex: $seatIndex, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('webuntisStudentId: $webuntisStudentId')
           ..write(')'))
         .toString();
   }
@@ -1497,6 +1676,7 @@ class StudentsTableData extends DataClass
     avatarJson,
     seatIndex,
     updatedAt,
+    webuntisStudentId,
   );
   @override
   bool operator ==(Object other) =>
@@ -1511,7 +1691,8 @@ class StudentsTableData extends DataClass
           other.createdAt == this.createdAt &&
           other.avatarJson == this.avatarJson &&
           other.seatIndex == this.seatIndex &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.webuntisStudentId == this.webuntisStudentId);
 }
 
 class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
@@ -1525,6 +1706,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
   final Value<String?> avatarJson;
   final Value<int?> seatIndex;
   final Value<DateTime> updatedAt;
+  final Value<int?> webuntisStudentId;
   const StudentsTableCompanion({
     this.id = const Value.absent(),
     this.firstName = const Value.absent(),
@@ -1536,6 +1718,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     this.avatarJson = const Value.absent(),
     this.seatIndex = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.webuntisStudentId = const Value.absent(),
   });
   StudentsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -1548,6 +1731,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     this.avatarJson = const Value.absent(),
     this.seatIndex = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.webuntisStudentId = const Value.absent(),
   }) : firstName = Value(firstName),
        lastName = Value(lastName),
        groupId = Value(groupId);
@@ -1562,6 +1746,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     Expression<String>? avatarJson,
     Expression<int>? seatIndex,
     Expression<DateTime>? updatedAt,
+    Expression<int>? webuntisStudentId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1574,6 +1759,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
       if (avatarJson != null) 'avatar_json': avatarJson,
       if (seatIndex != null) 'seat_index': seatIndex,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (webuntisStudentId != null) 'webuntis_student_id': webuntisStudentId,
     });
   }
 
@@ -1588,6 +1774,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     Value<String?>? avatarJson,
     Value<int?>? seatIndex,
     Value<DateTime>? updatedAt,
+    Value<int?>? webuntisStudentId,
   }) {
     return StudentsTableCompanion(
       id: id ?? this.id,
@@ -1600,6 +1787,7 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
       avatarJson: avatarJson ?? this.avatarJson,
       seatIndex: seatIndex ?? this.seatIndex,
       updatedAt: updatedAt ?? this.updatedAt,
+      webuntisStudentId: webuntisStudentId ?? this.webuntisStudentId,
     );
   }
 
@@ -1636,6 +1824,9 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (webuntisStudentId.present) {
+      map['webuntis_student_id'] = Variable<int>(webuntisStudentId.value);
+    }
     return map;
   }
 
@@ -1651,7 +1842,8 @@ class StudentsTableCompanion extends UpdateCompanion<StudentsTableData> {
           ..write('createdAt: $createdAt, ')
           ..write('avatarJson: $avatarJson, ')
           ..write('seatIndex: $seatIndex, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('webuntisStudentId: $webuntisStudentId')
           ..write(')'))
         .toString();
   }
@@ -1699,6 +1891,18 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _periodStartMeta = const VerificationMeta(
+    'periodStart',
+  );
+  @override
+  late final GeneratedColumn<int> periodStart = GeneratedColumn<int>(
+    'period_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _isAbsentMeta = const VerificationMeta(
     'isAbsent',
   );
@@ -1726,6 +1930,19 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'CHECK ("is_excused" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isLateMeta = const VerificationMeta('isLate');
+  @override
+  late final GeneratedColumn<bool> isLate = GeneratedColumn<bool>(
+    'is_late',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_late" IN (0, 1))',
     ),
     defaultValue: const Constant(false),
   );
@@ -1758,8 +1975,10 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
     id,
     studentId,
     date,
+    periodStart,
     isAbsent,
     isExcused,
+    isLate,
     createdAt,
     updatedAt,
   ];
@@ -1794,6 +2013,15 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
     } else if (isInserting) {
       context.missing(_dateMeta);
     }
+    if (data.containsKey('period_start')) {
+      context.handle(
+        _periodStartMeta,
+        periodStart.isAcceptableOrUnknown(
+          data['period_start']!,
+          _periodStartMeta,
+        ),
+      );
+    }
     if (data.containsKey('is_absent')) {
       context.handle(
         _isAbsentMeta,
@@ -1804,6 +2032,12 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
       context.handle(
         _isExcusedMeta,
         isExcused.isAcceptableOrUnknown(data['is_excused']!, _isExcusedMeta),
+      );
+    }
+    if (data.containsKey('is_late')) {
+      context.handle(
+        _isLateMeta,
+        isLate.isAcceptableOrUnknown(data['is_late']!, _isLateMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -1842,6 +2076,10 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}date'],
       )!,
+      periodStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_start'],
+      )!,
       isAbsent: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_absent'],
@@ -1849,6 +2087,10 @@ class $AttendanceLogsTableTable extends AttendanceLogsTable
       isExcused: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_excused'],
+      )!,
+      isLate: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_late'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -1872,8 +2114,18 @@ class AttendanceLogsTableData extends DataClass
   final int id;
   final int studentId;
   final DateTime date;
+
+  /// First school period of the lesson this entry belongs to, or 0 for an
+  /// entry that covers the whole day. Keeps two lessons of one group on the
+  /// same day apart, the way WebUntis keeps its class register per lesson.
+  final int periodStart;
   final bool isAbsent;
   final bool isExcused;
+
+  /// The student came late but attended. Only meaningful on a present row
+  /// ([isAbsent] false): late counts as present everywhere attendance is
+  /// counted.
+  final bool isLate;
   final DateTime createdAt;
 
   /// When this row was last modified. Used by the three-way sync merge to
@@ -1883,8 +2135,10 @@ class AttendanceLogsTableData extends DataClass
     required this.id,
     required this.studentId,
     required this.date,
+    required this.periodStart,
     required this.isAbsent,
     required this.isExcused,
+    required this.isLate,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1894,8 +2148,10 @@ class AttendanceLogsTableData extends DataClass
     map['id'] = Variable<int>(id);
     map['student_id'] = Variable<int>(studentId);
     map['date'] = Variable<DateTime>(date);
+    map['period_start'] = Variable<int>(periodStart);
     map['is_absent'] = Variable<bool>(isAbsent);
     map['is_excused'] = Variable<bool>(isExcused);
+    map['is_late'] = Variable<bool>(isLate);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1906,8 +2162,10 @@ class AttendanceLogsTableData extends DataClass
       id: Value(id),
       studentId: Value(studentId),
       date: Value(date),
+      periodStart: Value(periodStart),
       isAbsent: Value(isAbsent),
       isExcused: Value(isExcused),
+      isLate: Value(isLate),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1922,8 +2180,10 @@ class AttendanceLogsTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       studentId: serializer.fromJson<int>(json['studentId']),
       date: serializer.fromJson<DateTime>(json['date']),
+      periodStart: serializer.fromJson<int>(json['periodStart']),
       isAbsent: serializer.fromJson<bool>(json['isAbsent']),
       isExcused: serializer.fromJson<bool>(json['isExcused']),
+      isLate: serializer.fromJson<bool>(json['isLate']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1935,8 +2195,10 @@ class AttendanceLogsTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'studentId': serializer.toJson<int>(studentId),
       'date': serializer.toJson<DateTime>(date),
+      'periodStart': serializer.toJson<int>(periodStart),
       'isAbsent': serializer.toJson<bool>(isAbsent),
       'isExcused': serializer.toJson<bool>(isExcused),
+      'isLate': serializer.toJson<bool>(isLate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1946,16 +2208,20 @@ class AttendanceLogsTableData extends DataClass
     int? id,
     int? studentId,
     DateTime? date,
+    int? periodStart,
     bool? isAbsent,
     bool? isExcused,
+    bool? isLate,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => AttendanceLogsTableData(
     id: id ?? this.id,
     studentId: studentId ?? this.studentId,
     date: date ?? this.date,
+    periodStart: periodStart ?? this.periodStart,
     isAbsent: isAbsent ?? this.isAbsent,
     isExcused: isExcused ?? this.isExcused,
+    isLate: isLate ?? this.isLate,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1964,8 +2230,12 @@ class AttendanceLogsTableData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       studentId: data.studentId.present ? data.studentId.value : this.studentId,
       date: data.date.present ? data.date.value : this.date,
+      periodStart: data.periodStart.present
+          ? data.periodStart.value
+          : this.periodStart,
       isAbsent: data.isAbsent.present ? data.isAbsent.value : this.isAbsent,
       isExcused: data.isExcused.present ? data.isExcused.value : this.isExcused,
+      isLate: data.isLate.present ? data.isLate.value : this.isLate,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1977,8 +2247,10 @@ class AttendanceLogsTableData extends DataClass
           ..write('id: $id, ')
           ..write('studentId: $studentId, ')
           ..write('date: $date, ')
+          ..write('periodStart: $periodStart, ')
           ..write('isAbsent: $isAbsent, ')
           ..write('isExcused: $isExcused, ')
+          ..write('isLate: $isLate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1990,8 +2262,10 @@ class AttendanceLogsTableData extends DataClass
     id,
     studentId,
     date,
+    periodStart,
     isAbsent,
     isExcused,
+    isLate,
     createdAt,
     updatedAt,
   );
@@ -2002,8 +2276,10 @@ class AttendanceLogsTableData extends DataClass
           other.id == this.id &&
           other.studentId == this.studentId &&
           other.date == this.date &&
+          other.periodStart == this.periodStart &&
           other.isAbsent == this.isAbsent &&
           other.isExcused == this.isExcused &&
+          other.isLate == this.isLate &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2013,16 +2289,20 @@ class AttendanceLogsTableCompanion
   final Value<int> id;
   final Value<int> studentId;
   final Value<DateTime> date;
+  final Value<int> periodStart;
   final Value<bool> isAbsent;
   final Value<bool> isExcused;
+  final Value<bool> isLate;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const AttendanceLogsTableCompanion({
     this.id = const Value.absent(),
     this.studentId = const Value.absent(),
     this.date = const Value.absent(),
+    this.periodStart = const Value.absent(),
     this.isAbsent = const Value.absent(),
     this.isExcused = const Value.absent(),
+    this.isLate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2030,8 +2310,10 @@ class AttendanceLogsTableCompanion
     this.id = const Value.absent(),
     required int studentId,
     required DateTime date,
+    this.periodStart = const Value.absent(),
     this.isAbsent = const Value.absent(),
     this.isExcused = const Value.absent(),
+    this.isLate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : studentId = Value(studentId),
@@ -2040,8 +2322,10 @@ class AttendanceLogsTableCompanion
     Expression<int>? id,
     Expression<int>? studentId,
     Expression<DateTime>? date,
+    Expression<int>? periodStart,
     Expression<bool>? isAbsent,
     Expression<bool>? isExcused,
+    Expression<bool>? isLate,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2049,8 +2333,10 @@ class AttendanceLogsTableCompanion
       if (id != null) 'id': id,
       if (studentId != null) 'student_id': studentId,
       if (date != null) 'date': date,
+      if (periodStart != null) 'period_start': periodStart,
       if (isAbsent != null) 'is_absent': isAbsent,
       if (isExcused != null) 'is_excused': isExcused,
+      if (isLate != null) 'is_late': isLate,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2060,8 +2346,10 @@ class AttendanceLogsTableCompanion
     Value<int>? id,
     Value<int>? studentId,
     Value<DateTime>? date,
+    Value<int>? periodStart,
     Value<bool>? isAbsent,
     Value<bool>? isExcused,
+    Value<bool>? isLate,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -2069,8 +2357,10 @@ class AttendanceLogsTableCompanion
       id: id ?? this.id,
       studentId: studentId ?? this.studentId,
       date: date ?? this.date,
+      periodStart: periodStart ?? this.periodStart,
       isAbsent: isAbsent ?? this.isAbsent,
       isExcused: isExcused ?? this.isExcused,
+      isLate: isLate ?? this.isLate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2088,11 +2378,17 @@ class AttendanceLogsTableCompanion
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
     }
+    if (periodStart.present) {
+      map['period_start'] = Variable<int>(periodStart.value);
+    }
     if (isAbsent.present) {
       map['is_absent'] = Variable<bool>(isAbsent.value);
     }
     if (isExcused.present) {
       map['is_excused'] = Variable<bool>(isExcused.value);
+    }
+    if (isLate.present) {
+      map['is_late'] = Variable<bool>(isLate.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -2109,8 +2405,10 @@ class AttendanceLogsTableCompanion
           ..write('id: $id, ')
           ..write('studentId: $studentId, ')
           ..write('date: $date, ')
+          ..write('periodStart: $periodStart, ')
           ..write('isAbsent: $isAbsent, ')
           ..write('isExcused: $isExcused, ')
+          ..write('isLate: $isLate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3207,6 +3505,18 @@ class $MaterialLogsTableTable extends MaterialLogsTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _periodStartMeta = const VerificationMeta(
+    'periodStart',
+  );
+  @override
+  late final GeneratedColumn<int> periodStart = GeneratedColumn<int>(
+    'period_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _hadMaterialMeta = const VerificationMeta(
     'hadMaterial',
   );
@@ -3251,6 +3561,7 @@ class $MaterialLogsTableTable extends MaterialLogsTable
     id,
     studentId,
     date,
+    periodStart,
     hadMaterial,
     createdAt,
     updatedAt,
@@ -3285,6 +3596,15 @@ class $MaterialLogsTableTable extends MaterialLogsTable
       );
     } else if (isInserting) {
       context.missing(_dateMeta);
+    }
+    if (data.containsKey('period_start')) {
+      context.handle(
+        _periodStartMeta,
+        periodStart.isAcceptableOrUnknown(
+          data['period_start']!,
+          _periodStartMeta,
+        ),
+      );
     }
     if (data.containsKey('had_material')) {
       context.handle(
@@ -3328,6 +3648,10 @@ class $MaterialLogsTableTable extends MaterialLogsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}date'],
       )!,
+      periodStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_start'],
+      )!,
       hadMaterial: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}had_material'],
@@ -3354,6 +3678,11 @@ class MaterialLogsTableData extends DataClass
   final int id;
   final int studentId;
   final DateTime date;
+
+  /// First school period of the lesson this entry belongs to, or 0 for an
+  /// entry that covers the whole day. Keeps two lessons of one group on the
+  /// same day apart, the way WebUntis keeps its class register per lesson.
+  final int periodStart;
   final bool hadMaterial;
   final DateTime createdAt;
 
@@ -3364,6 +3693,7 @@ class MaterialLogsTableData extends DataClass
     required this.id,
     required this.studentId,
     required this.date,
+    required this.periodStart,
     required this.hadMaterial,
     required this.createdAt,
     required this.updatedAt,
@@ -3374,6 +3704,7 @@ class MaterialLogsTableData extends DataClass
     map['id'] = Variable<int>(id);
     map['student_id'] = Variable<int>(studentId);
     map['date'] = Variable<DateTime>(date);
+    map['period_start'] = Variable<int>(periodStart);
     map['had_material'] = Variable<bool>(hadMaterial);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -3385,6 +3716,7 @@ class MaterialLogsTableData extends DataClass
       id: Value(id),
       studentId: Value(studentId),
       date: Value(date),
+      periodStart: Value(periodStart),
       hadMaterial: Value(hadMaterial),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -3400,6 +3732,7 @@ class MaterialLogsTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       studentId: serializer.fromJson<int>(json['studentId']),
       date: serializer.fromJson<DateTime>(json['date']),
+      periodStart: serializer.fromJson<int>(json['periodStart']),
       hadMaterial: serializer.fromJson<bool>(json['hadMaterial']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -3412,6 +3745,7 @@ class MaterialLogsTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'studentId': serializer.toJson<int>(studentId),
       'date': serializer.toJson<DateTime>(date),
+      'periodStart': serializer.toJson<int>(periodStart),
       'hadMaterial': serializer.toJson<bool>(hadMaterial),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -3422,6 +3756,7 @@ class MaterialLogsTableData extends DataClass
     int? id,
     int? studentId,
     DateTime? date,
+    int? periodStart,
     bool? hadMaterial,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -3429,6 +3764,7 @@ class MaterialLogsTableData extends DataClass
     id: id ?? this.id,
     studentId: studentId ?? this.studentId,
     date: date ?? this.date,
+    periodStart: periodStart ?? this.periodStart,
     hadMaterial: hadMaterial ?? this.hadMaterial,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -3438,6 +3774,9 @@ class MaterialLogsTableData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       studentId: data.studentId.present ? data.studentId.value : this.studentId,
       date: data.date.present ? data.date.value : this.date,
+      periodStart: data.periodStart.present
+          ? data.periodStart.value
+          : this.periodStart,
       hadMaterial: data.hadMaterial.present
           ? data.hadMaterial.value
           : this.hadMaterial,
@@ -3452,6 +3791,7 @@ class MaterialLogsTableData extends DataClass
           ..write('id: $id, ')
           ..write('studentId: $studentId, ')
           ..write('date: $date, ')
+          ..write('periodStart: $periodStart, ')
           ..write('hadMaterial: $hadMaterial, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -3460,8 +3800,15 @@ class MaterialLogsTableData extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, studentId, date, hadMaterial, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    studentId,
+    date,
+    periodStart,
+    hadMaterial,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3469,6 +3816,7 @@ class MaterialLogsTableData extends DataClass
           other.id == this.id &&
           other.studentId == this.studentId &&
           other.date == this.date &&
+          other.periodStart == this.periodStart &&
           other.hadMaterial == this.hadMaterial &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -3479,6 +3827,7 @@ class MaterialLogsTableCompanion
   final Value<int> id;
   final Value<int> studentId;
   final Value<DateTime> date;
+  final Value<int> periodStart;
   final Value<bool> hadMaterial;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -3486,6 +3835,7 @@ class MaterialLogsTableCompanion
     this.id = const Value.absent(),
     this.studentId = const Value.absent(),
     this.date = const Value.absent(),
+    this.periodStart = const Value.absent(),
     this.hadMaterial = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -3494,6 +3844,7 @@ class MaterialLogsTableCompanion
     this.id = const Value.absent(),
     required int studentId,
     required DateTime date,
+    this.periodStart = const Value.absent(),
     this.hadMaterial = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -3503,6 +3854,7 @@ class MaterialLogsTableCompanion
     Expression<int>? id,
     Expression<int>? studentId,
     Expression<DateTime>? date,
+    Expression<int>? periodStart,
     Expression<bool>? hadMaterial,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -3511,6 +3863,7 @@ class MaterialLogsTableCompanion
       if (id != null) 'id': id,
       if (studentId != null) 'student_id': studentId,
       if (date != null) 'date': date,
+      if (periodStart != null) 'period_start': periodStart,
       if (hadMaterial != null) 'had_material': hadMaterial,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -3521,6 +3874,7 @@ class MaterialLogsTableCompanion
     Value<int>? id,
     Value<int>? studentId,
     Value<DateTime>? date,
+    Value<int>? periodStart,
     Value<bool>? hadMaterial,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -3529,6 +3883,7 @@ class MaterialLogsTableCompanion
       id: id ?? this.id,
       studentId: studentId ?? this.studentId,
       date: date ?? this.date,
+      periodStart: periodStart ?? this.periodStart,
       hadMaterial: hadMaterial ?? this.hadMaterial,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -3546,6 +3901,9 @@ class MaterialLogsTableCompanion
     }
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
+    }
+    if (periodStart.present) {
+      map['period_start'] = Variable<int>(periodStart.value);
     }
     if (hadMaterial.present) {
       map['had_material'] = Variable<bool>(hadMaterial.value);
@@ -3565,6 +3923,7 @@ class MaterialLogsTableCompanion
           ..write('id: $id, ')
           ..write('studentId: $studentId, ')
           ..write('date: $date, ')
+          ..write('periodStart: $periodStart, ')
           ..write('hadMaterial: $hadMaterial, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -3615,6 +3974,18 @@ class $HomeworkLogsTableTable extends HomeworkLogsTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _periodStartMeta = const VerificationMeta(
+    'periodStart',
+  );
+  @override
+  late final GeneratedColumn<int> periodStart = GeneratedColumn<int>(
+    'period_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _hadHomeworkMeta = const VerificationMeta(
     'hadHomework',
   );
@@ -3659,6 +4030,7 @@ class $HomeworkLogsTableTable extends HomeworkLogsTable
     id,
     studentId,
     date,
+    periodStart,
     hadHomework,
     createdAt,
     updatedAt,
@@ -3693,6 +4065,15 @@ class $HomeworkLogsTableTable extends HomeworkLogsTable
       );
     } else if (isInserting) {
       context.missing(_dateMeta);
+    }
+    if (data.containsKey('period_start')) {
+      context.handle(
+        _periodStartMeta,
+        periodStart.isAcceptableOrUnknown(
+          data['period_start']!,
+          _periodStartMeta,
+        ),
+      );
     }
     if (data.containsKey('had_homework')) {
       context.handle(
@@ -3736,6 +4117,10 @@ class $HomeworkLogsTableTable extends HomeworkLogsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}date'],
       )!,
+      periodStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_start'],
+      )!,
       hadHomework: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}had_homework'],
@@ -3762,6 +4147,11 @@ class HomeworkLogsTableData extends DataClass
   final int id;
   final int studentId;
   final DateTime date;
+
+  /// First school period of the lesson this entry belongs to, or 0 for an
+  /// entry that covers the whole day. Keeps two lessons of one group on the
+  /// same day apart, the way WebUntis keeps its class register per lesson.
+  final int periodStart;
   final bool hadHomework;
   final DateTime createdAt;
 
@@ -3772,6 +4162,7 @@ class HomeworkLogsTableData extends DataClass
     required this.id,
     required this.studentId,
     required this.date,
+    required this.periodStart,
     required this.hadHomework,
     required this.createdAt,
     required this.updatedAt,
@@ -3782,6 +4173,7 @@ class HomeworkLogsTableData extends DataClass
     map['id'] = Variable<int>(id);
     map['student_id'] = Variable<int>(studentId);
     map['date'] = Variable<DateTime>(date);
+    map['period_start'] = Variable<int>(periodStart);
     map['had_homework'] = Variable<bool>(hadHomework);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -3793,6 +4185,7 @@ class HomeworkLogsTableData extends DataClass
       id: Value(id),
       studentId: Value(studentId),
       date: Value(date),
+      periodStart: Value(periodStart),
       hadHomework: Value(hadHomework),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -3808,6 +4201,7 @@ class HomeworkLogsTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       studentId: serializer.fromJson<int>(json['studentId']),
       date: serializer.fromJson<DateTime>(json['date']),
+      periodStart: serializer.fromJson<int>(json['periodStart']),
       hadHomework: serializer.fromJson<bool>(json['hadHomework']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -3820,6 +4214,7 @@ class HomeworkLogsTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'studentId': serializer.toJson<int>(studentId),
       'date': serializer.toJson<DateTime>(date),
+      'periodStart': serializer.toJson<int>(periodStart),
       'hadHomework': serializer.toJson<bool>(hadHomework),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -3830,6 +4225,7 @@ class HomeworkLogsTableData extends DataClass
     int? id,
     int? studentId,
     DateTime? date,
+    int? periodStart,
     bool? hadHomework,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -3837,6 +4233,7 @@ class HomeworkLogsTableData extends DataClass
     id: id ?? this.id,
     studentId: studentId ?? this.studentId,
     date: date ?? this.date,
+    periodStart: periodStart ?? this.periodStart,
     hadHomework: hadHomework ?? this.hadHomework,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -3846,6 +4243,9 @@ class HomeworkLogsTableData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       studentId: data.studentId.present ? data.studentId.value : this.studentId,
       date: data.date.present ? data.date.value : this.date,
+      periodStart: data.periodStart.present
+          ? data.periodStart.value
+          : this.periodStart,
       hadHomework: data.hadHomework.present
           ? data.hadHomework.value
           : this.hadHomework,
@@ -3860,6 +4260,7 @@ class HomeworkLogsTableData extends DataClass
           ..write('id: $id, ')
           ..write('studentId: $studentId, ')
           ..write('date: $date, ')
+          ..write('periodStart: $periodStart, ')
           ..write('hadHomework: $hadHomework, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -3868,8 +4269,15 @@ class HomeworkLogsTableData extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, studentId, date, hadHomework, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    studentId,
+    date,
+    periodStart,
+    hadHomework,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3877,6 +4285,7 @@ class HomeworkLogsTableData extends DataClass
           other.id == this.id &&
           other.studentId == this.studentId &&
           other.date == this.date &&
+          other.periodStart == this.periodStart &&
           other.hadHomework == this.hadHomework &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -3887,6 +4296,7 @@ class HomeworkLogsTableCompanion
   final Value<int> id;
   final Value<int> studentId;
   final Value<DateTime> date;
+  final Value<int> periodStart;
   final Value<bool> hadHomework;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -3894,6 +4304,7 @@ class HomeworkLogsTableCompanion
     this.id = const Value.absent(),
     this.studentId = const Value.absent(),
     this.date = const Value.absent(),
+    this.periodStart = const Value.absent(),
     this.hadHomework = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -3902,6 +4313,7 @@ class HomeworkLogsTableCompanion
     this.id = const Value.absent(),
     required int studentId,
     required DateTime date,
+    this.periodStart = const Value.absent(),
     this.hadHomework = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -3911,6 +4323,7 @@ class HomeworkLogsTableCompanion
     Expression<int>? id,
     Expression<int>? studentId,
     Expression<DateTime>? date,
+    Expression<int>? periodStart,
     Expression<bool>? hadHomework,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -3919,6 +4332,7 @@ class HomeworkLogsTableCompanion
       if (id != null) 'id': id,
       if (studentId != null) 'student_id': studentId,
       if (date != null) 'date': date,
+      if (periodStart != null) 'period_start': periodStart,
       if (hadHomework != null) 'had_homework': hadHomework,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -3929,6 +4343,7 @@ class HomeworkLogsTableCompanion
     Value<int>? id,
     Value<int>? studentId,
     Value<DateTime>? date,
+    Value<int>? periodStart,
     Value<bool>? hadHomework,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -3937,6 +4352,7 @@ class HomeworkLogsTableCompanion
       id: id ?? this.id,
       studentId: studentId ?? this.studentId,
       date: date ?? this.date,
+      periodStart: periodStart ?? this.periodStart,
       hadHomework: hadHomework ?? this.hadHomework,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -3954,6 +4370,9 @@ class HomeworkLogsTableCompanion
     }
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
+    }
+    if (periodStart.present) {
+      map['period_start'] = Variable<int>(periodStart.value);
     }
     if (hadHomework.present) {
       map['had_homework'] = Variable<bool>(hadHomework.value);
@@ -3973,6 +4392,7 @@ class HomeworkLogsTableCompanion
           ..write('id: $id, ')
           ..write('studentId: $studentId, ')
           ..write('date: $date, ')
+          ..write('periodStart: $periodStart, ')
           ..write('hadHomework: $hadHomework, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -9219,6 +9639,8 @@ typedef $$GroupsTableTableCreateCompanionBuilder =
       Value<DateTime?> archivedAt,
       Value<int?> schoolYearId,
       Value<DateTime> updatedAt,
+      Value<int?> webuntisKlasseId,
+      Value<String?> webuntisLessonIds,
     });
 typedef $$GroupsTableTableUpdateCompanionBuilder =
     GroupsTableCompanion Function({
@@ -9231,6 +9653,8 @@ typedef $$GroupsTableTableUpdateCompanionBuilder =
       Value<DateTime?> archivedAt,
       Value<int?> schoolYearId,
       Value<DateTime> updatedAt,
+      Value<int?> webuntisKlasseId,
+      Value<String?> webuntisLessonIds,
     });
 
 final class $$GroupsTableTableReferences
@@ -9431,6 +9855,16 @@ class $$GroupsTableTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get webuntisKlasseId => $composableBuilder(
+    column: $table.webuntisKlasseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get webuntisLessonIds => $composableBuilder(
+    column: $table.webuntisLessonIds,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9657,6 +10091,16 @@ class $$GroupsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get webuntisKlasseId => $composableBuilder(
+    column: $table.webuntisKlasseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get webuntisLessonIds => $composableBuilder(
+    column: $table.webuntisLessonIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SchoolYearsTableTableOrderingComposer get schoolYearId {
     final $$SchoolYearsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -9719,6 +10163,16 @@ class $$GroupsTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get webuntisKlasseId => $composableBuilder(
+    column: $table.webuntisKlasseId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get webuntisLessonIds => $composableBuilder(
+    column: $table.webuntisLessonIds,
+    builder: (column) => column,
+  );
 
   $$SchoolYearsTableTableAnnotationComposer get schoolYearId {
     final $$SchoolYearsTableTableAnnotationComposer composer = $composerBuilder(
@@ -9940,6 +10394,8 @@ class $$GroupsTableTableTableManager
                 Value<DateTime?> archivedAt = const Value.absent(),
                 Value<int?> schoolYearId = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int?> webuntisKlasseId = const Value.absent(),
+                Value<String?> webuntisLessonIds = const Value.absent(),
               }) => GroupsTableCompanion(
                 id: id,
                 name: name,
@@ -9950,6 +10406,8 @@ class $$GroupsTableTableTableManager
                 archivedAt: archivedAt,
                 schoolYearId: schoolYearId,
                 updatedAt: updatedAt,
+                webuntisKlasseId: webuntisKlasseId,
+                webuntisLessonIds: webuntisLessonIds,
               ),
           createCompanionCallback:
               ({
@@ -9962,6 +10420,8 @@ class $$GroupsTableTableTableManager
                 Value<DateTime?> archivedAt = const Value.absent(),
                 Value<int?> schoolYearId = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int?> webuntisKlasseId = const Value.absent(),
+                Value<String?> webuntisLessonIds = const Value.absent(),
               }) => GroupsTableCompanion.insert(
                 id: id,
                 name: name,
@@ -9972,6 +10432,8 @@ class $$GroupsTableTableTableManager
                 archivedAt: archivedAt,
                 schoolYearId: schoolYearId,
                 updatedAt: updatedAt,
+                webuntisKlasseId: webuntisKlasseId,
+                webuntisLessonIds: webuntisLessonIds,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -10205,6 +10667,7 @@ typedef $$StudentsTableTableCreateCompanionBuilder =
       Value<String?> avatarJson,
       Value<int?> seatIndex,
       Value<DateTime> updatedAt,
+      Value<int?> webuntisStudentId,
     });
 typedef $$StudentsTableTableUpdateCompanionBuilder =
     StudentsTableCompanion Function({
@@ -10218,6 +10681,7 @@ typedef $$StudentsTableTableUpdateCompanionBuilder =
       Value<String?> avatarJson,
       Value<int?> seatIndex,
       Value<DateTime> updatedAt,
+      Value<int?> webuntisStudentId,
     });
 
 final class $$StudentsTableTableReferences
@@ -10555,6 +11019,11 @@ class $$StudentsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get webuntisStudentId => $composableBuilder(
+    column: $table.webuntisStudentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$GroupsTableTableFilterComposer get groupId {
     final $$GroupsTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -10887,6 +11356,11 @@ class $$StudentsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get webuntisStudentId => $composableBuilder(
+    column: $table.webuntisStudentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$GroupsTableTableOrderingComposer get groupId {
     final $$GroupsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -10950,6 +11424,11 @@ class $$StudentsTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get webuntisStudentId => $composableBuilder(
+    column: $table.webuntisStudentId,
+    builder: (column) => column,
+  );
 
   $$GroupsTableTableAnnotationComposer get groupId {
     final $$GroupsTableTableAnnotationComposer composer = $composerBuilder(
@@ -11284,6 +11763,7 @@ class $$StudentsTableTableTableManager
                 Value<String?> avatarJson = const Value.absent(),
                 Value<int?> seatIndex = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int?> webuntisStudentId = const Value.absent(),
               }) => StudentsTableCompanion(
                 id: id,
                 firstName: firstName,
@@ -11295,6 +11775,7 @@ class $$StudentsTableTableTableManager
                 avatarJson: avatarJson,
                 seatIndex: seatIndex,
                 updatedAt: updatedAt,
+                webuntisStudentId: webuntisStudentId,
               ),
           createCompanionCallback:
               ({
@@ -11308,6 +11789,7 @@ class $$StudentsTableTableTableManager
                 Value<String?> avatarJson = const Value.absent(),
                 Value<int?> seatIndex = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int?> webuntisStudentId = const Value.absent(),
               }) => StudentsTableCompanion.insert(
                 id: id,
                 firstName: firstName,
@@ -11319,6 +11801,7 @@ class $$StudentsTableTableTableManager
                 avatarJson: avatarJson,
                 seatIndex: seatIndex,
                 updatedAt: updatedAt,
+                webuntisStudentId: webuntisStudentId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -11642,8 +12125,10 @@ typedef $$AttendanceLogsTableTableCreateCompanionBuilder =
       Value<int> id,
       required int studentId,
       required DateTime date,
+      Value<int> periodStart,
       Value<bool> isAbsent,
       Value<bool> isExcused,
+      Value<bool> isLate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -11652,8 +12137,10 @@ typedef $$AttendanceLogsTableTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> studentId,
       Value<DateTime> date,
+      Value<int> periodStart,
       Value<bool> isAbsent,
       Value<bool> isExcused,
+      Value<bool> isLate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -11713,6 +12200,11 @@ class $$AttendanceLogsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get isAbsent => $composableBuilder(
     column: $table.isAbsent,
     builder: (column) => ColumnFilters(column),
@@ -11720,6 +12212,11 @@ class $$AttendanceLogsTableTableFilterComposer
 
   ColumnFilters<bool> get isExcused => $composableBuilder(
     column: $table.isExcused,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isLate => $composableBuilder(
+    column: $table.isLate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11776,6 +12273,11 @@ class $$AttendanceLogsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isAbsent => $composableBuilder(
     column: $table.isAbsent,
     builder: (column) => ColumnOrderings(column),
@@ -11783,6 +12285,11 @@ class $$AttendanceLogsTableTableOrderingComposer
 
   ColumnOrderings<bool> get isExcused => $composableBuilder(
     column: $table.isExcused,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isLate => $composableBuilder(
+    column: $table.isLate,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -11835,11 +12342,19 @@ class $$AttendanceLogsTableTableAnnotationComposer
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
+  GeneratedColumn<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get isAbsent =>
       $composableBuilder(column: $table.isAbsent, builder: (column) => column);
 
   GeneratedColumn<bool> get isExcused =>
       $composableBuilder(column: $table.isExcused, builder: (column) => column);
+
+  GeneratedColumn<bool> get isLate =>
+      $composableBuilder(column: $table.isLate, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -11910,16 +12425,20 @@ class $$AttendanceLogsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> studentId = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
+                Value<int> periodStart = const Value.absent(),
                 Value<bool> isAbsent = const Value.absent(),
                 Value<bool> isExcused = const Value.absent(),
+                Value<bool> isLate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => AttendanceLogsTableCompanion(
                 id: id,
                 studentId: studentId,
                 date: date,
+                periodStart: periodStart,
                 isAbsent: isAbsent,
                 isExcused: isExcused,
+                isLate: isLate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -11928,16 +12447,20 @@ class $$AttendanceLogsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 required int studentId,
                 required DateTime date,
+                Value<int> periodStart = const Value.absent(),
                 Value<bool> isAbsent = const Value.absent(),
                 Value<bool> isExcused = const Value.absent(),
+                Value<bool> isLate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => AttendanceLogsTableCompanion.insert(
                 id: id,
                 studentId: studentId,
                 date: date,
+                periodStart: periodStart,
                 isAbsent: isAbsent,
                 isExcused: isExcused,
+                isLate: isLate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -12900,6 +13423,7 @@ typedef $$MaterialLogsTableTableCreateCompanionBuilder =
       Value<int> id,
       required int studentId,
       required DateTime date,
+      Value<int> periodStart,
       Value<bool> hadMaterial,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -12909,6 +13433,7 @@ typedef $$MaterialLogsTableTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> studentId,
       Value<DateTime> date,
+      Value<int> periodStart,
       Value<bool> hadMaterial,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -12966,6 +13491,11 @@ class $$MaterialLogsTableTableFilterComposer
 
   ColumnFilters<DateTime> get date => $composableBuilder(
     column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13027,6 +13557,11 @@ class $$MaterialLogsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get hadMaterial => $composableBuilder(
     column: $table.hadMaterial,
     builder: (column) => ColumnOrderings(column),
@@ -13080,6 +13615,11 @@ class $$MaterialLogsTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get hadMaterial => $composableBuilder(
     column: $table.hadMaterial,
@@ -13152,6 +13692,7 @@ class $$MaterialLogsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> studentId = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
+                Value<int> periodStart = const Value.absent(),
                 Value<bool> hadMaterial = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -13159,6 +13700,7 @@ class $$MaterialLogsTableTableTableManager
                 id: id,
                 studentId: studentId,
                 date: date,
+                periodStart: periodStart,
                 hadMaterial: hadMaterial,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13168,6 +13710,7 @@ class $$MaterialLogsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 required int studentId,
                 required DateTime date,
+                Value<int> periodStart = const Value.absent(),
                 Value<bool> hadMaterial = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -13175,6 +13718,7 @@ class $$MaterialLogsTableTableTableManager
                 id: id,
                 studentId: studentId,
                 date: date,
+                periodStart: periodStart,
                 hadMaterial: hadMaterial,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13253,6 +13797,7 @@ typedef $$HomeworkLogsTableTableCreateCompanionBuilder =
       Value<int> id,
       required int studentId,
       required DateTime date,
+      Value<int> periodStart,
       Value<bool> hadHomework,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -13262,6 +13807,7 @@ typedef $$HomeworkLogsTableTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> studentId,
       Value<DateTime> date,
+      Value<int> periodStart,
       Value<bool> hadHomework,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -13319,6 +13865,11 @@ class $$HomeworkLogsTableTableFilterComposer
 
   ColumnFilters<DateTime> get date => $composableBuilder(
     column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13380,6 +13931,11 @@ class $$HomeworkLogsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get hadHomework => $composableBuilder(
     column: $table.hadHomework,
     builder: (column) => ColumnOrderings(column),
@@ -13433,6 +13989,11 @@ class $$HomeworkLogsTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<int> get periodStart => $composableBuilder(
+    column: $table.periodStart,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get hadHomework => $composableBuilder(
     column: $table.hadHomework,
@@ -13505,6 +14066,7 @@ class $$HomeworkLogsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> studentId = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
+                Value<int> periodStart = const Value.absent(),
                 Value<bool> hadHomework = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -13512,6 +14074,7 @@ class $$HomeworkLogsTableTableTableManager
                 id: id,
                 studentId: studentId,
                 date: date,
+                periodStart: periodStart,
                 hadHomework: hadHomework,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13521,6 +14084,7 @@ class $$HomeworkLogsTableTableTableManager
                 Value<int> id = const Value.absent(),
                 required int studentId,
                 required DateTime date,
+                Value<int> periodStart = const Value.absent(),
                 Value<bool> hadHomework = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -13528,6 +14092,7 @@ class $$HomeworkLogsTableTableTableManager
                 id: id,
                 studentId: studentId,
                 date: date,
+                periodStart: periodStart,
                 hadHomework: hadHomework,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

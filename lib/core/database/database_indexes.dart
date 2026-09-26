@@ -12,6 +12,10 @@ const List<String> databaseIndexStatements = [
   'CREATE INDEX IF NOT EXISTS idx_students_group_id '
       'ON students_table (group_id)',
 
+  // A WebUntis attendance sync looks students up by their WebUntis id.
+  'CREATE INDEX IF NOT EXISTS idx_students_webuntis_student_id '
+      'ON students_table (webuntis_student_id)',
+
   // Groups are listed per school year.
   'CREATE INDEX IF NOT EXISTS idx_groups_school_year_id '
       'ON groups_table (school_year_id)',
@@ -28,14 +32,20 @@ const List<String> databaseIndexStatements = [
   // date range for a timeframe.
   'CREATE INDEX IF NOT EXISTS idx_attendance_logs_student_id_date '
       'ON attendance_logs_table (student_id, date)',
+  'CREATE INDEX IF NOT EXISTS idx_attendance_logs_student_id_date_period '
+      'ON attendance_logs_table (student_id, date, period_start)',
   'CREATE INDEX IF NOT EXISTS idx_attendance_logs_date '
       'ON attendance_logs_table (date)',
   'CREATE INDEX IF NOT EXISTS idx_homework_logs_student_id_date '
       'ON homework_logs_table (student_id, date)',
+  'CREATE INDEX IF NOT EXISTS idx_homework_logs_student_id_date_period '
+      'ON homework_logs_table (student_id, date, period_start)',
   'CREATE INDEX IF NOT EXISTS idx_homework_logs_date '
       'ON homework_logs_table (date)',
   'CREATE INDEX IF NOT EXISTS idx_material_logs_student_id_date '
       'ON material_logs_table (student_id, date)',
+  'CREATE INDEX IF NOT EXISTS idx_material_logs_student_id_date_period '
+      'ON material_logs_table (student_id, date, period_start)',
   'CREATE INDEX IF NOT EXISTS idx_material_logs_date '
       'ON material_logs_table (date)',
 

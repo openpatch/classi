@@ -93,7 +93,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Exposed statically so callers can compare it against the version on disk
   /// before opening (and therefore migrating) a library.
-  static const int currentSchemaVersion = 29;
+  static const int currentSchemaVersion = 33;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -321,6 +321,47 @@ class AppDatabase extends _$AppDatabase {
         // the one the sync merge carries across. Triggers are recreated
         // rather than patched: SQLite has no ALTER TRIGGER.
         await _createUpdatedAtTriggers();
+      }
+
+      if (from < 30) {
+        // Groups and students remember where WebUntis imported them from, so
+        // a later roster or attendance sync matches on ids instead of names.
+        // Guarded like v27: a half-built library must still open.
+        if (await _hasTable('groups_table') &&
+            !await _hasColumn('groups_table', 'webuntis_klasse_id')) {
+          await migrator.addColumn(groupsTable, groupsTable.webuntisKlasseId);
+        }
+        if (await _hasTable('students_table') &&
+            !await _hasColumn('students_table', 'webuntis_student_id')) {
+          await migrator.addColumn(
+            studentsTable,
+            studentsTable.webuntisStudentId,
+          );
+        }
+        await _createIndexes();
+      }
+
+      if (from < 31) {
+        // Groups can stand for a WebUntis course rather than a whole class.
+        if (await _hasTable('groups_table') &&
+            !await _hasColumn('groups_table', 'webuntis_lesson_ids')) {
+          await migrator.addColumn(groupsTable, groupsTable.webuntisLessonIds);
+        }
+      }
+
+      if (from < 32) {
+        // Attendance can record a student who came late.
+        if (await _hasTable('attendance_logs_table') &&
+            !await _hasColumn('attendance_logs_table', 'is_late')) {
+          await migrator.addColumn(
+            attendanceLogsTable,
+            attendanceLogsTable.isLate,
+          );
+        }
+      }
+
+      if (from < 33) {
+        await _migrateLogsToLessons(migrator);
       }
     },
   );
@@ -620,6 +661,54 @@ class AppDatabase extends _$AppDatabase {
       variables: [Variable<String>(name)],
     ).get();
     return rows.isNotEmpty;
+  }
+
+  /// Version 33: attendance, homework and material are kept per lesson, not
+  /// per day.
+  ///
+  /// Each log gains the period its lesson starts in. An existing day entry
+  /// moves onto that day's lesson when the group had exactly one lesson in a
+  /// period that day; otherwise it stays a whole-day entry (period 0), which
+  /// is what it was recorded as.
+  Future<void> _migrateLogsToLessons(Migrator migrator) async {
+    final tables = <(String, TableInfo, GeneratedColumn)>[
+      (
+        'attendance_logs_table',
+        attendanceLogsTable,
+        attendanceLogsTable.periodStart,
+      ),
+      ('homework_logs_table', homeworkLogsTable, homeworkLogsTable.periodStart),
+      ('material_logs_table', materialLogsTable, materialLogsTable.periodStart),
+    ];
+    for (final (name, table, column) in tables) {
+      if (!await _hasTable(name)) continue;
+      if (!await _hasColumn(name, 'period_start')) {
+        await migrator.addColumn(table, column);
+      }
+      if (!await _hasTable('sessions_table') ||
+          !await _hasTable('students_table')) {
+        continue;
+      }
+      await customStatement('''
+        UPDATE $name SET period_start = COALESCE((
+          SELECT CASE WHEN COUNT(DISTINCT s.period_start) = 1
+                      THEN MIN(s.period_start) ELSE 0 END
+          FROM sessions_table s
+          JOIN students_table st ON st.group_id = s.group_id
+          WHERE st.id = $name.student_id
+            AND s.date = $name.date
+            AND s.period_start > 0
+        ), 0)
+        WHERE period_start = 0
+      ''');
+    }
+    await _createIndexes();
+  }
+
+  /// Whether [table] has a column called [column].
+  Future<bool> _hasColumn(String table, String column) async {
+    final rows = await customSelect("PRAGMA table_info('$table')").get();
+    return rows.any((row) => row.data['name'] == column);
   }
 
   Future<DateTime?> lastModified() async {

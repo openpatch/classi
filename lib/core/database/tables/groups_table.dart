@@ -32,4 +32,20 @@ class GroupsTable extends Table {
   /// resolve concurrent edits to the same row (last-write-wins per row).
   DateTimeColumn get updatedAt =>
       dateTime().withDefault(currentDateAndTime)();
+
+  /// The id of the WebUntis class ("Klasse") this group was imported from.
+  ///
+  /// Kept so a later student or attendance sync knows which class register to
+  /// read without asking the teacher to pick it again. `null` for groups that
+  /// were created by hand.
+  IntColumn get webuntisKlasseId => integer().nullable()();
+
+  /// The WebUntis lesson ids ("Unterricht") of the course this group stands
+  /// for, comma-separated.
+  ///
+  /// A course, unlike a class, can hold part of one class or students of
+  /// several, and its register lists exactly its own students. Takes
+  /// precedence over [webuntisKlasseId]. `null` for groups not linked to a
+  /// course.
+  TextColumn get webuntisLessonIds => text().nullable()();
 }
