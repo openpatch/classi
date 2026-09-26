@@ -14,6 +14,8 @@ import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../webuntis/webuntis_badge.dart';
+import '../webuntis/webuntis_class_import_sheet.dart';
 import 'group_form.dart';
 
 final activeGroupsProvider = StreamProvider.autoDispose<List<Group>>(
@@ -67,6 +69,16 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text('groups'.tr()),
+        actions: [
+          // Only offered once a WebUntis account is connected: without one the
+          // action can do nothing but explain itself.
+          if (ref.watch(webUntisConnectionProvider).value != null)
+            IconButton(
+              onPressed: _importFromWebUntis,
+              icon: const Icon(Icons.cloud_download_outlined),
+              tooltip: 'webuntis_import_groups'.tr(),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -97,6 +109,23 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen>
               label: Text('add_group'.tr()),
             )
           : null,
+    );
+  }
+
+  Future<void> _importFromWebUntis() async {
+    final created = await showWebUntisClassImportSheet(context: context);
+    if (created == null || !mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'webuntis_classes_imported'.tr(
+            namedArgs: {'count': created.toString()},
+          ),
+        ),
+      ),
     );
   }
 
@@ -194,7 +223,16 @@ class _GroupsList extends ConsumerWidget {
                     backgroundColor: groupColor.withValues(alpha: 0.18),
                     child: CircleAvatar(radius: 5, backgroundColor: groupColor),
                   ),
-                  title: Text('${group.name} ($studentCount)'),
+                  title: WebUntisLinkedTitle(
+                    title: Text(
+                      '${group.name} ($studentCount)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    linked:
+                        group.webuntisKlasseId != null ||
+                        group.webuntisLessonIds != null,
+                    tooltip: 'webuntis_group_linked',
+                  ),
                   trailing: PopupMenuButton<_GroupAction>(
                     onSelected: (action) => _handleAction(
                       context: context,

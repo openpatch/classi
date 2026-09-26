@@ -53,6 +53,10 @@ import '../sessions/session_repository.dart';
 import '../students/student_import_parser.dart';
 import '../students/student_repository.dart';
 import '../students/student_sorting.dart';
+import '../webuntis/webuntis_badge.dart';
+import '../webuntis/webuntis_link.dart';
+import '../webuntis/webuntis_link_picker.dart';
+import '../webuntis/webuntis_student_import_sheet.dart';
 import 'group_form.dart';
 import 'group_picker_sheet.dart';
 
@@ -190,6 +194,8 @@ class GroupDetailScreen extends ConsumerWidget {
     final sessionSummariesValue = ref.watch(
       groupSessionSummariesProvider(groupId),
     );
+    final webUntisConnected =
+        ref.watch(webUntisConnectionProvider).value != null;
 
     return groupValue.when(
       data: (group) {
@@ -435,6 +441,13 @@ class GroupDetailScreen extends ConsumerWidget {
                       onCopyStudents: archived
                           ? null
                           : () => _copyStudentsFromGroup(context, ref, group.id),
+                      onSyncWebUntisStudents: archived || !webUntisConnected
+                          ? null
+                          : () => _syncWebUntisStudents(context, ref, group),
+                      webUntisLink: WebUntisGroupLink.ofGroup(group),
+                      onChangeWebUntisLink: archived || !webUntisConnected
+                          ? null
+                          : () => _changeWebUntisLink(context, ref, group),
                     ),
                     error: (error, stackTrace) =>
                         AppErrorText(error: error, stackTrace: stackTrace),
@@ -626,6 +639,87 @@ class GroupDetailScreen extends ConsumerWidget {
         context,
       ).showSnackBar(SnackBar(content: Text('webuntis_import_failed'.tr())));
     }
+  }
+
+  /// Resolves what a group stands for in WebUntis, asking once and
+  /// remembering the answer on the group.
+  Future<WebUntisGroupLink?> _resolveLink(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    return WebUntisGroupLink.ofGroup(group) ??
+        await _changeWebUntisLink(context, ref, group);
+  }
+
+  /// Lets the teacher link [group] to a WebUntis course or class, or remove
+  /// the link. Returns the new link, `null` when there is none.
+  Future<WebUntisGroupLink?> _changeWebUntisLink(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    final current = WebUntisGroupLink.ofGroup(group);
+    final choice = await showWebUntisLinkPicker(
+      context: context,
+      linked: current != null,
+    );
+    final repository = ref.read(groupRepositoryProvider);
+    switch (choice) {
+      case null:
+        return current;
+      case WebUntisUnlink():
+        await repository.setWebUntisKlasseId(groupId: group.id, klasseId: null);
+        return null;
+      case WebUntisLinkTo(:final link):
+        if (link.isCourse) {
+          await repository.setWebUntisLessonIds(
+            groupId: group.id,
+            lessonIds: encodeLessonIds(link.lessonIds),
+          );
+        } else {
+          await repository.setWebUntisKlasseId(
+            groupId: group.id,
+            klasseId: link.klasseId,
+          );
+        }
+        return link;
+    }
+  }
+
+  Future<void> _syncWebUntisStudents(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    final link = await _resolveLink(context, ref, group);
+    if (link == null || !context.mounted) {
+      return;
+    }
+
+    final result = await showWebUntisStudentImportSheet(
+      context: context,
+      groupId: group.id,
+      link: link,
+    );
+    if (result == null || !context.mounted) {
+      return;
+    }
+
+    _refreshStudentSection(ref, group.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'webuntis_students_imported'.tr(
+            namedArgs: {
+              'added': result.added.toString(),
+              'linked': result.linked.toString(),
+              'skipped': result.skipped.toString(),
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   void _refreshStudentSection(WidgetRef ref, int groupId) {
@@ -2513,6 +2607,9 @@ class _StudentsSection extends ConsumerStatefulWidget {
     required this.onBatchCreateStudents,
     required this.onImportStudents,
     required this.onCopyStudents,
+    required this.onSyncWebUntisStudents,
+    required this.webUntisLink,
+    required this.onChangeWebUntisLink,
     required this.groupId,
     required this.groupName,
   });
@@ -2533,6 +2630,11 @@ class _StudentsSection extends ConsumerStatefulWidget {
   /// Names the class on anything the section hands out, such as an exported
   /// seating plan.
   final String groupName;
+  final VoidCallback? onSyncWebUntisStudents;
+
+  /// What the group stands for in WebUntis, `null` when not linked.
+  final WebUntisGroupLink? webUntisLink;
+  final VoidCallback? onChangeWebUntisLink;
   final int groupId;
 
   @override
@@ -2796,6 +2898,30 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                       icon: const Icon(Icons.content_copy_outlined),
                       label: Text('copy_students_from_group'.tr()),
                     ),
+                  if (widget.onSyncWebUntisStudents != null)
+                    OutlinedButton.icon(
+                      onPressed: widget.onSyncWebUntisStudents,
+                      icon: const Icon(Icons.cloud_download_outlined),
+                      label: Text('webuntis_import_students'.tr()),
+                    ),
+                  if (widget.onChangeWebUntisLink != null)
+                    ActionChip(
+                      onPressed: widget.onChangeWebUntisLink,
+                      avatar: Icon(
+                        widget.webUntisLink == null
+                            ? Icons.link_off
+                            : Icons.cloud_sync_outlined,
+                        size: 18,
+                      ),
+                      label: Text(
+                        switch (widget.webUntisLink) {
+                          null => 'webuntis_link_none',
+                          final link when link.isCourse =>
+                            'webuntis_link_course',
+                          _ => 'webuntis_link_class',
+                        }.tr(),
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: AppSpacing.medium),
@@ -2815,13 +2941,17 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                         child: SurfaceListTile(
                           onTap: () => context.push('/students/${student.id}'),
                           leading: StudentAvatar(student: student),
-                          title: Text(
-                            studentDisplayName(
-                              firstName: student.firstName,
-                              lastName: student.lastName,
-                              callName: student.callName,
-                              sortField: widget.sortField,
+                          title: WebUntisLinkedTitle(
+                            title: Text(
+                              studentDisplayName(
+                                firstName: student.firstName,
+                                lastName: student.lastName,
+                                callName: student.callName,
+                                sortField: widget.sortField,
+                              ),
                             ),
+                            linked: student.webuntisStudentId != null,
+                            tooltip: 'webuntis_student_linked',
                           ),
                           subtitle:
                               student.originNote == null && perCategory.isEmpty
