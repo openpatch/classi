@@ -86,6 +86,25 @@ class KeyService {
     await _storage.delete(key: _legacyWebDavPasswordKey);
   }
 
+  String _webUntisSecretKey(File dbFile) =>
+      'webuntis.shared_secret.${dbFile.path}';
+
+  /// Returns the WebUntis app shared secret stored for [dbFile], or `null`.
+  ///
+  /// WebUntis hands this secret out once in exchange for the password and then
+  /// accepts one-time passwords derived from it, so the teacher's actual
+  /// WebUntis password never has to be kept anywhere.
+  Future<String?> getWebUntisSecret(File dbFile) =>
+      _storage.read(key: _webUntisSecretKey(dbFile));
+
+  /// Stores the WebUntis app shared secret for [dbFile].
+  Future<void> setWebUntisSecret(File dbFile, String secret) =>
+      _storage.write(key: _webUntisSecretKey(dbFile), value: secret);
+
+  /// Removes the stored WebUntis app shared secret for [dbFile].
+  Future<void> clearWebUntisSecret(File dbFile) =>
+      _storage.delete(key: _webUntisSecretKey(dbFile));
+
   Future<SecurityBootstrapResult> bootstrapSecurity({
     required File dbFile,
     required String passphrase,
