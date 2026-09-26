@@ -19,7 +19,9 @@ and portable across devices.
 - SQLCipher-backed Drift database with passphrase setup and recovery key support
 - Adaptive navigation for groups, notes, and settings
 - Groups and students flow, including archive, unarchive, clone, and deletion
-- Batch student creation and WebUntis class-list import
+- Batch student creation, WebUntis CSV class-list import, and a live
+  [WebUntis connection](#webuntis) for importing classes and class lists, and
+  for taking over lesson topics and attendance
 - Grade entry, chart-based grade history, checklist management, note management,
   and material tracking
 - Avatar editing powered by `avatar_maker`, persisted per student in the local
@@ -65,6 +67,65 @@ credentials, and remote folder path in **Settings → Backups**. Once saved:
 
 You can also trigger a manual restore from the setup screen by choosing
 *Restore from WebDAV backup*.
+
+## WebUntis
+
+> **Not affiliated with Untis.** Classi is an independent open-source project
+> and is not affiliated with, endorsed by, or supported by Untis GmbH.
+> "Untis" and "WebUntis" are trademarks of Untis GmbH and are used here only
+> to say which system Classi works with.
+>
+> The connection uses an interface that Untis does not document for third
+> parties. It can change or stop working at any time, without notice.
+>
+> **Check with your school first.** Connecting reads students' names,
+> attendance and lesson topics from your school's WebUntis. Many
+> schools and school authorities only allow approved apps to process
+> student data. Make sure Classi is allowed before you connect it. Classi
+> keeps the data on your device and talks only to your school's WebUntis
+> server.
+
+Classi can connect to your school's WebUntis and read from it. Connect an
+account under **Settings → WebUntis** with the server host (e.g.
+`mese.webuntis.com` — pasting the whole address works too), the school's login
+name, and your WebUntis credentials. Once connected:
+
+- **Import courses or classes** from the groups screen. A course becomes a
+  group holding exactly its own students, whether that is half a class or
+  students from several classes. Pick a whole class only when the group really
+  is the entire class.
+- **Link an existing group** from its page, to one of your courses or to a
+  class; the link can be changed or removed there too. Linked groups and
+  linked students carry a small cloud mark.
+- **Import students** from a linked group: Classi reads the class register of
+  the group's recent lessons. Students already in the group are matched by name
+  and keep their grades, notes, and avatars; they only gain their WebUntis id.
+- **Lesson mode works per lesson**, like the class register in WebUntis.
+  It opens the lesson that is running now, from the group's timetable and
+  the school's bell times (read from WebUntis), and chips switch between the
+  day's lessons. Attendance, homework and material are kept per lesson, so a
+  group seen in periods 1–2 and 5–6 has two separate records that day.
+- **Lesson topic and attendance** in lesson mode: for a linked group, lesson
+  mode shows the topic and the absences WebUntis has for exactly this
+  lesson's WebUntis lessons, next to your own, with buttons to take them over
+  into Classi.
+- **Swipes as in Untis Mobile**: left marks a student absent, right marks
+  them late, with Undo. This only changes Classi.
+
+The connection only reads: Classi never writes anything to WebUntis.
+Your password is not stored: WebUntis exchanges it once for an app access
+secret, which is kept in the platform's secure storage alongside the WebDAV
+password. Server, school, and user name live in the `.classi` project, so they
+travel with the library.
+
+Taking over attendance makes the lesson match WebUntis for the students linked
+to it, excuse and lateness included; students without a WebUntis id keep what
+you recorded.
+
+Two things depend on your school's WebUntis configuration: the account needs
+permission to open the class register, and the class needs lessons in the last
+few weeks for a class list to be read from. Classi says which of the two is
+missing rather than showing an empty list.
 
 ## Avatar Designer
 
