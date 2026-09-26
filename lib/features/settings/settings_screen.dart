@@ -18,6 +18,7 @@ import '../../shared/widgets/app_updater.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../setup/database_selection_sheet.dart';
+import '../webuntis/webuntis_settings_section.dart';
 import 'backup_conflict_screen.dart';
 import 'grade_system_controller.dart';
 import 'grade_system_editor.dart';
@@ -110,6 +111,11 @@ class SettingsScreen extends ConsumerWidget {
             _SectionCard(
               title: 'backups'.tr(),
               child: _BackupsSection(session: session),
+            ),
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'webuntis'.tr(),
+              child: const WebUntisSettingsSection(),
             ),
             const SizedBox(height: 16),
             _SectionCard(
