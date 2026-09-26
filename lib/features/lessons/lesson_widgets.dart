@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../shared/theme/app_ui.dart';
 import '../../shared/utils/grade_categories.dart';
+import 'lesson_periods.dart';
 
 class LessonContextCard extends StatelessWidget {
   const LessonContextCard({
@@ -11,6 +12,8 @@ class LessonContextCard extends StatelessWidget {
     required this.onSessionChanged,
     required this.onPickDate,
     this.action,
+    this.topicSource,
+    this.lessonSelector,
     super.key,
   });
 
@@ -19,6 +22,13 @@ class LessonContextCard extends StatelessWidget {
   final ValueChanged<String> onSessionChanged;
   final VoidCallback onPickDate;
   final Widget? action;
+
+  /// Shown right under the topic field: where else a topic could come from,
+  /// such as the WebUntis class register.
+  final Widget? topicSource;
+
+  /// Picks which of the day's lessons this is, below the date.
+  final Widget? lessonSelector;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +43,10 @@ class LessonContextCard extends StatelessWidget {
               decoration: InputDecoration(labelText: 'session_label'.tr()),
               onChanged: onSessionChanged,
             ),
+            if (topicSource != null) ...[
+              const SizedBox(height: AppSpacing.medium),
+              topicSource!,
+            ],
             const SizedBox(height: AppSpacing.large),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -47,6 +61,10 @@ class LessonContextCard extends StatelessWidget {
                 icon: const Icon(Icons.calendar_today_outlined),
               ),
             ),
+            if (lessonSelector != null) ...[
+              const SizedBox(height: AppSpacing.small),
+              lessonSelector!,
+            ],
             if (action != null) ...[
               const SizedBox(height: AppSpacing.medium),
               action!,
@@ -261,3 +279,62 @@ class LessonTriStateField extends StatelessWidget {
 }
 
 enum _LessonTriState { unset, yes, no }
+
+/// Chips for the lessons a group has on the day, plus a whole-day entry.
+class LessonPicker extends StatelessWidget {
+  const LessonPicker({
+    required this.lessons,
+    required this.selected,
+    required this.weekday,
+    required this.bellTimes,
+    required this.onSelected,
+    super.key,
+  });
+
+  final List<LessonPeriods> lessons;
+  final LessonPeriods? selected;
+  final int weekday;
+  final BellTimes bellTimes;
+  final ValueChanged<LessonPeriods?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    // A lesson chosen by hand that the timetable does not know still shows.
+    final all = [
+      ...lessons,
+      if (selected != null && !lessons.contains(selected)) selected!,
+    ]..sort((a, b) => a.start.compareTo(b.start));
+
+    return Wrap(
+      spacing: AppSpacing.small,
+      runSpacing: AppSpacing.xSmall,
+      children: [
+        for (final lesson in all)
+          ChoiceChip(
+            label: Text(lessonLabel(lesson)),
+            selected: lesson == selected,
+            onSelected: (_) => onSelected(lesson),
+          ),
+        ChoiceChip(
+          label: Text('lesson_whole_day'.tr()),
+          selected: selected == null,
+          onSelected: (_) => onSelected(null),
+        ),
+      ],
+    );
+  }
+
+  String lessonLabel(LessonPeriods lesson) {
+    final periods = lesson.start == lesson.end
+        ? 'lesson_period'.tr(namedArgs: {'period': '${lesson.start}'})
+        : 'lesson_periods'.tr(
+            namedArgs: {'start': '${lesson.start}', 'end': '${lesson.end}'},
+          );
+    final span = lessonMinutes(lesson, weekday, bellTimes);
+    if (span == null) return periods;
+    String clock(int minutes) =>
+        '${(minutes ~/ 60).toString().padLeft(2, '0')}:'
+        '${(minutes % 60).toString().padLeft(2, '0')}';
+    return '$periods · ${clock(span.start)}–${clock(span.end)}';
+  }
+}

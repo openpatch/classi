@@ -48,6 +48,7 @@ import '../seating_plan/seating_rules_sheet.dart';
 import '../seating_plan/seating_suggestion.dart';
 import '../students/student_batch_create_sheet.dart';
 import '../students/student_form.dart';
+import '../lessons/lesson_periods.dart';
 import '../sessions/session_form.dart';
 import '../sessions/session_repository.dart';
 import '../students/student_import_parser.dart';
@@ -160,6 +161,7 @@ String _lessonModeLocation({
   required int groupId,
   required DateTime date,
   String? categoryId,
+  LessonPeriods? periods,
 }) {
   final normalizedCategoryId = categoryId?.trim();
   return Uri(
@@ -168,6 +170,7 @@ String _lessonModeLocation({
       'date': encodeLessonDate(date),
       if (normalizedCategoryId != null && normalizedCategoryId.isNotEmpty)
         'category': normalizedCategoryId,
+      if (periods != null) 'periods': encodeLessonPeriods(periods),
     },
   ).toString();
 }
@@ -3463,6 +3466,9 @@ class _SessionsTable extends StatelessWidget {
           groupId: groupId,
           date: session.date,
           categoryId: session.categoryId,
+          periods: session.periodStart > 0
+              ? (start: session.periodStart, end: session.periodEnd)
+              : null,
         ),
       ),
       child: Padding(

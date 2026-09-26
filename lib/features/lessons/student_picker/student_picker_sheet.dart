@@ -24,10 +24,15 @@ class StudentPickerSheet extends ConsumerStatefulWidget {
   const StudentPickerSheet({
     required this.groupId,
     required this.date,
+    this.periodStart = 0,
     super.key,
   });
 
   final int groupId;
+
+  /// The lesson's first period, so absences of this lesson stay off the
+  /// wheel. 0 for a whole-day entry.
+  final int periodStart;
   final DateTime date;
 
   @override
@@ -62,7 +67,11 @@ class _StudentPickerSheetState extends ConsumerState<StudentPickerSheet> {
     final controller = ref.watch(studentPickerControllerProvider(_pickerArgs));
     final studentsValue = ref.watch(lessonStudentsProvider(widget.groupId));
     final absencesValue = ref.watch(
-      lessonAbsenceSelectionsProvider(_pickerArgs),
+      lessonAbsenceSelectionsProvider((
+        widget.groupId,
+        widget.date,
+        widget.periodStart,
+      )),
     );
 
     if (!controller.isLoaded || !studentsValue.hasValue) {
