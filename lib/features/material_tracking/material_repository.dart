@@ -62,6 +62,7 @@ class MaterialRepository {
   Stream<Map<int, bool>> watchGroupSelections({
     required int groupId,
     required DateTime date,
+    int periodStart = 0,
   }) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     return _database
@@ -70,11 +71,12 @@ class MaterialRepository {
       SELECT m.student_id, m.had_material
       FROM material_logs_table m
       JOIN students_table s ON s.id = m.student_id
-        WHERE s.group_id = ? AND m.date = ?
+        WHERE s.group_id = ? AND m.date = ? AND m.period_start = ?
         ''',
           variables: [
             Variable.withInt(groupId),
             Variable.withDateTime(normalizedDate),
+            Variable.withInt(periodStart),
           ],
           readsFrom: {_database.materialLogsTable, _database.studentsTable},
         )
@@ -90,6 +92,7 @@ class MaterialRepository {
   Future<void> saveLog({
     required int studentId,
     required DateTime date,
+    int periodStart = 0,
     required bool hadMaterial,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
@@ -102,6 +105,7 @@ class MaterialRepository {
         await (_database.select(_database.materialLogsTable)
               ..where((table) => table.studentId.equals(studentId))
               ..where((table) => table.date.equals(normalizedDate))
+              ..where((table) => table.periodStart.equals(periodStart))
               ..orderBy([(table) => OrderingTerm.asc(table.id)]))
             .get();
     final existing = existingLogs.isEmpty ? null : existingLogs.first;
@@ -113,6 +117,7 @@ class MaterialRepository {
             MaterialLogsTableCompanion.insert(
               studentId: studentId,
               date: normalizedDate,
+              periodStart: Value(periodStart),
               hadMaterial: Value(hadMaterial),
             ),
           );
@@ -136,10 +141,16 @@ class MaterialRepository {
     required bool hadMaterial,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
+    final current =
+        await (_database.select(_database.materialLogsTable)
+              ..where((table) => table.id.equals(id)))
+            .getSingleOrNull();
+    final periodStart = current?.periodStart ?? 0;
     final matches =
         await (_database.select(_database.materialLogsTable)
               ..where((table) => table.studentId.equals(studentId))
-              ..where((table) => table.date.equals(normalizedDate)))
+              ..where((table) => table.date.equals(normalizedDate))
+              ..where((table) => table.periodStart.equals(periodStart)))
             .get();
 
     MaterialLog? duplicate;
@@ -179,11 +190,13 @@ class MaterialRepository {
   Future<void> clearLog({
     required int studentId,
     required DateTime date,
+    int periodStart = 0,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     await (_database.delete(_database.materialLogsTable)
           ..where((table) => table.studentId.equals(studentId))
-          ..where((table) => table.date.equals(normalizedDate)))
+          ..where((table) => table.date.equals(normalizedDate))
+          ..where((table) => table.periodStart.equals(periodStart)))
         .go();
   }
 }

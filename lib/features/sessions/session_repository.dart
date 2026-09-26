@@ -417,27 +417,32 @@ class SessionRepository {
         (SELECT COUNT(*)
          FROM attendance_logs_table a
          JOIN students_table st ON st.id = a.student_id
-         WHERE st.group_id = s.group_id AND a.date = s.date AND a.is_absent = 1)
+         WHERE st.group_id = s.group_id AND a.date = s.date
+           AND (s.period_start = 0 OR a.period_start IN (0, s.period_start)) AND a.is_absent = 1)
           AS absent_count,
         (SELECT COUNT(*)
          FROM homework_logs_table h
          JOIN students_table st ON st.id = h.student_id
-         WHERE st.group_id = s.group_id AND h.date = s.date)
+         WHERE st.group_id = s.group_id AND h.date = s.date
+           AND (s.period_start = 0 OR h.period_start IN (0, s.period_start)))
           AS homework_total_count,
         (SELECT COUNT(*)
          FROM homework_logs_table h
          JOIN students_table st ON st.id = h.student_id
-         WHERE st.group_id = s.group_id AND h.date = s.date AND h.had_homework = 1)
+         WHERE st.group_id = s.group_id AND h.date = s.date
+           AND (s.period_start = 0 OR h.period_start IN (0, s.period_start)) AND h.had_homework = 1)
           AS homework_done_count,
         (SELECT COUNT(*)
          FROM material_logs_table m
          JOIN students_table st ON st.id = m.student_id
-         WHERE st.group_id = s.group_id AND m.date = s.date)
+         WHERE st.group_id = s.group_id AND m.date = s.date
+           AND (s.period_start = 0 OR m.period_start IN (0, s.period_start)))
           AS material_total_count,
         (SELECT COUNT(*)
          FROM material_logs_table m
          JOIN students_table st ON st.id = m.student_id
-         WHERE st.group_id = s.group_id AND m.date = s.date AND m.had_material = 1)
+         WHERE st.group_id = s.group_id AND m.date = s.date
+           AND (s.period_start = 0 OR m.period_start IN (0, s.period_start)) AND m.had_material = 1)
           AS material_done_count
       FROM sessions_table s
       WHERE s.group_id = ?

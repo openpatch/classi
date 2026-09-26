@@ -62,6 +62,7 @@ class HomeworkRepository {
   Stream<Map<int, bool>> watchGroupSelections({
     required int groupId,
     required DateTime date,
+    int periodStart = 0,
   }) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     return _database
@@ -70,11 +71,12 @@ class HomeworkRepository {
       SELECT h.student_id, h.had_homework
       FROM homework_logs_table h
       JOIN students_table s ON s.id = h.student_id
-        WHERE s.group_id = ? AND h.date = ?
+        WHERE s.group_id = ? AND h.date = ? AND h.period_start = ?
         ''',
           variables: [
             Variable.withInt(groupId),
             Variable.withDateTime(normalizedDate),
+            Variable.withInt(periodStart),
           ],
           readsFrom: {_database.homeworkLogsTable, _database.studentsTable},
         )
@@ -90,6 +92,7 @@ class HomeworkRepository {
   Future<void> saveLog({
     required int studentId,
     required DateTime date,
+    int periodStart = 0,
     required bool hadHomework,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
@@ -102,6 +105,7 @@ class HomeworkRepository {
         await (_database.select(_database.homeworkLogsTable)
               ..where((table) => table.studentId.equals(studentId))
               ..where((table) => table.date.equals(normalizedDate))
+              ..where((table) => table.periodStart.equals(periodStart))
               ..orderBy([(table) => OrderingTerm.asc(table.id)]))
             .get();
     final existing = existingLogs.isEmpty ? null : existingLogs.first;
@@ -113,6 +117,7 @@ class HomeworkRepository {
             HomeworkLogsTableCompanion.insert(
               studentId: studentId,
               date: normalizedDate,
+              periodStart: Value(periodStart),
               hadHomework: Value(hadHomework),
             ),
           );
@@ -136,10 +141,16 @@ class HomeworkRepository {
     required bool hadHomework,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
+    final current =
+        await (_database.select(_database.homeworkLogsTable)
+              ..where((table) => table.id.equals(id)))
+            .getSingleOrNull();
+    final periodStart = current?.periodStart ?? 0;
     final matches =
         await (_database.select(_database.homeworkLogsTable)
               ..where((table) => table.studentId.equals(studentId))
-              ..where((table) => table.date.equals(normalizedDate)))
+              ..where((table) => table.date.equals(normalizedDate))
+              ..where((table) => table.periodStart.equals(periodStart)))
             .get();
 
     HomeworkLog? duplicate;
@@ -173,11 +184,13 @@ class HomeworkRepository {
   Future<void> clearLog({
     required int studentId,
     required DateTime date,
+    int periodStart = 0,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     await (_database.delete(_database.homeworkLogsTable)
           ..where((table) => table.studentId.equals(studentId))
-          ..where((table) => table.date.equals(normalizedDate)))
+          ..where((table) => table.date.equals(normalizedDate))
+          ..where((table) => table.periodStart.equals(periodStart)))
         .go();
   }
 

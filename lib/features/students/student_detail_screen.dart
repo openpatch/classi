@@ -2253,7 +2253,11 @@ class _AttendanceLogTile extends StatelessWidget {
     final IconData statusIcon;
     final String statusLabel;
 
-    if (!isAbsent) {
+    if (!isAbsent && log.isLate) {
+      statusColor = colorScheme.secondary;
+      statusIcon = Icons.schedule_outlined;
+      statusLabel = 'late'.tr();
+    } else if (!isAbsent) {
       statusColor = colorScheme.primary;
       statusIcon = Icons.event_available_outlined;
       statusLabel = 'present'.tr();

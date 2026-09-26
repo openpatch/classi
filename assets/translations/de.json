@@ -566,5 +566,6 @@
   "confirm_reset_picker_memory_body": "Alle kommen wieder aufs Rad – für diese Stunde und für das Schuljahr.",
   "reset_lesson": "Diese Stunde vergessen",
   "confirm_reset_picker_lesson": "Ziehungen dieser Stunde vergessen?",
-  "confirm_reset_picker_lesson_body": "Die heute gezogenen Schüler:innen kommen wieder aufs Rad. Der Schuljahresspeicher bleibt erhalten."
+  "confirm_reset_picker_lesson_body": "Die heute gezogenen Schüler:innen kommen wieder aufs Rad. Der Schuljahresspeicher bleibt erhalten.",
+  "late": "Verspätet"
 }

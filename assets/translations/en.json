@@ -566,5 +566,6 @@
   "confirm_reset_picker_memory_body": "Everyone goes back on the wheel, for this lesson and for the school year.",
   "reset_lesson": "Forget this lesson",
   "confirm_reset_picker_lesson": "Forget this lesson's picks?",
-  "confirm_reset_picker_lesson_body": "The students picked today go back on the wheel. The school year memory is kept."
+  "confirm_reset_picker_lesson_body": "The students picked today go back on the wheel. The school year memory is kept.",
+  "late": "Late"
 }

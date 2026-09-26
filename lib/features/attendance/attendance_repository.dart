@@ -17,6 +17,7 @@ class AttendanceRepository {
   Stream<Set<int>> watchGroupSelections({
     required int groupId,
     required DateTime date,
+    int periodStart = 0,
   }) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     return _database
@@ -25,11 +26,12 @@ class AttendanceRepository {
       SELECT a.student_id
       FROM attendance_logs_table a
       JOIN students_table s ON s.id = a.student_id
-      WHERE s.group_id = ? AND a.date = ? AND a.is_absent = 1
+      WHERE s.group_id = ? AND a.date = ? AND a.period_start = ? AND a.is_absent = 1
       ''',
           variables: [
             Variable.withInt(groupId),
             Variable.withDateTime(normalizedDate),
+            Variable.withInt(periodStart),
           ],
           readsFrom: {_database.attendanceLogsTable, _database.studentsTable},
         )
@@ -40,6 +42,7 @@ class AttendanceRepository {
   Stream<Set<int>> watchExcusedSelections({
     required int groupId,
     required DateTime date,
+    int periodStart = 0,
   }) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     return _database
@@ -48,11 +51,12 @@ class AttendanceRepository {
       SELECT a.student_id
       FROM attendance_logs_table a
       JOIN students_table s ON s.id = a.student_id
-      WHERE s.group_id = ? AND a.date = ? AND a.is_absent = 1 AND a.is_excused = 1
+      WHERE s.group_id = ? AND a.date = ? AND a.period_start = ? AND a.is_absent = 1 AND a.is_excused = 1
       ''',
           variables: [
             Variable.withInt(groupId),
             Variable.withDateTime(normalizedDate),
+            Variable.withInt(periodStart),
           ],
           readsFrom: {_database.attendanceLogsTable, _database.studentsTable},
         )
@@ -63,12 +67,14 @@ class AttendanceRepository {
   Future<void> setExcused({
     required int studentId,
     required DateTime date,
+    int periodStart = 0,
     required bool excused,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     await (_database.update(_database.attendanceLogsTable)
           ..where((t) => t.studentId.equals(studentId))
           ..where((t) => t.date.equals(normalizedDate))
+          ..where((t) => t.periodStart.equals(periodStart))
           ..where((t) => t.isAbsent.equals(true)))
         .write(AttendanceLogsTableCompanion(isExcused: Value(excused)));
   }
@@ -76,6 +82,7 @@ class AttendanceRepository {
   Future<void> clearGroupAbsencesForDate({
     required int groupId,
     required DateTime date,
+    int periodStart = 0,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     final studentIds = await _database
@@ -93,7 +100,8 @@ class AttendanceRepository {
           ..where(
             (table) =>
                 table.studentId.isIn(studentIds) &
-                table.date.equals(normalizedDate),
+                table.date.equals(normalizedDate) &
+                table.periodStart.equals(periodStart),
           ))
         .go();
   }
@@ -101,6 +109,7 @@ class AttendanceRepository {
   Future<void> markAbsent({
     required int studentId,
     required DateTime date,
+    int periodStart = 0,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     // A day holds at most one attendance row per student, but nothing in the
@@ -112,6 +121,7 @@ class AttendanceRepository {
         await (_database.select(_database.attendanceLogsTable)
               ..where((table) => table.studentId.equals(studentId))
               ..where((table) => table.date.equals(normalizedDate))
+              ..where((table) => table.periodStart.equals(periodStart))
               ..orderBy([(table) => OrderingTerm.asc(table.id)]))
             .get();
     final existing = existingLogs.isEmpty ? null : existingLogs.first;
@@ -124,14 +134,20 @@ class AttendanceRepository {
               AttendanceLogsTableCompanion.insert(
                 studentId: studentId,
                 date: normalizedDate,
+                periodStart: Value(periodStart),
                 isAbsent: const Value(true),
               ),
             );
       } else {
-        if (!existing.isAbsent) {
+        if (!existing.isAbsent || existing.isLate) {
           await (_database.update(_database.attendanceLogsTable)
                 ..where((t) => t.id.equals(existing.id)))
-              .write(const AttendanceLogsTableCompanion(isAbsent: Value(true)));
+              .write(
+                const AttendanceLogsTableCompanion(
+                  isAbsent: Value(true),
+                  isLate: Value(false),
+                ),
+              );
         }
         for (final duplicate in existingLogs.skip(1)) {
           await (_database.delete(_database.attendanceLogsTable)
@@ -149,9 +165,64 @@ class AttendanceRepository {
     });
   }
 
+  /// Students of [groupId] marked late on [date].
+  Stream<Set<int>> watchLateSelections({
+    required int groupId,
+    required DateTime date,
+    int periodStart = 0,
+  }) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return _database
+        .customSelect(
+          '''
+      SELECT a.student_id
+      FROM attendance_logs_table a
+      JOIN students_table s ON s.id = a.student_id
+      WHERE s.group_id = ? AND a.date = ? AND a.period_start = ? AND a.is_absent = 0 AND a.is_late = 1
+      ''',
+          variables: [
+            Variable.withInt(groupId),
+            Variable.withDateTime(normalizedDate),
+            Variable.withInt(periodStart),
+          ],
+          readsFrom: {_database.attendanceLogsTable, _database.studentsTable},
+        )
+        .watch()
+        .map((rows) => {for (final row in rows) row.read<int>('student_id')});
+  }
+
+  /// Records that the student came late on [date]: present, but late. Replaces
+  /// an absence, since a student cannot be both.
+  Future<void> markLate({
+    required int studentId,
+    required DateTime date,
+    int periodStart = 0,
+  }) async {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    await _database.transaction(() async {
+      await (_database.delete(_database.attendanceLogsTable)
+            ..where((t) => t.studentId.equals(studentId))
+            ..where((t) => t.date.equals(normalizedDate))
+            ..where((t) => t.periodStart.equals(periodStart)))
+          .go();
+      await _database
+          .into(_database.attendanceLogsTable)
+          .insert(
+            AttendanceLogsTableCompanion.insert(
+              studentId: studentId,
+              date: normalizedDate,
+              periodStart: Value(periodStart),
+              isAbsent: const Value(false),
+              isLate: const Value(true),
+            ),
+          );
+    });
+  }
+
   Future<void> savePresenceForDate({
     required int groupId,
     required DateTime date,
+    int periodStart = 0,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     final studentIds = await _database
@@ -168,7 +239,8 @@ class AttendanceRepository {
     final existingStudentIds =
         await (_database.select(_database.attendanceLogsTable)
               ..where((t) => t.studentId.isIn(studentIds))
-              ..where((t) => t.date.equals(normalizedDate)))
+              ..where((t) => t.date.equals(normalizedDate))
+              ..where((t) => t.periodStart.equals(periodStart)))
             .map((row) => row.studentId)
             .get();
 
@@ -183,6 +255,7 @@ class AttendanceRepository {
           AttendanceLogsTableCompanion.insert(
             studentId: studentId,
             date: normalizedDate,
+            periodStart: Value(periodStart),
             isAbsent: const Value(false),
           ),
       ]);
@@ -192,12 +265,139 @@ class AttendanceRepository {
   Future<void> clearAbsence({
     required int studentId,
     required DateTime date,
+    int periodStart = 0,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     await (_database.delete(_database.attendanceLogsTable)
           ..where((table) => table.studentId.equals(studentId))
-          ..where((table) => table.date.equals(normalizedDate)))
+          ..where((table) => table.date.equals(normalizedDate))
+          ..where((table) => table.periodStart.equals(periodStart)))
         .go();
+  }
+
+  /// Takes back an absence, leaving a present or late entry as it is.
+  /// Recording homework or material for a student implies they were there.
+  Future<void> clearAbsenceOnly({
+    required int studentId,
+    required DateTime date,
+    int periodStart = 0,
+  }) async {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    await (_database.delete(_database.attendanceLogsTable)
+          ..where((table) => table.studentId.equals(studentId))
+          ..where((table) => table.date.equals(normalizedDate))
+          ..where((table) => table.periodStart.equals(periodStart))
+          ..where((table) => table.isAbsent.equals(true)))
+        .go();
+  }
+
+  /// Makes the attendance of [date] say what WebUntis recorded.
+  ///
+  /// [absences] maps the absent students to whether their day is excused,
+  /// [late] holds those who came late; every other student in [studentIds]
+  /// was present. Only [studentIds] are touched, which keeps students
+  /// WebUntis does not know about as the teacher left them. Present is
+  /// written the way lesson mode writes it, by removing the absence rather
+  /// than storing a present row.
+  Future<void> applyAttendanceForDate({
+    required DateTime date,
+    int periodStart = 0,
+    required Set<int> studentIds,
+    required Map<int, bool> absences,
+    Set<int> late = const {},
+  }) async {
+    if (studentIds.isEmpty) return;
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+
+    await _database.transaction(() async {
+      final logs =
+          await (_database.select(_database.attendanceLogsTable)
+                ..where((t) => t.studentId.isIn(studentIds))
+                ..where((t) => t.date.equals(normalizedDate))
+                ..where((t) => t.periodStart.equals(periodStart))
+                ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+              .get();
+      final byStudent = <int, List<AttendanceLog>>{};
+      for (final log in logs) {
+        byStudent.putIfAbsent(log.studentId, () => []).add(log);
+      }
+
+      for (final studentId in studentIds) {
+        final existing = byStudent[studentId] ?? const <AttendanceLog>[];
+        final excused = absences[studentId];
+
+        if (excused == null && late.contains(studentId)) {
+          final alreadyLate =
+              existing.length == 1 &&
+              !existing.single.isAbsent &&
+              existing.single.isLate;
+          if (!alreadyLate) {
+            await (_database.delete(_database.attendanceLogsTable)
+                  ..where((t) => t.studentId.equals(studentId))
+                  ..where((t) => t.date.equals(normalizedDate))
+                  ..where((t) => t.periodStart.equals(periodStart)))
+                .go();
+            await _database
+                .into(_database.attendanceLogsTable)
+                .insert(
+                  AttendanceLogsTableCompanion.insert(
+                    studentId: studentId,
+                    date: normalizedDate,
+                    periodStart: Value(periodStart),
+                    isAbsent: const Value(false),
+                    isLate: const Value(true),
+                  ),
+                );
+          }
+          continue;
+        }
+
+        if (excused == null) {
+          if (existing.any((log) => log.isAbsent || log.isLate)) {
+            await (_database.delete(_database.attendanceLogsTable)
+                  ..where((t) => t.studentId.equals(studentId))
+                  ..where((t) => t.date.equals(normalizedDate))
+                  ..where((t) => t.periodStart.equals(periodStart)))
+                .go();
+          }
+          continue;
+        }
+
+        if (existing.isEmpty) {
+          await _database
+              .into(_database.attendanceLogsTable)
+              .insert(
+                AttendanceLogsTableCompanion.insert(
+                  studentId: studentId,
+                  date: normalizedDate,
+                  periodStart: Value(periodStart),
+                  isAbsent: const Value(true),
+                  isExcused: Value(excused),
+                ),
+              );
+          continue;
+        }
+
+        // Same folding as [markAbsent]: keep the first row, drop duplicates.
+        final kept = existing.first;
+        if (!kept.isAbsent || kept.isExcused != excused || kept.isLate) {
+          await (_database.update(
+            _database.attendanceLogsTable,
+          )..where((t) => t.id.equals(kept.id))).write(
+            AttendanceLogsTableCompanion(
+              isAbsent: const Value(true),
+              isExcused: Value(excused),
+              isLate: const Value(false),
+            ),
+          );
+        }
+        for (final duplicate in existing.skip(1)) {
+          await (_database.delete(
+            _database.attendanceLogsTable,
+          )..where((t) => t.id.equals(duplicate.id))).go();
+        }
+      }
+    });
   }
 
   Stream<List<AttendanceLog>> watchAttendanceForStudentInDateRange(
