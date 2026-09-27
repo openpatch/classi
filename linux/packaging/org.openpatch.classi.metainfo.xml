@@ -83,6 +83,19 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.22.0" date="2026-09-27">
+      <description>
+        <ul>
+          <li>Document the WebUntis connection</li>
+          <li>Add WebUntis links, lateness and the lesson period to the schema</li>
+          <li>Keep attendance, homework and material per lesson</li>
+          <li>Read classes, courses, class lists and lessons from WebUntis</li>
+          <li>Connect WebUntis, import courses and classes, link groups</li>
+          <li>Open lesson mode for one lesson, with WebUntis alongside</li>
+          <li>Nested categories, grade rounds, class attendance, ODS export</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.21.0" date="2026-09-08">
       <description>
         <ul>
