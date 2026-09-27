@@ -40,7 +40,10 @@ Future<SessionFormResult?> showSessionFormSheet({
     useSafeArea: true,
     showDragHandle: true,
     builder: (context) => _SessionFormSheet(
-      gradeCategories: gradeCategories,
+      gradeCategories: gradableCategories(
+        gradeCategories,
+        keep: initialCategoryId,
+      ),
       initialDate: initialDate,
       initialLabel: initialLabel,
       initialDescription: initialDescription,

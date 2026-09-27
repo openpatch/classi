@@ -48,6 +48,25 @@ void main() {
     expect(german.keys.toSet().difference(english.keys.toSet()), isEmpty);
   });
 
+  test('no key is listed twice', () {
+    // A JSON object may repeat a key and the last one silently wins, so a
+    // stray copy further down overrides the text everyone reviewed.
+    for (final locale in ['en', 'de']) {
+      final keys = RegExp(r'^  "([^"]+)":', multiLine: true)
+          .allMatches(
+            File('assets/translations/$locale.json').readAsStringSync(),
+          )
+          .map((match) => match.group(1)!)
+          .toList();
+      final seen = <String>{};
+      expect(
+        keys.where((key) => !seen.add(key)),
+        isEmpty,
+        reason: '$locale.json repeats these keys',
+      );
+    }
+  });
+
   test('no translation is left empty', () {
     for (final entry in {...english, ...german}.entries) {
       expect(

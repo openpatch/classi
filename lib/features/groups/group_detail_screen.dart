@@ -27,7 +27,9 @@ import '../../shared/widgets/surface_list_tile.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/swipe_action_background.dart';
 import '../../shared/theme/app_ui.dart';
+import '../attendance/group_attendance_card.dart';
 import '../groups/group_export_service.dart';
+import '../../shared/utils/ods_writer.dart';
 import 'timeframe_editor_sheet.dart';
 import 'timeframe_grades_screen.dart';
 import '../lists/list_repository.dart';
@@ -231,7 +233,7 @@ class GroupDetailScreen extends ConsumerWidget {
             title: AppBarTitle(title: group.name, subtitle: 'groups'.tr()),
             actions: [
               IconButton(
-                onPressed: () => _showExportSheet(context, ref, group.name),
+                onPressed: () => _exportGroup(context, ref, group.name),
                 icon: const Icon(Icons.download_outlined),
                 tooltip: 'export'.tr(),
               ),
@@ -369,7 +371,7 @@ class GroupDetailScreen extends ConsumerWidget {
                                           ),
                                         ),
                                         label: Text(
-                                          '${category.name} (${formatNumber(category.weight)})',
+                                          '${categoryPathName(category, categories)} (${formatNumber(category.weight)})',
                                         ),
                                       ),
                                   ],
@@ -420,6 +422,8 @@ class GroupDetailScreen extends ConsumerWidget {
                         : (summary) =>
                               _deleteSession(context, ref, summary.session),
                   ),
+                  const SizedBox(height: AppSpacing.large),
+                  GroupAttendanceCard(groupId: group.id, students: students),
                   const SizedBox(height: AppSpacing.large),
                   studentsValue.when(
                     data: (loadedStudents) => _StudentsSection(
@@ -1078,43 +1082,26 @@ class GroupDetailScreen extends ConsumerWidget {
     return students.length;
   }
 
-  Future<void> _showExportSheet(
+  /// Exports the group as one spreadsheet: grades, attendance, homework,
+  /// material and a summary, a sheet each.
+  Future<void> _exportGroup(
     BuildContext context,
     WidgetRef ref,
     String groupName,
   ) async {
-    final exportType = await showModalBottomSheet<_ExportType>(
-      context: context,
-      builder: (ctx) => _ExportSheet(groupName: groupName),
-    );
-    if (exportType == null || !context.mounted) return;
     final service = ref.read(groupExportServiceProvider);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final result = switch (exportType) {
-        _ExportType.grades => await service.exportGradesCsv(
-          groupId: groupId,
-          groupName: groupName,
-        ),
-        _ExportType.attendance => await service.exportAttendanceCsv(
-          groupId: groupId,
-          groupName: groupName,
-        ),
-        _ExportType.homeworkMaterial => await service.exportHomeworkMaterialCsv(
-          groupId: groupId,
-          groupName: groupName,
-        ),
-        _ExportType.summary => await service.exportSummaryCsv(
-          groupId: groupId,
-          groupName: groupName,
-        ),
-      };
+      final result = await service.exportGroupOds(
+        groupId: groupId,
+        groupName: groupName,
+      );
       if (!context.mounted) return;
       final session = ref.read(appSessionProvider);
       final saved = await shareOrSaveFile(
         file: result.file,
         filename: result.filename,
-        mimeType: 'text/csv',
+        mimeType: odsMimeType,
         subject: result.filename,
         savePathResolver: () async {
           session.suspendBackgroundLock();
@@ -1122,7 +1109,7 @@ class GroupDetailScreen extends ConsumerWidget {
             return await FilePicker.saveFile(
               fileName: result.filename,
               type: FileType.custom,
-              allowedExtensions: ['csv'],
+              allowedExtensions: ['ods'],
             );
           } finally {
             session.resumeBackgroundLock();
@@ -3691,48 +3678,3 @@ class _SessionRowActions extends StatelessWidget {
 }
 
 enum _SessionAction { edit, delete }
-
-enum _ExportType { grades, attendance, homeworkMaterial, summary }
-
-class _ExportSheet extends StatelessWidget {
-  const _ExportSheet({required this.groupName});
-
-  final String groupName;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            'export'.tr(),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.table_chart_outlined),
-          title: Text('export_grades'.tr()),
-          onTap: () => Navigator.pop(context, _ExportType.grades),
-        ),
-        ListTile(
-          leading: const Icon(Icons.how_to_reg_outlined),
-          title: Text('export_attendance'.tr()),
-          onTap: () => Navigator.pop(context, _ExportType.attendance),
-        ),
-        ListTile(
-          leading: const Icon(Icons.checklist_outlined),
-          title: Text('export_homework_material'.tr()),
-          onTap: () => Navigator.pop(context, _ExportType.homeworkMaterial),
-        ),
-        ListTile(
-          leading: const Icon(Icons.summarize_outlined),
-          title: Text('export_summary'.tr()),
-          onTap: () => Navigator.pop(context, _ExportType.summary),
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-}

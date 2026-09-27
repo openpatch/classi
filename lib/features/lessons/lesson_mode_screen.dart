@@ -16,7 +16,9 @@ import '../../shared/widgets/quick_note_dialog.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/theme/app_ui.dart';
 import '../attendance/attendance_state.dart';
+import '../grades/grade_distribution.dart';
 import '../grades/grade_picker_dialog.dart';
+import '../grades/grade_round_screen.dart';
 import '../notes/note_editor.dart';
 import '../notes/note_links.dart';
 import '../seating_plan/lesson_seating_view.dart';
@@ -116,14 +118,15 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
 
         final groupColor = colorFromHex(group.colorHex);
         final appBarForeground = onColorForBackground(groupColor);
-        final gradeCategories = parseGradeCategories(group.gradeCategoriesJson);
+        final gradeCategories = gradableCategories(
+          parseGradeCategories(group.gradeCategoriesJson),
+          keep: _selectedCategoryId,
+        );
         _selectedCategoryId ??= gradeCategories.first.id;
         final selectedCategory = _resolveSelectedCategory(gradeCategories);
 
-        final gradeScale = [
-          for (final entry in parseGradeScaleEntries(group.gradeScaleJson))
-            entry.label,
-        ];
+        final gradeScaleEntries = parseGradeScaleEntries(group.gradeScaleJson);
+        final gradeScale = [for (final entry in gradeScaleEntries) entry.label];
         final sessionLabel = _sessionController.text.trim();
         final gradeSelectionsValue = ref.watch(
           lessonGradeSelectionsProvider((
@@ -326,6 +329,20 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                               excusedStudents: excusedStudents,
                             )
                           : null,
+                    ),
+                    const SizedBox(height: AppSpacing.large),
+                    _LessonGradesCard(
+                      category: selectedCategory,
+                      gradeSelections: gradeSelections,
+                      gradeScale: gradeScaleEntries,
+                      onStartRound: () => _startGradeRound(
+                        context: context,
+                        students: students,
+                        absentStudents: absentStudents,
+                        gradeSelections: gradeSelections,
+                        gradeScale: gradeScaleEntries,
+                        category: selectedCategory,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.large),
                     LessonNotesCard(
@@ -1137,6 +1154,38 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     );
   }
 
+  Future<void> _startGradeRound({
+    required BuildContext context,
+    required List<Student> students,
+    required Set<int> absentStudents,
+    required Map<int, String> gradeSelections,
+    required List<GradeScaleEntry> gradeScale,
+    required GradeCategory category,
+  }) {
+    final sessionLabel = _sessionController.text.trim();
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => GradeRoundScreen(
+          title: sessionLabel.isEmpty
+              ? category.name
+              : '$sessionLabel · ${category.name}',
+          students: students,
+          absentStudentIds: absentStudents,
+          initialSelections: gradeSelections,
+          gradeScale: gradeScale,
+          color: colorForCategory(category),
+          onSave: (studentId, value) => _saveGrade(
+            studentId: studentId,
+            category: category,
+            value: value,
+          ),
+          onClear: (studentId) =>
+              _clearGrade(studentId: studentId, category: category),
+        ),
+      ),
+    );
+  }
+
   void _openStudentPicker(BuildContext context) {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -1151,6 +1200,67 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
 }
 
 enum _LessonViewMode { list, seatingPlan }
+
+/// The grades of this lesson in the selected category: how they are spread,
+/// and the way into grading everyone in one go.
+class _LessonGradesCard extends StatelessWidget {
+  const _LessonGradesCard({
+    required this.category,
+    required this.gradeSelections,
+    required this.gradeScale,
+    required this.onStartRound,
+  });
+
+  final GradeCategory category;
+  final Map<int, String> gradeSelections;
+  final List<GradeScaleEntry> gradeScale;
+  final VoidCallback onStartRound;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = colorForCategory(category);
+    return Card(
+      child: Padding(
+        padding: appCardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(radius: 6, backgroundColor: color),
+                const SizedBox(width: AppSpacing.small),
+                Expanded(
+                  child: Text(
+                    category.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: onStartRound,
+                  icon: const Icon(Icons.bolt_outlined),
+                  label: Text('grade_round'.tr()),
+                ),
+              ],
+            ),
+            if (gradeSelections.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.medium),
+              GradeDistributionChart(
+                distribution: computeGradeDistribution(
+                  gradeSelections.values,
+                  gradeScale,
+                ),
+                gradeScale: gradeScale,
+                color: color,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _LessonViewToggle extends StatelessWidget {
   const _LessonViewToggle({required this.viewMode, required this.onChanged});

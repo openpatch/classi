@@ -24,6 +24,13 @@ and portable across devices.
   for taking over lesson topics and attendance
 - Grade entry, chart-based grade history, checklist management, note management,
   and material tracking
+- Grade categories that nest one level deep (e.g. *Written* holding tests and
+  quizzes, each weighted within it), a grade distribution for every lesson, and
+  a grade round that goes through the class one student at a time, with
+  keyboard entry on desktop
+- Class attendance statistics per group, for the whole year or one term
+- Export of a group as one OpenDocument spreadsheet (`.ods`) with sheets for
+  grades, attendance, homework, material, and a summary per student
 - Avatar editing powered by `avatar_maker`, persisted per student in the local
   database, plus a browser [Avatar Designer](#avatar-designer) that lets students
   build their own avatar and hand you a short code

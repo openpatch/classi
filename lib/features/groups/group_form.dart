@@ -80,11 +80,24 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
+    final initialCategories =
+        widget.initialGradeCategories ?? defaultGradeCategories;
     _categories = [
-      for (final category
-          in widget.initialGradeCategories ?? defaultGradeCategories)
+      for (final category in initialCategories)
         _EditableGradeCategory.fromCategory(category),
     ];
+    for (var index = 0; index < initialCategories.length; index++) {
+      final parentId = initialCategories[index].parentId;
+      if (parentId == null) {
+        continue;
+      }
+      for (final candidate in _categories) {
+        if (candidate.id == parentId) {
+          _categories[index].parent = candidate;
+          break;
+        }
+      }
+    }
     final initialScale = widget.initialGradeScale ?? defaultGradeScaleEntries;
     final matchingSystem = _matchingGradeSystem(initialScale);
     _selectedGradeSystemId =
@@ -215,6 +228,9 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
               const SizedBox(height: 12),
               for (var index = 0; index < _categories.length; index++) ...[
                 Card(
+                  margin: _categories[index].parent == null
+                      ? null
+                      : const EdgeInsetsDirectional.only(start: 24),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
@@ -228,6 +244,8 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
                                 decoration: InputDecoration(
                                   labelText: 'category_name'.tr(),
                                 ),
+                                // Parent pickers list the categories by name.
+                                onChanged: (_) => setState(() {}),
                                 validator: (value) =>
                                     value == null || value.trim().isEmpty
                                     ? 'category_name'.tr()
@@ -267,6 +285,8 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+                        _buildParentField(index),
                         const SizedBox(height: 12),
                         Align(
                           alignment: Alignment.centerLeft,
@@ -363,22 +383,72 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
 
   List<GradeCategory> _parseCategories() {
     final usedIds = <String>{};
-    return _categories
-        .map((category) {
-          final id = _uniqueCategoryId(
-            baseName: category.nameController.text.trim(),
-            usedIds: usedIds,
-            id: category.id,
-          );
-          usedIds.add(id);
-          return GradeCategory(
-            id: id,
-            name: category.nameController.text.trim(),
-            weight: double.parse(category.weightController.text.trim()),
-            colorHex: category.colorHex,
-          );
-        })
-        .toList(growable: false);
+    final ids = <_EditableGradeCategory, String>{};
+    for (final category in _categories) {
+      final id = _uniqueCategoryId(
+        baseName: category.nameController.text.trim(),
+        usedIds: usedIds,
+        id: category.id,
+      );
+      usedIds.add(id);
+      ids[category] = id;
+    }
+    return [
+      for (final category in _categories)
+        GradeCategory(
+          id: ids[category]!,
+          name: category.nameController.text.trim(),
+          weight: double.parse(category.weightController.text.trim()),
+          colorHex: category.colorHex,
+          parentId: category.parent == null ? null : ids[category.parent],
+        ),
+    ];
+  }
+
+  /// Picks the top-level category [index] belongs to. A category that
+  /// others already sit under stays top-level: categories nest one level
+  /// deep only.
+  Widget _buildParentField(int index) {
+    final category = _categories[index];
+    final hasChildren = _categories.any((other) => other.parent == category);
+    final candidates = [
+      for (final other in _categories)
+        if (!identical(other, category) && other.parent == null) other,
+    ];
+    return DropdownButtonFormField<_EditableGradeCategory?>(
+      key: ValueKey((category, category.parent)),
+      initialValue: category.parent,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'category_parent'.tr(),
+        helperText: hasChildren
+            ? 'category_parent_has_children'.tr()
+            : category.parent == null
+            ? null
+            : 'category_weight_in_parent'.tr(),
+        helperMaxLines: 2,
+      ),
+      items: [
+        DropdownMenuItem<_EditableGradeCategory?>(
+          value: null,
+          child: Text('category_parent_none'.tr()),
+        ),
+        for (final candidate in candidates)
+          DropdownMenuItem<_EditableGradeCategory?>(
+            value: candidate,
+            child: Text(
+              candidate.nameController.text.trim().isEmpty
+                  ? 'category_name'.tr()
+                  : candidate.nameController.text.trim(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
+      onChanged: hasChildren
+          ? null
+          : (value) => setState(() => category.parent = value),
+    );
   }
 
   void _addCategory() {
@@ -393,6 +463,11 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
 
   void _removeCategory(int index) {
     final category = _categories.removeAt(index);
+    for (final other in _categories) {
+      if (other.parent == category) {
+        other.parent = null;
+      }
+    }
     category.dispose();
     setState(() {});
   }
@@ -534,6 +609,9 @@ class _EditableGradeCategory {
   final TextEditingController nameController;
   final TextEditingController weightController;
   String colorHex;
+
+  /// The top-level category this one sits under, `null` for top-level.
+  _EditableGradeCategory? parent;
 
   void dispose() {
     nameController.dispose();

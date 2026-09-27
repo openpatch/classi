@@ -401,13 +401,13 @@ class _SummaryGradesCard extends StatelessWidget {
                   runSpacing: AppSpacing.small,
                   children: [
                     for (final cat in categories)
-                      if (categoryAverages![cat.id] != null)
+                      if (_categoryValue(cat) case final value?)
                         _CategoryAverageTile(
                           label: gradeLabelForNumericValue(
-                            categoryAverages![cat.id]!,
+                            value,
                             gradeScaleEntries,
                           ),
-                          categoryName: cat.name,
+                          categoryName: categoryPathName(cat, categories),
                           color: colorForCategory(cat),
                         ),
                   ],
@@ -418,6 +418,19 @@ class _SummaryGradesCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// A category's own average, or for a parent the weighted value of the
+  /// categories under it.
+  double? _categoryValue(GradeCategory category) {
+    final averages = categoryAverages!;
+    if (!isParentCategory(category.id, categories)) {
+      return averages[category.id];
+    }
+    return parentCategoryAverage(category.id, [
+      for (final entry in averages.entries)
+        (value: entry.value, categoryId: entry.key),
+    ], categories);
   }
 }
 
