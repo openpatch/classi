@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show ChangeNotifierProvider;
 
@@ -299,7 +300,10 @@ final groupSessionsOnDateProvider = StreamProvider.autoDispose
     );
 
 final groupExportServiceProvider = Provider<GroupExportService>(
-  (ref) => GroupExportService(ref.watch(databaseProvider)),
+  (ref) => GroupExportService(
+    ref.watch(databaseProvider),
+    translate: (key) => key.tr(),
+  ),
 );
 
 final schoolYearRepositoryProvider = Provider<SchoolYearRepository>(

@@ -46,7 +46,7 @@ Future<List<LessonSlotDraft>?> showLessonScheduleEditorSheet({
     useSafeArea: true,
     showDragHandle: true,
     builder: (context) => _LessonScheduleEditorSheet(
-      gradeCategories: gradeCategories,
+      gradeCategories: gradableCategories(gradeCategories),
       initialSlots: initialSlots,
       suggestedSlots: suggestedSlots,
     ),

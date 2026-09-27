@@ -416,6 +416,26 @@ class AttendanceRepository {
         .watch();
   }
 
+  /// Every attendance entry of the students in [groupId], oldest first.
+  Stream<List<AttendanceLog>> watchAttendanceForGroup(int groupId) {
+    final query = _database.select(_database.attendanceLogsTable).join([
+      innerJoin(
+        _database.studentsTable,
+        _database.studentsTable.id.equalsExp(
+          _database.attendanceLogsTable.studentId,
+        ),
+      ),
+    ])
+      ..where(_database.studentsTable.groupId.equals(groupId))
+      ..orderBy([OrderingTerm.asc(_database.attendanceLogsTable.date)]);
+
+    return query.watch().map(
+      (rows) => [
+        for (final row in rows) row.readTable(_database.attendanceLogsTable),
+      ],
+    );
+  }
+
   Stream<Map<int, List<AttendanceLog>>> watchAttendanceForGroupInDateRange(
     int groupId,
     DateTime startDate,

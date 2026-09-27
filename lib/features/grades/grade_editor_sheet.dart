@@ -30,7 +30,10 @@ Future<GradeEditorResult?> showGradeEditorSheet({
     showDragHandle: true,
     builder: (context) => _GradeEditorSheet(
       gradeScale: gradeScale,
-      gradeCategories: gradeCategories,
+      gradeCategories: gradableCategories(
+        gradeCategories,
+        keep: initialCategoryId,
+      ),
       initialDate: initialDate,
       initialSessionLabel: initialSessionLabel,
       initialValue: initialValue,

@@ -126,7 +126,8 @@ class _LessonCategoryFabMenuState extends State<LessonCategoryFabMenu> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                for (final category in widget.categories.reversed)
+                for (final category
+                    in gradableCategories(widget.categories).reversed)
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.medium),
                     child: _LessonCategoryFabEntry(
