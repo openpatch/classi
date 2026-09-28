@@ -1,6 +1,7 @@
 import 'package:classi/core/database/app_database.dart';
 import 'package:classi/core/providers/app_providers.dart';
 import 'package:classi/features/seating_plan/seating_fit.dart';
+import 'package:classi/features/seating_plan/seating_plan_fullscreen.dart';
 import 'package:classi/features/seating_plan/seating_plan_grid.dart';
 import 'package:classi/features/students/student_sorting.dart';
 import 'package:flutter/material.dart';
@@ -404,6 +405,63 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_cellColor(tester, 0, 0), Colors.transparent);
+  });
+
+  testWidgets('full screen fits the whole plan and redraws on refresh', (
+    tester,
+  ) async {
+    final students = [
+      for (var i = 1; i <= 30; i++)
+        _student(id: i, firstName: 'Student', lastName: '$i'),
+    ];
+    // A wide room with a few students not seated yet.
+    final positions = <int, ({int col, int row})>{
+      for (var i = 1; i <= 27; i++) i: (col: (i - 1) % 9, row: (i - 1) ~/ 9),
+    };
+    final refresh = ValueNotifier(0);
+    addTearDown(refresh.dispose);
+
+    await tester.pumpWidget(
+      _TestHarness(
+        child: SeatingPlanFullscreenPage(
+          title: 'Plan',
+          refresh: refresh,
+          builder: (_) => SeatingPlanGrid(
+            students: students,
+            columns: 9,
+            positions: positions,
+            lessonOpacityBuilder: (_) => refresh.value.isEven ? 1 : 0.5,
+            onPositionChanged: (_, _, _) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final screen = tester.getRect(find.byType(InteractiveViewer));
+    for (final student in students) {
+      final name = find.text('Student ${student.lastName}');
+      expect(name, findsOneWidget);
+      expect(screen.contains(tester.getCenter(name)), isTrue);
+    }
+    // The unplaced students wrap under the grid instead of widening it.
+    expect(
+      tester.getTopLeft(find.text('Student 30')).dy,
+      greaterThan(tester.getTopLeft(find.text('Student 19')).dy),
+    );
+
+    refresh.value++;
+    await tester.pumpAndSettle();
+    final opacity = tester.widget<AnimatedOpacity>(
+      find
+          .ancestor(
+            of: find.text('Student 1'),
+            matching: find.byType(AnimatedOpacity),
+          )
+          .first,
+    );
+    expect(opacity.opacity, 0.5);
   });
 }
 

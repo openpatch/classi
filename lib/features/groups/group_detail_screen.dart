@@ -43,6 +43,7 @@ import '../schedule/lesson_schedule.dart';
 import '../schedule/lesson_schedule_editor_sheet.dart';
 import '../schedule/lesson_schedule_providers.dart';
 import '../seating_plan/seating_fit.dart';
+import '../seating_plan/seating_plan_fullscreen.dart';
 import '../seating_plan/seating_plan_grid.dart';
 import '../seating_plan/seating_plan_pdf.dart';
 import '../seating_plan/seating_plan_selector_sheet.dart';
@@ -2741,6 +2742,26 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
     );
   }
 
+  /// Shows the active plan across the whole screen, zoomed to fit.
+  void _openFullscreen(BuildContext context) {
+    final plan = _activePlan;
+    if (plan == null) return;
+    unawaited(
+      showSeatingPlanFullscreen(
+        context: context,
+        title: plan.name,
+        builder: (_) => _SeatingPlanView(
+          plan: plan,
+          students: widget.students,
+          editMode: false,
+          showRelationLines: _showRelationLines,
+          showFitColors: _showFitColors,
+          onChipTap: (student) => context.push('/students/${student.id}'),
+        ),
+      ),
+    );
+  }
+
   /// Writes the plan out as a printable PDF and hands it to the teacher.
   Future<void> _exportSeatingPlanPdf(BuildContext context) async {
     final plan = _activePlan;
@@ -3070,6 +3091,12 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                           onPressed: () => setState(
                             () => _showFitColors = !_showFitColors,
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.fullscreen),
+                          tooltip: 'fullscreen'.tr(),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _openFullscreen(context),
                         ),
                         IconButton(
                           icon: Icon(
