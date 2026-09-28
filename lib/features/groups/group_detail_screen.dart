@@ -454,7 +454,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       webUntisLink: WebUntisGroupLink.ofGroup(group),
                       onChangeWebUntisLink: archived || !webUntisConnected
                           ? null
-                          : () => _changeWebUntisLink(context, ref, group),
+                          : () => _relinkWebUntis(context, ref, group),
                     ),
                     error: (error, stackTrace) =>
                         AppErrorText(error: error, stackTrace: stackTrace),
@@ -660,21 +660,21 @@ class GroupDetailScreen extends ConsumerWidget {
   }
 
   /// Lets the teacher link [group] to a WebUntis course or class, or remove
-  /// the link. Returns the new link, `null` when there is none.
+  /// the link. Returns the chosen link, `null` when the teacher removed it or
+  /// backed out.
   Future<WebUntisGroupLink?> _changeWebUntisLink(
     BuildContext context,
     WidgetRef ref,
     Group group,
   ) async {
-    final current = WebUntisGroupLink.ofGroup(group);
     final choice = await showWebUntisLinkPicker(
       context: context,
-      linked: current != null,
+      linked: WebUntisGroupLink.ofGroup(group) != null,
     );
     final repository = ref.read(groupRepositoryProvider);
     switch (choice) {
       case null:
-        return current;
+        return null;
       case WebUntisUnlink():
         await repository.setWebUntisKlasseId(groupId: group.id, klasseId: null);
         return null;
@@ -694,6 +694,21 @@ class GroupDetailScreen extends ConsumerWidget {
     }
   }
 
+  /// Changes the group's link and, when it now points somewhere, goes straight
+  /// on to its students: the link alone lives on the group, and only the
+  /// student import gives each student the WebUntis id attendance needs.
+  Future<void> _relinkWebUntis(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    final link = await _changeWebUntisLink(context, ref, group);
+    if (link == null || !context.mounted) {
+      return;
+    }
+    await _importWebUntisRoster(context, ref, group.id, link);
+  }
+
   Future<void> _syncWebUntisStudents(
     BuildContext context,
     WidgetRef ref,
@@ -703,17 +718,25 @@ class GroupDetailScreen extends ConsumerWidget {
     if (link == null || !context.mounted) {
       return;
     }
+    await _importWebUntisRoster(context, ref, group.id, link);
+  }
 
+  Future<void> _importWebUntisRoster(
+    BuildContext context,
+    WidgetRef ref,
+    int groupId,
+    WebUntisGroupLink link,
+  ) async {
     final result = await showWebUntisStudentImportSheet(
       context: context,
-      groupId: group.id,
+      groupId: groupId,
       link: link,
     );
     if (result == null || !context.mounted) {
       return;
     }
 
-    _refreshStudentSection(ref, group.id);
+    _refreshStudentSection(ref, groupId);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
