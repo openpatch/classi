@@ -133,15 +133,16 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
         .toList();
 
     final bounds = _bounds;
+    final gridWidth = _cellSize * bounds.colCount;
 
-    return Column(
+    final grid = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SizedBox(
-            width: _cellSize * bounds.colCount,
+            width: gridWidth,
             child: Stack(
               children: [
                 Column(
@@ -210,6 +211,15 @@ class _SeatingPlanGridState extends State<SeatingPlanGrid> {
           ),
         ],
       ],
+    );
+
+    // Scaled to fit the full-screen view, the grid gets no width limit at
+    // all; keep the unplaced students wrapping under it rather than in one
+    // endless row.
+    return LayoutBuilder(
+      builder: (context, constraints) => constraints.hasBoundedWidth
+          ? grid
+          : SizedBox(width: gridWidth, child: grid),
     );
   }
 

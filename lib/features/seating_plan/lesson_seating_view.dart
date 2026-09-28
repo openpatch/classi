@@ -8,6 +8,7 @@ import '../../shared/theme/app_ui.dart';
 import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../lessons/lesson_widgets.dart';
+import '../seating_plan/seating_plan_fullscreen.dart';
 import '../seating_plan/seating_plan_grid.dart';
 import '../seating_plan/seating_plan_selector_sheet.dart';
 
@@ -62,10 +63,44 @@ class LessonSeatingView extends ConsumerStatefulWidget {
 class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
   SeatingPlan? _activePlan;
 
+  /// Ticks whenever the lesson data changes, so an open full-screen plan
+  /// redraws its overlays too.
+  final _revision = ValueNotifier<int>(0);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _ensureActivePlan());
+  }
+
+  @override
+  void didUpdateWidget(covariant LessonSeatingView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The full-screen page is another route, which must not be marked dirty
+    // while this one builds.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revision.value++);
+  }
+
+  @override
+  void dispose() {
+    _revision.dispose();
+    super.dispose();
+  }
+
+  void _openFullscreen(SeatingPlan plan) {
+    showSeatingPlanFullscreen(
+      context: context,
+      title: plan.name,
+      refresh: _revision,
+      builder: (_) => _SeatingCanvas(
+        plan: plan,
+        students: widget.students,
+        onChipTap: _onChipTap,
+        overlayBuilder: _buildOverlay,
+        opacityBuilder: (student) =>
+            widget.absentStudents.contains(student.id) ? 0.5 : 1,
+      ),
+    );
   }
 
   Future<void> _ensureActivePlan() async {
@@ -264,6 +299,13 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
+                if (plan != null)
+                  IconButton(
+                    icon: const Icon(Icons.fullscreen),
+                    tooltip: 'fullscreen'.tr(),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _openFullscreen(plan),
+                  ),
                 OutlinedButton.icon(
                   onPressed: _openPlanSelector,
                   icon: const Icon(Icons.tune_outlined, size: 18),

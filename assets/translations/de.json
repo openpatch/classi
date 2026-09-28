@@ -672,5 +672,8 @@
   "export_summary_sheet": "Übersicht",
   "export_code_absent": "F",
   "export_code_excused": "E",
-  "export_code_late": "V"
+  "export_code_late": "V",
+  "fullscreen": "Vollbild",
+  "exit_fullscreen": "Vollbild beenden",
+  "fit_to_screen": "An Bildschirm anpassen"
 }
