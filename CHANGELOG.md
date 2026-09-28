@@ -2,7 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.21.0] - 2026-09-07
+## [1.22.0] - 2026-09-27
+
+### Documentation
+
+- *(webuntis)* Document the WebUntis connection
+
+
+### Features
+
+- *(db)* Add WebUntis links, lateness and the lesson period to the schema
+- *(attendance)* Keep attendance, homework and material per lesson
+- *(webuntis)* Read classes, courses, class lists and lessons from WebUntis
+- *(webuntis)* Connect WebUntis, import courses and classes, link groups
+- *(lessons)* Open lesson mode for one lesson, with WebUntis alongside
+- *(grades)* Nested categories, grade rounds, class attendance, ODS export
+
+
+## [1.21.0] - 2026-09-08
 
 ### Features
 

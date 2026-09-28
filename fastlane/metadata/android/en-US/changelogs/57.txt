@@ -1,0 +1,15 @@
+Documentation
+
+- Document the WebUntis connection
+
+
+Features
+
+- Add WebUntis links, lateness and the lesson period to the schema
+- Keep attendance, homework and material per lesson
+- Read classes, courses, class lists and lessons from WebUntis
+- Connect WebUntis, import courses and classes, link groups
+- Open lesson mode for one lesson, with WebUntis alongside
+- Nested categories, grade rounds, class attendance, ODS export
+
+
