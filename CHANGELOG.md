@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.23.0] - 2026-09-28
+
+### Bug Fixes
+
+- *(webuntis)* Link students when a group is linked to WebUntis
+
+
+### Features
+
+- *(seating_plan)* Show a seating plan full screen
+
+
 ## [1.22.0] - 2026-09-27
 
 ### Documentation
