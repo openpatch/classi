@@ -1,0 +1,10 @@
+Bug Fixes
+
+- Link students when a group is linked to WebUntis
+
+
+Features
+
+- Show a seating plan full screen
+
+
