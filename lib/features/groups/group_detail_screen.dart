@@ -27,6 +27,7 @@ import '../../shared/widgets/surface_list_tile.dart';
 import '../../shared/widgets/student_avatar.dart';
 import '../../shared/widgets/swipe_action_background.dart';
 import '../../shared/theme/app_ui.dart';
+import '../attendance/attendance_state.dart';
 import '../attendance/group_attendance_card.dart';
 import '../groups/group_export_service.dart';
 import '../../shared/utils/ods_writer.dart';
@@ -1509,7 +1510,7 @@ class _TimeframesTable extends ConsumerWidget {
     final allMaterial = materialLogs.values.expand((l) => l).toList();
     final allHomework = homeworkLogs.values.expand((l) => l).toList();
 
-    final presentCount = allAttendance.where((l) => !l.isAbsent).length;
+    final presentCount = allAttendance.where((l) => !l.isMissed).length;
     final hadMaterialCount = allMaterial.where((l) => l.hadMaterial).length;
     final hadHomeworkCount = allHomework.where((l) => l.hadHomework).length;
 

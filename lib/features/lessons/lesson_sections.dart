@@ -173,6 +173,8 @@ class LessonStudentsTable extends StatelessWidget {
     required this.absentStudents,
     required this.excusedStudents,
     required this.lateStudents,
+    required this.activityStudents,
+    required this.examStudents,
     required this.materialSelections,
     required this.homeworkSelections,
     required this.gradeSelections,
@@ -181,6 +183,8 @@ class LessonStudentsTable extends StatelessWidget {
     required this.onSwipeAbsent,
     required this.onSwipeLate,
     required this.onToggleExcused,
+    required this.onToggleActivity,
+    required this.onToggleExam,
     required this.onMaterialChanged,
     required this.onHomeworkChanged,
     required this.onPickGrade,
@@ -193,6 +197,8 @@ class LessonStudentsTable extends StatelessWidget {
   final Set<int> absentStudents;
   final Set<int> excusedStudents;
   final Set<int> lateStudents;
+  final Set<int> activityStudents;
+  final Set<int> examStudents;
   final Map<int, bool> materialSelections;
   final Map<int, bool> homeworkSelections;
   final Map<int, String> gradeSelections;
@@ -207,6 +213,8 @@ class LessonStudentsTable extends StatelessWidget {
   /// student already is.
   final ValueChanged<Student> onSwipeLate;
   final void Function(Student student, bool excused) onToggleExcused;
+  final void Function(Student student, bool activity) onToggleActivity;
+  final void Function(Student student, bool exam) onToggleExam;
   final void Function(Student student, bool? value) onMaterialChanged;
   final void Function(Student student, bool? value) onHomeworkChanged;
   final ValueChanged<Student> onPickGrade;
@@ -245,6 +253,8 @@ class LessonStudentsTable extends StatelessWidget {
               absent: absentStudents.contains(students[index].id),
               excused: excusedStudents.contains(students[index].id),
               late: lateStudents.contains(students[index].id),
+              activity: activityStudents.contains(students[index].id),
+              exam: examStudents.contains(students[index].id),
               materialValue: materialSelections[students[index].id],
               homeworkValue: homeworkSelections[students[index].id],
               gradeValue: gradeSelections[students[index].id],
@@ -254,6 +264,9 @@ class LessonStudentsTable extends StatelessWidget {
               onSwipeLate: () => onSwipeLate(students[index]),
               onToggleExcused: (excused) =>
                   onToggleExcused(students[index], excused),
+              onToggleActivity: (activity) =>
+                  onToggleActivity(students[index], activity),
+              onToggleExam: (exam) => onToggleExam(students[index], exam),
               onMaterialChanged: (value) =>
                   onMaterialChanged(students[index], value),
               onHomeworkChanged: (value) =>
@@ -452,10 +465,14 @@ class _LessonStudentRow extends StatelessWidget {
     required this.gradeValue,
     required this.noteCount,
     required this.late,
+    required this.activity,
+    required this.exam,
     required this.onOpenStudent,
     required this.onSwipeAbsent,
     required this.onSwipeLate,
     required this.onToggleExcused,
+    required this.onToggleActivity,
+    required this.onToggleExam,
     required this.onMaterialChanged,
     required this.onHomeworkChanged,
     required this.onPickGrade,
@@ -471,10 +488,14 @@ class _LessonStudentRow extends StatelessWidget {
   final String? gradeValue;
   final int noteCount;
   final bool late;
+  final bool activity;
+  final bool exam;
   final VoidCallback onOpenStudent;
   final VoidCallback onSwipeAbsent;
   final VoidCallback onSwipeLate;
   final ValueChanged<bool> onToggleExcused;
+  final ValueChanged<bool> onToggleActivity;
+  final ValueChanged<bool> onToggleExam;
   final ValueChanged<bool?> onMaterialChanged;
   final ValueChanged<bool?> onHomeworkChanged;
   final VoidCallback onPickGrade;
@@ -549,9 +570,13 @@ class _LessonStudentRow extends StatelessWidget {
                 absent: absent,
                 excused: excused,
                 late: late,
+                activity: activity,
+                exam: exam,
                 noteCount: noteCount,
                 onOpenStudent: onOpenStudent,
                 onToggleExcused: absent ? onToggleExcused : null,
+                onToggleActivity: absent ? onToggleActivity : null,
+                onToggleExam: absent ? onToggleExam : null,
               ),
             ),
             Expanded(
@@ -600,16 +625,26 @@ class _LessonNameCell extends ConsumerWidget {
     required this.noteCount,
     required this.onOpenStudent,
     this.late = false,
+    this.activity = false,
+    this.exam = false,
     this.onToggleExcused,
+    this.onToggleActivity,
+    this.onToggleExam,
   });
 
   final Student student;
   final bool absent;
   final bool excused;
   final bool late;
+  final bool activity;
+
+  /// The [activity] is an exam written elsewhere.
+  final bool exam;
   final int noteCount;
   final VoidCallback onOpenStudent;
   final ValueChanged<bool>? onToggleExcused;
+  final ValueChanged<bool>? onToggleActivity;
+  final ValueChanged<bool>? onToggleExam;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -646,12 +681,20 @@ class _LessonNameCell extends ConsumerWidget {
                 runSpacing: AppSpacing.xSmall,
                 children: [
                   _LessonMetaBadge(
-                    icon: absent
+                    icon: absent && exam
+                        ? Icons.quiz_outlined
+                        : absent && activity
+                        ? Icons.event_outlined
+                        : absent
                         ? Icons.person_off_outlined
                         : late
                         ? Icons.schedule_outlined
                         : Icons.check_circle_outline,
-                    label: absent
+                    label: absent && exam
+                        ? 'exam_elsewhere'.tr()
+                        : absent && activity
+                        ? 'activity'.tr()
+                        : absent
                         ? 'absent'.tr()
                         : late
                         ? 'late'.tr()
@@ -664,6 +707,20 @@ class _LessonNameCell extends ConsumerWidget {
                       label: Text('excused'.tr()),
                       selected: excused,
                       onSelected: onToggleExcused,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  if (absent && onToggleActivity != null)
+                    FilterChip(
+                      label: Text('activity'.tr()),
+                      selected: activity && !exam,
+                      onSelected: onToggleActivity,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  if (absent && onToggleExam != null)
+                    FilterChip(
+                      label: Text('exam_elsewhere'.tr()),
+                      selected: exam,
+                      onSelected: onToggleExam,
                       visualDensity: VisualDensity.compact,
                     ),
                   if (noteCount > 0)

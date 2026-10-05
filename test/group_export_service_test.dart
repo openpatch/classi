@@ -137,13 +137,15 @@ void main() {
   test('keeps two lessons of one day apart in the attendance sheet', () async {
     final attendance = (await service.buildGroupSheets(groupId))[1].rows;
 
-    expect(attendance.first.length, 1 + 2 + 4);
+    expect(attendance.first.length, 1 + 2 + 6);
     expect(texts(attendance[2]), [
       'Turing, Alan',
       '✓',
       'export_code_excused',
       '1.0',
       '1.0',
+      '0.0',
+      '0.0',
       '0.0',
       '50%',
     ]);

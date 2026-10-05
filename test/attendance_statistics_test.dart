@@ -11,6 +11,8 @@ void main() {
     bool absent = false,
     bool excused = false,
     bool late = false,
+    bool activity = false,
+    bool exam = false,
   }) => AttendanceLog(
     id: nextId++,
     studentId: studentId,
@@ -19,6 +21,8 @@ void main() {
     isAbsent: absent,
     isExcused: excused,
     isLate: late,
+    isActivity: activity,
+    isExam: exam,
     createdAt: date,
     updatedAt: date,
   );
@@ -49,6 +53,35 @@ void main() {
     expect(stats.absent, 2);
     expect(stats.late, 1);
     expect(stats.attendanceRate, closeTo((1 / 3 + 1 + 1) / 3, 1e-9));
+  });
+
+  test('counts an activity apart, not as a missed lesson', () {
+    final stats = computeGroupAttendanceStats(
+      studentIds: [1],
+      logs: [
+        log(1, monday, period: 1, absent: true, excused: true, activity: true),
+        log(1, monday, period: 3, absent: true),
+        log(1, tuesday),
+        log(
+          1,
+          tuesday,
+          period: 2,
+          absent: true,
+          excused: true,
+          activity: true,
+          exam: true,
+        ),
+      ],
+    );
+
+    final student = stats.students.single;
+    expect(student.absent, 1);
+    expect(student.excused, 0);
+    expect(student.activity, 1);
+    expect(student.exam, 1);
+    expect(student.attendanceRate, closeTo(3 / 4, 1e-9));
+    expect(stats.activity, 1);
+    expect(stats.exam, 1);
   });
 
   test('counts a duplicated row once', () {

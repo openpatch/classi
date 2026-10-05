@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
+import '../../features/attendance/attendance_state.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../shared/theme/app_ui.dart';
@@ -271,10 +272,12 @@ class _SummaryAttendanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = attendance.length;
-    final presentCount = attendance.where((l) => !l.isAbsent).length;
-    final absentLogs = attendance.where((l) => l.isAbsent).toList();
+    final presentCount = attendance.where((l) => !l.isMissed).length;
+    final absentLogs = attendance.where((l) => l.isMissed).toList();
     final excusedCount = absentLogs.where((l) => l.isExcused).length;
     final unexcusedCount = absentLogs.length - excusedCount;
+    final activityCount = attendance.where((l) => l.isAwayAtActivity).length;
+    final examCount = attendance.where((l) => l.isAwayAtExam).length;
     final percent = total > 0 ? (presentCount / total * 100).round() : null;
 
     return Card(
@@ -343,6 +346,30 @@ class _SummaryAttendanceCard extends StatelessWidget {
                   ),
                 ],
               ),
+              if (activityCount > 0 || examCount > 0) ...[
+                const SizedBox(height: AppSpacing.small),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatChip(
+                        icon: Icons.event_outlined,
+                        label: 'activity'.tr(),
+                        value: activityCount.toString(),
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.small),
+                    Expanded(
+                      child: _StatChip(
+                        icon: Icons.quiz_outlined,
+                        label: 'exam_elsewhere'.tr(),
+                        value: examCount.toString(),
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ],
         ),

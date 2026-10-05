@@ -337,6 +337,39 @@ class WebUntisAbsence {
   final String text;
 }
 
+/// A student taken out of a lesson by another school appointment: an
+/// "Aktivität" in WebUntis (a trip, a contest) or an exam written elsewhere.
+/// WebUntis keeps these apart from absences, under `prioritizedAttendances`,
+/// and the student usually has no absence for the time at all. Classi
+/// records both as an activity and keeps the exam apart by its label.
+class WebUntisPrioritizedAttendance {
+  const WebUntisPrioritizedAttendance({
+    required this.studentId,
+    required this.startDateTime,
+    required this.endDateTime,
+    this.isExam = false,
+  });
+
+  factory WebUntisPrioritizedAttendance.fromJson(Map<String, dynamic> json) {
+    return WebUntisPrioritizedAttendance(
+      studentId: readInt(json['studentId']) ?? 0,
+      startDateTime: readDateTime(json['startDateTime']) ?? DateTime(1970),
+      endDateTime: readDateTime(json['endDateTime']) ?? DateTime(1970),
+      // `activityType` is ACTIVITY or EXAM; Untis Mobile reads anything else
+      // as an activity.
+      isExam: json['activityType'] == 'EXAM',
+    );
+  }
+
+  final int studentId;
+  final DateTime startDateTime;
+  final DateTime endDateTime;
+
+  /// An exam written elsewhere ("in anderer Prüfung") rather than an
+  /// activity.
+  final bool isExam;
+}
+
 /// The class register data of one lesson.
 class WebUntisPeriodData {
   const WebUntisPeriodData({
@@ -346,6 +379,7 @@ class WebUntisPeriodData {
     required this.absences,
     this.topic,
     this.removedStudentIds = const {},
+    this.prioritizedAttendances = const [],
   });
 
   factory WebUntisPeriodData.fromJson(Map<String, dynamic> json) {
@@ -365,6 +399,9 @@ class WebUntisPeriodData {
           if (assignment['assignmentType'] == 'REMOVED')
             ?readInt(assignment['studentId']),
       },
+      prioritizedAttendances: readList(json['prioritizedAttendances'])
+          .map(WebUntisPrioritizedAttendance.fromJson)
+          .toList(growable: false),
     );
   }
 
@@ -380,6 +417,9 @@ class WebUntisPeriodData {
   /// Students listed for the lesson but taken out of it, e.g. moved to
   /// another group for this one lesson. They are not part of the lesson.
   final Set<int> removedStudentIds;
+
+  /// Students away at another school appointment during the lesson.
+  final List<WebUntisPrioritizedAttendance> prioritizedAttendances;
 }
 
 /// Reads the lesson topic out of a `getPeriodData2017` entry.
@@ -408,6 +448,8 @@ class WebUntisLessonDay {
     required this.attendanceTaken,
     required this.absences,
     this.late = const {},
+    this.activity = const {},
+    this.exam = const {},
     this.lessons = const [],
     this.matchedPeriods = false,
   });
@@ -425,6 +467,11 @@ class WebUntisLessonDay {
   ///   late, and the day is excused only when every one of those absences
   ///   is. Calling a half excused day excused would quietly hide the
   ///   unexcused half.
+  /// * A student WebUntis lists under an activity or an exam elsewhere in
+  ///   any lesson is away at an activity for the day, unless they are absent too: an absence
+  ///   beats an activity, which beats late. An activity counts as excused.
+  ///   It is an exam only when everything WebUntis lists for the student
+  ///   that day is an exam.
   /// * Attendance counts as taken once any lesson's register was checked;
   ///   before that, "nobody absent" only means nobody has looked yet.
   factory WebUntisLessonDay.fromRegisters(
@@ -434,6 +481,8 @@ class WebUntisLessonDay {
     final topics = <String>[];
     final absences = <int, bool>{};
     final late = <int>{};
+    final activity = <int>{};
+    final notExam = <int>{};
     var taken = false;
 
     for (final lesson in lessons) {
@@ -444,6 +493,17 @@ class WebUntisLessonDay {
         topics.add(topic);
       }
       taken = taken || register.absenceChecked;
+      for (final attendance in register.prioritizedAttendances) {
+        if (attendance.studentId != 0 &&
+            _overlaps(
+              attendance.startDateTime,
+              attendance.endDateTime,
+              lesson,
+            )) {
+          activity.add(attendance.studentId);
+          if (!attendance.isExam) notExam.add(attendance.studentId);
+        }
+      }
       for (final absence in register.absences) {
         if (absence.studentId == 0) {
           continue;
@@ -462,7 +522,12 @@ class WebUntisLessonDay {
             (absences[absence.studentId] ?? true) && absence.excused;
       }
     }
+    activity.removeAll(absences.keys);
     late.removeAll(absences.keys);
+    late.removeAll(activity);
+    for (final studentId in activity) {
+      absences[studentId] = true;
+    }
 
     return WebUntisLessonDay(
       lessonCount: lessons.length,
@@ -472,19 +537,25 @@ class WebUntisLessonDay {
       attendanceTaken: taken || absences.isNotEmpty || late.isNotEmpty,
       absences: absences,
       late: late,
+      activity: activity,
+      exam: activity.difference(notExam),
       lessons: lessons,
     );
   }
 
   /// Whether [absence] overlaps [lesson]. An absence whose times could not
   /// be read counts as overlapping: better shown as absent than lost.
-  static bool touches(WebUntisAbsence absence, WebUntisPeriod lesson) {
-    if (absence.startDateTime.year == 1970 ||
-        absence.endDateTime.year == 1970) {
+  static bool touches(WebUntisAbsence absence, WebUntisPeriod lesson) =>
+      _overlaps(absence.startDateTime, absence.endDateTime, lesson);
+
+  /// Whether the time from [start] to [end] overlaps [lesson]. Times that
+  /// could not be read count as overlapping.
+  static bool _overlaps(DateTime start, DateTime end, WebUntisPeriod lesson) {
+    if (start.year == 1970 || end.year == 1970) {
       return true;
     }
-    return absence.startDateTime.isBefore(lesson.endDateTime) &&
-        absence.endDateTime.isAfter(lesson.startDateTime);
+    return start.isBefore(lesson.endDateTime) &&
+        end.isAfter(lesson.startDateTime);
   }
 
   /// Whether [absence] is a lateness in [lesson]: it starts no later than the
@@ -517,6 +588,13 @@ class WebUntisLessonDay {
   /// Students who came late, by WebUntis student id, and were not absent.
   final Set<int> late;
 
+  /// Absent students, by WebUntis student id, who were away at a school
+  /// activity. Each is in [absences] too, as excused.
+  final Set<int> activity;
+
+  /// Those of [activity] who were writing an exam elsewhere.
+  final Set<int> exam;
+
   /// The teacher's lessons with the group that day, cancelled ones left out,
   /// in order.
   final List<WebUntisPeriod> lessons;
@@ -532,6 +610,8 @@ class WebUntisLessonDay {
     attendanceTaken: attendanceTaken,
     absences: absences,
     late: late,
+    activity: activity,
+    exam: exam,
     lessons: lessons,
     matchedPeriods: true,
   );

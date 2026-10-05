@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
+import '../../features/attendance/attendance_state.dart';
 import '../../features/grades/grade_editor_sheet.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/homework/homework_log_editor.dart';
@@ -204,7 +205,7 @@ class StudentDetailScreen extends ConsumerWidget {
             : onColorForBackground(groupColor);
         final attendanceLogs = attendanceValue.value ?? const <AttendanceLog>[];
         final totalLogs = attendanceLogs.length;
-        final presentCount = attendanceLogs.where((l) => !l.isAbsent).length;
+        final presentCount = attendanceLogs.where((l) => !l.isMissed).length;
         final attendancePercent = totalLogs > 0
             ? (presentCount / totalLogs * 100).round()
             : null;
@@ -2114,7 +2115,9 @@ class _AttendanceTab extends ConsumerWidget {
     return attendanceValue.when(
       data: (logs) {
         final dateFormat = DateFormat.yMMMd(context.locale.toLanguageTag());
-        final absentLogs = logs.where((l) => l.isAbsent).toList();
+        final absentLogs = logs.where((l) => l.isMissed).toList();
+        final activityCount = logs.where((l) => l.isAwayAtActivity).length;
+        final examCount = logs.where((l) => l.isAwayAtExam).length;
         final presentLogs = logs.where((l) => !l.isAbsent).toList();
         final excusedCount = absentLogs.where((l) => l.isExcused).length;
         final unexcusedCount = absentLogs.length - excusedCount;
@@ -2138,6 +2141,18 @@ class _AttendanceTab extends ConsumerWidget {
                         },
                       ),
                     ),
+                    if (activityCount > 0)
+                      Text(
+                        'attendance_summary_activity'.tr(
+                          namedArgs: {'count': activityCount.toString()},
+                        ),
+                      ),
+                    if (examCount > 0)
+                      Text(
+                        'attendance_summary_exam'.tr(
+                          namedArgs: {'count': examCount.toString()},
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 12,
@@ -2184,7 +2199,14 @@ class _AttendanceTab extends ConsumerWidget {
                       namedArgs: {'name': dateFormat.format(log.date)},
                     ),
                     body: log.isAbsent
-                        ? (log.isExcused ? 'excused' : 'unexcused').tr()
+                        ? (log.isAwayAtExam
+                                  ? 'exam_elsewhere'
+                                  : log.isActivity
+                                  ? 'activity'
+                                  : log.isExcused
+                                  ? 'excused'
+                                  : 'unexcused')
+                              .tr()
                         : 'present'.tr(),
                   ),
                   onDismissed: (_) => ref
@@ -2261,6 +2283,14 @@ class _AttendanceLogTile extends StatelessWidget {
       statusColor = colorScheme.primary;
       statusIcon = Icons.event_available_outlined;
       statusLabel = 'present'.tr();
+    } else if (log.isAwayAtExam) {
+      statusColor = colorScheme.secondary;
+      statusIcon = Icons.quiz_outlined;
+      statusLabel = 'exam_elsewhere'.tr();
+    } else if (log.isActivity) {
+      statusColor = colorScheme.secondary;
+      statusIcon = Icons.event_outlined;
+      statusLabel = 'activity'.tr();
     } else if (isExcused) {
       statusColor = colorScheme.tertiary;
       statusIcon = Icons.event_busy_outlined;

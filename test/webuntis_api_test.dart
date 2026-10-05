@@ -280,6 +280,27 @@ void main() {
                     'text': '',
                   },
                 ],
+                // The shape Untis Mobile 6.7 reads (UMPrioritizedAttendance).
+                'prioritizedAttendances': [
+                  {
+                    'periodId': 900,
+                    'studentId': 1,
+                    'activityType': 'ACTIVITY',
+                    'startDateTime': '2026-09-01T07:30',
+                    'endDateTime': '2026-09-01T13:00',
+                    'subjectId': 0,
+                    'klassenIds': [11],
+                    'teacherIds': <int>[],
+                    'roomIds': <int>[],
+                  },
+                  {
+                    'periodId': 900,
+                    'studentId': 2,
+                    'activityType': 'EXAM',
+                    'startDateTime': '2026-09-01T08:00',
+                    'endDateTime': '2026-09-01T08:45',
+                  },
+                ],
                 'can': <String>[],
               },
             },
@@ -304,6 +325,12 @@ void main() {
 
       expect(result.dataByTtId[900]!.studentIds, [1, 2]);
       expect(result.dataByTtId[900]!.absences.single.studentId, 2);
+      final activities = result.dataByTtId[900]!.prioritizedAttendances;
+      expect(activities.map((a) => (a.studentId, a.isExam)), [
+        (1, false),
+        (2, true),
+      ]);
+      expect(activities.first.startDateTime, DateTime(2026, 9, 1, 7, 30));
       expect(result.referencedStudents.map((s) => s.fullName), [
         'Ada Lovelace',
         'Alan Turing',

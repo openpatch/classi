@@ -22,6 +22,8 @@ class LessonSeatingView extends ConsumerStatefulWidget {
     required this.students,
     required this.absentStudents,
     required this.excusedStudents,
+    required this.activityStudents,
+    required this.examStudents,
     required this.materialSelections,
     required this.homeworkSelections,
     required this.gradeSelections,
@@ -29,6 +31,8 @@ class LessonSeatingView extends ConsumerStatefulWidget {
     required this.onSetAbsent,
     required this.onSetPresent,
     required this.onToggleExcused,
+    required this.onToggleActivity,
+    required this.onToggleExam,
     required this.onMaterialChanged,
     required this.onHomeworkChanged,
     required this.onPickGrade,
@@ -42,6 +46,8 @@ class LessonSeatingView extends ConsumerStatefulWidget {
   final List<Student> students;
   final Set<int> absentStudents;
   final Set<int> excusedStudents;
+  final Set<int> activityStudents;
+  final Set<int> examStudents;
   final Map<int, bool> materialSelections;
   final Map<int, bool> homeworkSelections;
   final Map<int, String> gradeSelections;
@@ -49,6 +55,8 @@ class LessonSeatingView extends ConsumerStatefulWidget {
   final ValueChanged<Student> onSetAbsent;
   final ValueChanged<Student> onSetPresent;
   final void Function(Student student, bool excused) onToggleExcused;
+  final void Function(Student student, bool activity) onToggleActivity;
+  final void Function(Student student, bool exam) onToggleExam;
   final void Function(Student student, bool? value) onMaterialChanged;
   final void Function(Student student, bool? value) onHomeworkChanged;
   final ValueChanged<Student> onPickGrade;
@@ -157,6 +165,8 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
         student: student,
         absent: widget.absentStudents.contains(student.id),
         excused: widget.excusedStudents.contains(student.id),
+        activity: widget.activityStudents.contains(student.id),
+        exam: widget.examStudents.contains(student.id),
         materialValue: widget.materialSelections[student.id],
         homeworkValue: widget.homeworkSelections[student.id],
         grade: widget.gradeSelections[student.id],
@@ -170,6 +180,9 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
           widget.onSetPresent(student);
         },
         onToggleExcused: (excused) => widget.onToggleExcused(student, excused),
+        onToggleActivity: (activity) =>
+            widget.onToggleActivity(student, activity),
+        onToggleExam: (exam) => widget.onToggleExam(student, exam),
         onMaterialChanged: (value) => widget.onMaterialChanged(student, value),
         onHomeworkChanged: (value) => widget.onHomeworkChanged(student, value),
         onPickGrade: () {
@@ -194,6 +207,8 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
 
   Widget? _buildOverlay(Student student) {
     final absent = widget.absentStudents.contains(student.id);
+    final activity = absent && widget.activityStudents.contains(student.id);
+    final exam = activity && widget.examStudents.contains(student.id);
     final noteCount = widget.noteCountsByStudent[student.id] ?? 0;
     final materialValue = widget.materialSelections[student.id];
     final homeworkValue = widget.homeworkSelections[student.id];
@@ -209,10 +224,21 @@ class _LessonSeatingViewState extends ConsumerState<LessonSeatingView> {
         if (absent)
           Positioned.fill(
             child: DecoratedBox(
+              // Away at an activity is not missing: shown apart from red.
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.35),
+                color: activity
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.tertiary.withValues(alpha: 0.35)
+                    : Colors.red.withValues(alpha: 0.35),
                 shape: BoxShape.circle,
               ),
+              child: activity
+                  ? Icon(
+                      exam ? Icons.quiz_outlined : Icons.event_outlined,
+                      color: Theme.of(context).colorScheme.onTertiary,
+                    )
+                  : null,
             ),
           ),
         if (grade != null)
@@ -443,6 +469,8 @@ class _StudentActionSheet extends ConsumerStatefulWidget {
     required this.student,
     required this.absent,
     required this.excused,
+    required this.activity,
+    required this.exam,
     required this.materialValue,
     required this.homeworkValue,
     required this.grade,
@@ -450,6 +478,8 @@ class _StudentActionSheet extends ConsumerStatefulWidget {
     required this.onSetAbsent,
     required this.onSetPresent,
     required this.onToggleExcused,
+    required this.onToggleActivity,
+    required this.onToggleExam,
     required this.onMaterialChanged,
     required this.onHomeworkChanged,
     required this.onPickGrade,
@@ -461,6 +491,8 @@ class _StudentActionSheet extends ConsumerStatefulWidget {
   final Student student;
   final bool absent;
   final bool excused;
+  final bool activity;
+  final bool exam;
   final bool? materialValue;
   final bool? homeworkValue;
   final String? grade;
@@ -468,6 +500,8 @@ class _StudentActionSheet extends ConsumerStatefulWidget {
   final VoidCallback onSetAbsent;
   final VoidCallback onSetPresent;
   final ValueChanged<bool> onToggleExcused;
+  final ValueChanged<bool> onToggleActivity;
+  final ValueChanged<bool> onToggleExam;
   final ValueChanged<bool?> onMaterialChanged;
   final ValueChanged<bool?> onHomeworkChanged;
   final VoidCallback onPickGrade;
@@ -482,6 +516,8 @@ class _StudentActionSheet extends ConsumerStatefulWidget {
 
 class _StudentActionSheetState extends ConsumerState<_StudentActionSheet> {
   late bool _excused;
+  late bool _activity;
+  late bool _exam;
   late bool? _materialValue;
   late bool? _homeworkValue;
 
@@ -489,6 +525,8 @@ class _StudentActionSheetState extends ConsumerState<_StudentActionSheet> {
   void initState() {
     super.initState();
     _excused = widget.excused;
+    _activity = widget.activity;
+    _exam = widget.exam;
     _materialValue = widget.materialValue;
     _homeworkValue = widget.homeworkValue;
   }
@@ -498,6 +536,12 @@ class _StudentActionSheetState extends ConsumerState<_StudentActionSheet> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.excused != widget.excused) {
       _excused = widget.excused;
+    }
+    if (oldWidget.activity != widget.activity) {
+      _activity = widget.activity;
+    }
+    if (oldWidget.exam != widget.exam) {
+      _exam = widget.exam;
     }
     if (oldWidget.materialValue != widget.materialValue) {
       _materialValue = widget.materialValue;
@@ -549,44 +593,73 @@ class _StudentActionSheetState extends ConsumerState<_StudentActionSheet> {
           const Divider(height: 1),
           const SizedBox(height: AppSpacing.medium),
           // Attendance row
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: widget.absent
-                      ? widget.onSetPresent
-                      : widget.onSetAbsent,
-                  icon: Icon(
-                    widget.absent
-                        ? Icons.check_circle_outline
-                        : Icons.person_off_outlined,
-                  ),
-                  label: Text(widget.absent ? 'present'.tr() : 'absent'.tr()),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: widget.absent
-                        ? colorScheme.primaryContainer
-                        : colorScheme.errorContainer,
-                    foregroundColor: widget.absent
-                        ? colorScheme.onPrimaryContainer
-                        : colorScheme.onErrorContainer,
-                  ),
-                ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: widget.absent
+                  ? widget.onSetPresent
+                  : widget.onSetAbsent,
+              icon: Icon(
+                widget.absent
+                    ? Icons.check_circle_outline
+                    : Icons.person_off_outlined,
               ),
-              if (widget.absent) ...[
-                const SizedBox(width: AppSpacing.medium),
-                Expanded(
-                  child: FilterChip(
-                    label: Text('excused'.tr()),
-                    selected: _excused,
-                    onSelected: (value) {
-                      setState(() => _excused = value);
-                      widget.onToggleExcused(value);
-                    },
-                  ),
+              label: Text(widget.absent ? 'present'.tr() : 'absent'.tr()),
+              style: FilledButton.styleFrom(
+                backgroundColor: widget.absent
+                    ? colorScheme.primaryContainer
+                    : colorScheme.errorContainer,
+                foregroundColor: widget.absent
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onErrorContainer,
+              ),
+            ),
+          ),
+          if (widget.absent) ...[
+            const SizedBox(height: AppSpacing.small),
+            Wrap(
+              spacing: AppSpacing.small,
+              runSpacing: AppSpacing.xSmall,
+              children: [
+                FilterChip(
+                  label: Text('excused'.tr()),
+                  selected: _excused,
+                  onSelected: (value) {
+                    // Unexcused is no activity; see setExcused.
+                    setState(() {
+                      _excused = value;
+                      if (!value) _activity = _exam = false;
+                    });
+                    widget.onToggleExcused(value);
+                  },
+                ),
+                FilterChip(
+                  label: Text('activity'.tr()),
+                  selected: _activity && !_exam,
+                  onSelected: (value) {
+                    // An activity is always excused; see setActivity.
+                    setState(() {
+                      _activity = value;
+                      _exam = false;
+                      if (value) _excused = true;
+                    });
+                    widget.onToggleActivity(value);
+                  },
+                ),
+                FilterChip(
+                  label: Text('exam_elsewhere'.tr()),
+                  selected: _exam,
+                  onSelected: (value) {
+                    setState(() {
+                      _activity = _exam = value;
+                      if (value) _excused = true;
+                    });
+                    widget.onToggleExam(value);
+                  },
                 ),
               ],
-            ],
-          ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.medium),
           // Grade + notes row
           Row(

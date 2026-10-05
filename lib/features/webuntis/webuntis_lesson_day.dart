@@ -63,6 +63,12 @@ typedef WebUntisGroupAttendance = ({
   /// Students who came late, by Classi id.
   Set<int> late,
 
+  /// Absent students away at a school activity, by Classi id.
+  Set<int> activity,
+
+  /// Those of [activity] who were writing an exam elsewhere.
+  Set<int> exam,
+
   /// Absent students WebUntis names that are not in the group.
   int unmatchedAbsences,
 });
@@ -102,6 +108,10 @@ WebUntisGroupAttendance webUntisAttendanceForGroup(
     linkedStudentIds: byWebUntisId.values.toSet(),
     absences: absences,
     late: late,
+    activity: {
+      for (final webUntisId in day.activity) ?byWebUntisId[webUntisId],
+    },
+    exam: {for (final webUntisId in day.exam) ?byWebUntisId[webUntisId]},
     unmatchedAbsences: unmatched,
   );
 }
@@ -113,10 +123,20 @@ bool webUntisAttendanceMatches(
   required Set<int> absentStudents,
   required Set<int> excusedStudents,
   Set<int> lateStudents = const {},
+  Set<int> activityStudents = const {},
+  Set<int> examStudents = const {},
 }) {
   for (final studentId in attendance.linkedStudentIds) {
     if (attendance.late.contains(studentId) !=
         lateStudents.contains(studentId)) {
+      return false;
+    }
+    if (attendance.activity.contains(studentId) !=
+        activityStudents.contains(studentId)) {
+      return false;
+    }
+    if (attendance.exam.contains(studentId) !=
+        examStudents.contains(studentId)) {
       return false;
     }
     final excused = attendance.absences[studentId];
@@ -146,6 +166,8 @@ class WebUntisLessonPanel extends ConsumerWidget {
     required this.absentStudents,
     required this.excusedStudents,
     this.lateStudents = const {},
+    this.activityStudents = const {},
+    this.examStudents = const {},
     super.key,
   });
 
@@ -161,6 +183,8 @@ class WebUntisLessonPanel extends ConsumerWidget {
   final Set<int> absentStudents;
   final Set<int> excusedStudents;
   final Set<int> lateStudents;
+  final Set<int> activityStudents;
+  final Set<int> examStudents;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -237,6 +261,8 @@ class WebUntisLessonPanel extends ConsumerWidget {
               absentStudents: absentStudents,
               excusedStudents: excusedStudents,
               lateStudents: lateStudents,
+              activityStudents: activityStudents,
+              examStudents: examStudents,
             ),
           ],
         );
@@ -324,6 +350,8 @@ class _AttendanceSection extends ConsumerWidget {
     required this.absentStudents,
     required this.excusedStudents,
     required this.lateStudents,
+    required this.activityStudents,
+    required this.examStudents,
   });
 
   final LessonPeriods? periods;
@@ -333,6 +361,8 @@ class _AttendanceSection extends ConsumerWidget {
   final Set<int> absentStudents;
   final Set<int> excusedStudents;
   final Set<int> lateStudents;
+  final Set<int> activityStudents;
+  final Set<int> examStudents;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -366,7 +396,13 @@ class _AttendanceSection extends ConsumerWidget {
       final absent = [
         for (final student in students)
           if (attendance.absences[student.id] case final excused?)
-            excused ? '${name(student)} (${'excused'.tr()})' : name(student),
+            attendance.exam.contains(student.id)
+                ? '${name(student)} (${'exam_elsewhere'.tr()})'
+                : attendance.activity.contains(student.id)
+                ? '${name(student)} (${'activity'.tr()})'
+                : excused
+                ? '${name(student)} (${'excused'.tr()})'
+                : name(student),
       ];
       final late = [
         for (final student in students)
@@ -409,6 +445,8 @@ class _AttendanceSection extends ConsumerWidget {
       absentStudents: absentStudents,
       excusedStudents: excusedStudents,
       lateStudents: lateStudents,
+      activityStudents: activityStudents,
+      examStudents: examStudents,
     );
 
     children.add(const SizedBox(height: AppSpacing.small));
@@ -425,6 +463,8 @@ class _AttendanceSection extends ConsumerWidget {
                 studentIds: attendance.linkedStudentIds,
                 absences: attendance.absences,
                 late: attendance.late,
+                activity: attendance.activity,
+                exam: attendance.exam,
               ),
           icon: const Icon(Icons.download_outlined),
           label: Text('webuntis_attendance_apply'.tr()),

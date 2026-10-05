@@ -181,6 +181,24 @@ class _GroupAttendanceCardState extends ConsumerState<GroupAttendanceCard> {
                 ),
               ),
             ),
+            if (stats.activity > 0)
+              Chip(
+                avatar: const Icon(Icons.event_outlined, size: 18),
+                label: Text(
+                  'class_attendance_activity'.tr(
+                    namedArgs: {'count': '${stats.activity}'},
+                  ),
+                ),
+              ),
+            if (stats.exam > 0)
+              Chip(
+                avatar: const Icon(Icons.quiz_outlined, size: 18),
+                label: Text(
+                  'class_attendance_exam'.tr(
+                    namedArgs: {'count': '${stats.exam}'},
+                  ),
+                ),
+              ),
           ],
         ),
         const SizedBox(height: AppSpacing.medium),

@@ -24,6 +24,17 @@ class AttendanceLogsTable extends Table {
   /// counted.
   BoolColumn get isLate => boolean().withDefault(const Constant(false))();
 
+  /// The student was away at another school appointment ("Aktivität" in
+  /// WebUntis): a trip, a contest, the student council, or an exam written
+  /// elsewhere ([isExam]). Only meaningful on an absent row ([isAbsent]
+  /// true), which is then excused too. The student was not in the room, but
+  /// the lesson does not count as missed.
+  BoolColumn get isActivity => boolean().withDefault(const Constant(false))();
+
+  /// The appointment of an [isActivity] row was an exam written elsewhere
+  /// ("in anderer Prüfung" in WebUntis).
+  BoolColumn get isExam => boolean().withDefault(const Constant(false))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   /// When this row was last modified. Used by the three-way sync merge to

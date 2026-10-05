@@ -19,6 +19,7 @@ import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/student_avatar.dart';
+import '../attendance/attendance_state.dart';
 import '../grades/grade_picker_dialog.dart';
 import '../notes/note_links.dart';
 import 'group_detail_screen.dart'
@@ -348,7 +349,7 @@ class _TimeframeStudentRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sortField = ref.watch(studentSortFieldProvider);
 
-    final presentCount = attendanceLogs.where((l) => !l.isAbsent).length;
+    final presentCount = attendanceLogs.where((l) => !l.isMissed).length;
     final attendancePercent = _formatPercent(
       presentCount,
       attendanceLogs.length,
