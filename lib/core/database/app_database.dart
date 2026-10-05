@@ -93,7 +93,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Exposed statically so callers can compare it against the version on disk
   /// before opening (and therefore migrating) a library.
-  static const int currentSchemaVersion = 33;
+  static const int currentSchemaVersion = 35;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -362,6 +362,28 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 33) {
         await _migrateLogsToLessons(migrator);
+      }
+
+      if (from < 34) {
+        // Attendance can record a student away at a school activity.
+        if (await _hasTable('attendance_logs_table') &&
+            !await _hasColumn('attendance_logs_table', 'is_activity')) {
+          await migrator.addColumn(
+            attendanceLogsTable,
+            attendanceLogsTable.isActivity,
+          );
+        }
+      }
+
+      if (from < 35) {
+        // An activity can be an exam written elsewhere.
+        if (await _hasTable('attendance_logs_table') &&
+            !await _hasColumn('attendance_logs_table', 'is_exam')) {
+          await migrator.addColumn(
+            attendanceLogsTable,
+            attendanceLogsTable.isExam,
+          );
+        }
       }
     },
   );

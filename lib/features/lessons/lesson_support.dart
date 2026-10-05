@@ -66,6 +66,28 @@ final lessonExcusedSelectionsProvider = StreamProvider.autoDispose
           ),
     );
 
+final lessonActivitySelectionsProvider = StreamProvider.autoDispose
+    .family<Set<int>, LessonKey>(
+      (ref, args) => ref
+          .watch(attendanceRepositoryProvider)
+          .watchActivitySelections(
+            groupId: args.$1,
+            date: normalizeLessonDate(args.$2),
+            periodStart: args.$3,
+          ),
+    );
+
+final lessonExamSelectionsProvider = StreamProvider.autoDispose
+    .family<Set<int>, LessonKey>(
+      (ref, args) => ref
+          .watch(attendanceRepositoryProvider)
+          .watchExamSelections(
+            groupId: args.$1,
+            date: normalizeLessonDate(args.$2),
+            periodStart: args.$3,
+          ),
+    );
+
 final lessonLateSelectionsProvider = StreamProvider.autoDispose
     .family<Set<int>, LessonKey>(
       (ref, args) => ref

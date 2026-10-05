@@ -74,13 +74,27 @@ void main() {
     final first = lesson(1, start);
     final second = lesson(2, start.add(const Duration(minutes: 50)));
 
-    WebUntisPeriodData register(int ttId, List<WebUntisAbsence> absences) =>
-        WebUntisPeriodData(
-          ttId: ttId,
-          absenceChecked: false,
-          studentIds: const [100, 101, 102],
-          absences: absences,
-        );
+    WebUntisPeriodData register(
+      int ttId,
+      List<WebUntisAbsence> absences, {
+      List<WebUntisPrioritizedAttendance> activities = const [],
+    }) => WebUntisPeriodData(
+      ttId: ttId,
+      absenceChecked: false,
+      studentIds: const [100, 101, 102],
+      absences: absences,
+      prioritizedAttendances: activities,
+    );
+    WebUntisPrioritizedAttendance activity(
+      int studentId,
+      WebUntisPeriod lesson, {
+      bool exam = false,
+    }) => WebUntisPrioritizedAttendance(
+      studentId: studentId,
+      startDateTime: lesson.startDateTime,
+      endDateTime: lesson.endDateTime,
+      isExam: exam,
+    );
 
     test('an absence ending inside the lesson is lateness', () {
       final day = WebUntisLessonDay.fromRegisters(
@@ -143,6 +157,77 @@ void main() {
 
       expect(day.late, isEmpty);
       expect(day.absences, {100: true});
+    });
+
+    test('a student at an activity is excused and kept apart', () {
+      final day = WebUntisLessonDay.fromRegisters(
+        [first, second],
+        {
+          1: register(
+            1,
+            [absence(1, 101, start, start.add(const Duration(minutes: 45)))],
+            activities: [
+              activity(100, first),
+              activity(102, first, exam: true),
+            ],
+          ),
+        },
+      );
+
+      expect(day.absences, {100: true, 101: false, 102: true});
+      expect(day.activity, {100, 102});
+      expect(day.exam, {102});
+      expect(day.attendanceTaken, isTrue);
+    });
+
+    test('an exam and an activity on one day make an activity', () {
+      final day = WebUntisLessonDay.fromRegisters(
+        [first, second],
+        {
+          1: register(
+            1,
+            const [],
+            activities: [activity(100, first, exam: true)],
+          ),
+          2: register(2, const [], activities: [activity(100, second)]),
+        },
+      );
+
+      expect(day.activity, {100});
+      expect(day.exam, isEmpty);
+    });
+
+    test('an activity outside the lesson does not count for it', () {
+      final day = WebUntisLessonDay.fromRegisters(
+        [first],
+        {
+          1: register(1, const [], activities: [activity(100, second)]),
+        },
+      );
+
+      expect(day.activity, isEmpty);
+      expect(day.absences, isEmpty);
+    });
+
+    test('an absence beats an activity, which beats late', () {
+      final day = WebUntisLessonDay.fromRegisters(
+        [first, second],
+        {
+          1: register(1, [
+            absence(1, 100, start, first.endDateTime),
+            absence(2, 101, start, start.add(const Duration(minutes: 10))),
+          ]),
+          2: register(
+            2,
+            const [],
+            activities: [activity(100, second), activity(101, second)],
+          ),
+        },
+      );
+
+      expect(day.absences, {100: false, 101: true});
+      expect(day.activity, {101});
+      expect(day.late, isEmpty);
     });
   });
 

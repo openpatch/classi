@@ -64,6 +64,61 @@ class AttendanceRepository {
         .map((rows) => {for (final row in rows) row.read<int>('student_id')});
   }
 
+  /// Students of [groupId] away at a school activity on [date].
+  Stream<Set<int>> watchActivitySelections({
+    required int groupId,
+    required DateTime date,
+    int periodStart = 0,
+  }) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return _database
+        .customSelect(
+          '''
+      SELECT a.student_id
+      FROM attendance_logs_table a
+      JOIN students_table s ON s.id = a.student_id
+      WHERE s.group_id = ? AND a.date = ? AND a.period_start = ? AND a.is_absent = 1 AND a.is_activity = 1
+      ''',
+          variables: [
+            Variable.withInt(groupId),
+            Variable.withDateTime(normalizedDate),
+            Variable.withInt(periodStart),
+          ],
+          readsFrom: {_database.attendanceLogsTable, _database.studentsTable},
+        )
+        .watch()
+        .map((rows) => {for (final row in rows) row.read<int>('student_id')});
+  }
+
+  /// Students of [groupId] away writing an exam elsewhere on [date]. Each is
+  /// in [watchActivitySelections] too.
+  Stream<Set<int>> watchExamSelections({
+    required int groupId,
+    required DateTime date,
+    int periodStart = 0,
+  }) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return _database
+        .customSelect(
+          '''
+      SELECT a.student_id
+      FROM attendance_logs_table a
+      JOIN students_table s ON s.id = a.student_id
+      WHERE s.group_id = ? AND a.date = ? AND a.period_start = ? AND a.is_absent = 1 AND a.is_activity = 1 AND a.is_exam = 1
+      ''',
+          variables: [
+            Variable.withInt(groupId),
+            Variable.withDateTime(normalizedDate),
+            Variable.withInt(periodStart),
+          ],
+          readsFrom: {_database.attendanceLogsTable, _database.studentsTable},
+        )
+        .watch()
+        .map((rows) => {for (final row in rows) row.read<int>('student_id')});
+  }
+
+  /// Excuses an absence or takes the excuse back. An unexcused absence is no
+  /// school activity, so taking the excuse back clears that too.
   Future<void> setExcused({
     required int studentId,
     required DateTime date,
@@ -76,7 +131,39 @@ class AttendanceRepository {
           ..where((t) => t.date.equals(normalizedDate))
           ..where((t) => t.periodStart.equals(periodStart))
           ..where((t) => t.isAbsent.equals(true)))
-        .write(AttendanceLogsTableCompanion(isExcused: Value(excused)));
+        .write(
+          AttendanceLogsTableCompanion(
+            isExcused: Value(excused),
+            isActivity: excused ? const Value.absent() : const Value(false),
+            isExam: excused ? const Value.absent() : const Value(false),
+          ),
+        );
+  }
+
+  /// Marks an absence as time spent at a school activity, or, with [exam],
+  /// writing an exam elsewhere; or takes that back. An activity is always
+  /// excused; taking it back leaves the absence excused, since the student
+  /// still had a reason to be away.
+  Future<void> setActivity({
+    required int studentId,
+    required DateTime date,
+    int periodStart = 0,
+    required bool activity,
+    bool exam = false,
+  }) async {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    await (_database.update(_database.attendanceLogsTable)
+          ..where((t) => t.studentId.equals(studentId))
+          ..where((t) => t.date.equals(normalizedDate))
+          ..where((t) => t.periodStart.equals(periodStart))
+          ..where((t) => t.isAbsent.equals(true)))
+        .write(
+          AttendanceLogsTableCompanion(
+            isActivity: Value(activity),
+            isExam: Value(activity && exam),
+            isExcused: activity ? const Value(true) : const Value.absent(),
+          ),
+        );
   }
 
   Future<void> clearGroupAbsencesForDate({
@@ -294,6 +381,8 @@ class AttendanceRepository {
   /// Makes the attendance of [date] say what WebUntis recorded.
   ///
   /// [absences] maps the absent students to whether their day is excused,
+  /// [activity] holds the absent ones who were away at a school activity,
+  /// [exam] those of them who were writing an exam elsewhere,
   /// [late] holds those who came late; every other student in [studentIds]
   /// was present. Only [studentIds] are touched, which keeps students
   /// WebUntis does not know about as the teacher left them. Present is
@@ -305,6 +394,8 @@ class AttendanceRepository {
     required Set<int> studentIds,
     required Map<int, bool> absences,
     Set<int> late = const {},
+    Set<int> activity = const {},
+    Set<int> exam = const {},
   }) async {
     if (studentIds.isEmpty) return;
     final normalizedDate = DateTime(date.year, date.month, date.day);
@@ -325,6 +416,8 @@ class AttendanceRepository {
       for (final studentId in studentIds) {
         final existing = byStudent[studentId] ?? const <AttendanceLog>[];
         final excused = absences[studentId];
+        final isActivity = excused != null && activity.contains(studentId);
+        final isExam = isActivity && exam.contains(studentId);
 
         if (excused == null && late.contains(studentId)) {
           final alreadyLate =
@@ -372,7 +465,9 @@ class AttendanceRepository {
                   date: normalizedDate,
                   periodStart: Value(periodStart),
                   isAbsent: const Value(true),
-                  isExcused: Value(excused),
+                  isExcused: Value(excused || isActivity),
+                  isActivity: Value(isActivity),
+                  isExam: Value(isExam),
                 ),
               );
           continue;
@@ -380,13 +475,19 @@ class AttendanceRepository {
 
         // Same folding as [markAbsent]: keep the first row, drop duplicates.
         final kept = existing.first;
-        if (!kept.isAbsent || kept.isExcused != excused || kept.isLate) {
+        if (!kept.isAbsent ||
+            kept.isExcused != (excused || isActivity) ||
+            kept.isActivity != isActivity ||
+            kept.isExam != isExam ||
+            kept.isLate) {
           await (_database.update(
             _database.attendanceLogsTable,
           )..where((t) => t.id.equals(kept.id))).write(
             AttendanceLogsTableCompanion(
               isAbsent: const Value(true),
-              isExcused: Value(excused),
+              isExcused: Value(excused || isActivity),
+              isActivity: Value(isActivity),
+              isExam: Value(isExam),
               isLate: const Value(false),
             ),
           );

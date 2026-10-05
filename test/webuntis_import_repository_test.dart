@@ -252,6 +252,67 @@ void main() {
       expect(rows, hasLength(1));
       expect(rows.single.isExcused, isTrue);
     });
+
+    test('records an activity as an excused absence', () async {
+      Future<Set<int>> activity() => attendanceRepository
+          .watchActivitySelections(groupId: groupId, date: day)
+          .first;
+
+      await attendanceRepository.applyAttendanceForDate(
+        date: day,
+        studentIds: {ada, ben},
+        absences: {ada: true, ben: false},
+        activity: {ada},
+      );
+      expect(await absent(), {ada, ben});
+      expect(await excused(), {ada});
+      expect(await activity(), {ada});
+
+      await attendanceRepository.applyAttendanceForDate(
+        date: day,
+        studentIds: {ada, ben},
+        absences: {ada: true, ben: false},
+      );
+      expect(await activity(), isEmpty);
+      expect(await excused(), {ada});
+
+      await attendanceRepository.applyAttendanceForDate(
+        date: day,
+        studentIds: {ada, ben},
+        absences: {ada: true, ben: false},
+        activity: {ada},
+        exam: {ada},
+      );
+      expect(await activity(), {ada});
+      expect(
+        await attendanceRepository
+            .watchExamSelections(groupId: groupId, date: day)
+            .first,
+        {ada},
+      );
+    });
+
+    test('taking back the excuse takes back the activity', () async {
+      await attendanceRepository.markAbsent(studentId: ada, date: day);
+      await attendanceRepository.setActivity(
+        studentId: ada,
+        date: day,
+        activity: true,
+      );
+      expect(await excused(), {ada});
+
+      await attendanceRepository.setExcused(
+        studentId: ada,
+        date: day,
+        excused: false,
+      );
+      expect(
+        await attendanceRepository
+            .watchActivitySelections(groupId: groupId, date: day)
+            .first,
+        isEmpty,
+      );
+    });
   });
 
   group('late', () {

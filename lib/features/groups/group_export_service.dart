@@ -216,6 +216,8 @@ class GroupExportService {
         OdsCell.text(_translate('absent'), bold: true),
         OdsCell.text(_translate('excused'), bold: true),
         OdsCell.text(_translate('late'), bold: true),
+        OdsCell.text(_translate('activity'), bold: true),
+        OdsCell.text(_translate('exam_elsewhere'), bold: true),
         OdsCell.text(_translate('attendance_rate'), bold: true),
       ],
     ];
@@ -227,6 +229,11 @@ class GroupExportService {
         OdsCell.text(_name(student)),
         for (final lesson in lessons)
           OdsCell.text(switch (logs[lesson]) {
+            AttendanceLog(isAbsent: true, isActivity: true, isExam: true) =>
+              _translate('export_code_exam'),
+            AttendanceLog(isAbsent: true, isActivity: true) => _translate(
+              'export_code_activity',
+            ),
             AttendanceLog(isAbsent: true, isExcused: true) => _translate(
               'export_code_excused',
             ),
@@ -237,6 +244,8 @@ class GroupExportService {
         OdsCell.number(studentStats.absent.toDouble()),
         OdsCell.number(studentStats.excused.toDouble()),
         OdsCell.number(studentStats.late.toDouble()),
+        OdsCell.number(studentStats.activity.toDouble()),
+        OdsCell.number(studentStats.exam.toDouble()),
         switch (studentStats.attendanceRate) {
           final rate? => OdsCell.percent(rate),
           null => const OdsCell.empty(),
@@ -333,6 +342,8 @@ class GroupExportService {
         OdsCell.text(_translate('absent'), bold: true),
         OdsCell.text(_translate('excused'), bold: true),
         OdsCell.text(_translate('late'), bold: true),
+        OdsCell.text(_translate('activity'), bold: true),
+        OdsCell.text(_translate('exam_elsewhere'), bold: true),
         OdsCell.text(_translate('attendance_rate'), bold: true),
         OdsCell.text('${_translate('homework')} %', bold: true),
         OdsCell.text('${_translate('material')} %', bold: true),
@@ -360,6 +371,8 @@ class GroupExportService {
         OdsCell.number(stats.absent.toDouble()),
         OdsCell.number(stats.excused.toDouble()),
         OdsCell.number(stats.late.toDouble()),
+        OdsCell.number(stats.activity.toDouble()),
+        OdsCell.number(stats.exam.toDouble()),
         switch (stats.attendanceRate) {
           final rate? => OdsCell.percent(rate),
           null => const OdsCell.empty(),

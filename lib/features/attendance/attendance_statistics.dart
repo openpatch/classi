@@ -1,4 +1,5 @@
 import '../../core/database/app_database.dart';
+import 'attendance_state.dart';
 
 /// Attendance of one student over the lessons a group held.
 class StudentAttendanceStats {
@@ -8,6 +9,8 @@ class StudentAttendanceStats {
     required this.absent,
     required this.excused,
     required this.late,
+    this.activity = 0,
+    this.exam = 0,
   });
 
   final int studentId;
@@ -15,12 +18,21 @@ class StudentAttendanceStats {
   /// Lessons the group held in the period looked at.
   final int lessons;
 
-  /// Lessons missed, excused ones included.
+  /// Lessons missed, excused ones included. Lessons away at a school
+  /// activity are not missed and not counted here.
   final int absent;
   final int excused;
 
   /// Lessons the student came late to. Late counts as present.
   final int late;
+
+  /// Lessons the student spent at a school activity. They do not count
+  /// against [attendanceRate].
+  final int activity;
+
+  /// Lessons the student spent writing an exam elsewhere. Like [activity],
+  /// they do not count against [attendanceRate].
+  final int exam;
 
   int get unexcused => absent - excused;
 
@@ -42,6 +54,8 @@ class GroupAttendanceStats {
   int get absent => students.fold(0, (sum, s) => sum + s.absent);
   int get excused => students.fold(0, (sum, s) => sum + s.excused);
   int get late => students.fold(0, (sum, s) => sum + s.late);
+  int get activity => students.fold(0, (sum, s) => sum + s.activity);
+  int get exam => students.fold(0, (sum, s) => sum + s.exam);
 
   /// The class's attendance rate: the mean of the students' rates. `null`
   /// when no lesson was held or the group has no students.
@@ -66,6 +80,8 @@ GroupAttendanceStats computeGroupAttendanceStats({
   final absent = <int, int>{};
   final excused = <int, int>{};
   final late = <int, int>{};
+  final activity = <int, int>{};
+  final exam = <int, int>{};
   final known = studentIds.toSet();
   // Two rows for one student and lesson (from a sync merge) count once.
   final seen = <(int, DateTime, int)>{};
@@ -77,7 +93,11 @@ GroupAttendanceStats computeGroupAttendanceStats({
         !seen.add((log.studentId, day, log.periodStart))) {
       continue;
     }
-    if (log.isAbsent) {
+    if (log.isAwayAtExam) {
+      exam.update(log.studentId, (n) => n + 1, ifAbsent: () => 1);
+    } else if (log.isAwayAtActivity) {
+      activity.update(log.studentId, (n) => n + 1, ifAbsent: () => 1);
+    } else if (log.isMissed) {
       absent.update(log.studentId, (n) => n + 1, ifAbsent: () => 1);
       if (log.isExcused) {
         excused.update(log.studentId, (n) => n + 1, ifAbsent: () => 1);
@@ -95,6 +115,8 @@ GroupAttendanceStats computeGroupAttendanceStats({
         absent: absent[id] ?? 0,
         excused: excused[id] ?? 0,
         late: late[id] ?? 0,
+        activity: activity[id] ?? 0,
+        exam: exam[id] ?? 0,
       ),
   ];
   final order = {for (var i = 0; i < studentIds.length; i++) studentIds[i]: i};

@@ -108,6 +108,12 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     final lateSelectionsValue = ref.watch(
       lessonLateSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
     );
+    final activitySelectionsValue = ref.watch(
+      lessonActivitySelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+    );
+    final examSelectionsValue = ref.watch(
+      lessonExamSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+    );
     final notesValue = ref.watch(lessonNotesProvider(widget.groupId));
 
     return groupValue.when(
@@ -230,6 +236,9 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
               final excusedStudents =
                   excusedSelectionsValue.value ?? const <int>{};
               final lateStudents = lateSelectionsValue.value ?? const <int>{};
+              final activityStudents =
+                  activitySelectionsValue.value ?? const <int>{};
+              final examStudents = examSelectionsValue.value ?? const <int>{};
               final gradeSelections =
                   gradeSelectionsValue.value ?? const <int, String>{};
               final lessonNotes = notesForLessonDate(
@@ -298,6 +307,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                           absentStudents: absentStudents,
                           excusedStudents: excusedStudents,
                           lateStudents: lateStudents,
+                          activityStudents: activityStudents,
+                          examStudents: examStudents,
                         ),
                         null => null,
                       },
@@ -327,6 +338,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                               students: students,
                               absentStudents: absentStudents,
                               excusedStudents: excusedStudents,
+                              activityStudents: activityStudents,
+                              examStudents: examStudents,
                             )
                           : null,
                     ),
@@ -374,6 +387,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         absentStudents: absentStudents,
                         excusedStudents: excusedStudents,
                         lateStudents: lateStudents,
+                        activityStudents: activityStudents,
+                        examStudents: examStudents,
                         materialSelections: materialSelections,
                         homeworkSelections: homeworkSelections,
                         gradeSelections: gradeSelections,
@@ -409,6 +424,16 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         onToggleExcused: (student, excused) => _toggleExcused(
                           studentId: student.id,
                           excused: excused,
+                        ),
+                        onToggleActivity: (student, activity) =>
+                            _toggleActivity(
+                              studentId: student.id,
+                              activity: activity,
+                            ),
+                        onToggleExam: (student, exam) => _toggleActivity(
+                          studentId: student.id,
+                          activity: exam,
+                          exam: true,
                         ),
                         onMaterialChanged: (student, value) =>
                             _setMaterialValue(
@@ -446,6 +471,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         students: students,
                         absentStudents: absentStudents,
                         excusedStudents: excusedStudents,
+                        activityStudents: activityStudents,
+                        examStudents: examStudents,
                         materialSelections: materialSelections,
                         homeworkSelections: homeworkSelections,
                         gradeSelections: gradeSelections,
@@ -475,6 +502,16 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                         onToggleExcused: (student, excused) => _toggleExcused(
                           studentId: student.id,
                           excused: excused,
+                        ),
+                        onToggleActivity: (student, activity) =>
+                            _toggleActivity(
+                              studentId: student.id,
+                              activity: activity,
+                            ),
+                        onToggleExam: (student, exam) => _toggleActivity(
+                          studentId: student.id,
+                          activity: exam,
+                          exam: true,
                         ),
                         onMaterialChanged: (student, value) =>
                             _setMaterialValue(
@@ -679,6 +716,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     required List<Student> students,
     required Set<int> absentStudents,
     required Set<int> excusedStudents,
+    required Set<int> activityStudents,
+    required Set<int> examStudents,
   }) {
     final sortField = ref.read(studentSortFieldProvider);
     final absentList = [
@@ -715,7 +754,17 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                       sortField: sortField,
                     ),
                   ),
-                  trailing: excusedStudents.contains(student.id)
+                  trailing: examStudents.contains(student.id)
+                      ? Chip(
+                          label: Text('exam_elsewhere'.tr()),
+                          visualDensity: VisualDensity.compact,
+                        )
+                      : activityStudents.contains(student.id)
+                      ? Chip(
+                          label: Text('activity'.tr()),
+                          visualDensity: VisualDensity.compact,
+                        )
+                      : excusedStudents.contains(student.id)
                       ? Chip(
                           label: Text('excused'.tr()),
                           visualDensity: VisualDensity.compact,
@@ -1072,6 +1121,22 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
           date: _selectedDate,
           periodStart: _periodStart,
           excused: excused,
+        );
+  }
+
+  Future<void> _toggleActivity({
+    required int studentId,
+    required bool activity,
+    bool exam = false,
+  }) {
+    return ref
+        .read(attendanceRepositoryProvider)
+        .setActivity(
+          studentId: studentId,
+          date: _selectedDate,
+          periodStart: _periodStart,
+          activity: activity,
+          exam: exam,
         );
   }
 

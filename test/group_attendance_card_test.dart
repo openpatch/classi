@@ -34,6 +34,8 @@ void main() {
         isAbsent: absent,
         isExcused: false,
         isLate: false,
+        isActivity: false,
+        isExam: false,
         createdAt: date,
         updatedAt: date,
       );
