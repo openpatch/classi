@@ -83,6 +83,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.23.0" date="2026-09-28">
+      <description>
+        <ul>
+          <li>Link students when a group is linked to WebUntis</li>
+          <li>Show a seating plan full screen</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.22.0" date="2026-09-27">
       <description>
         <ul>
