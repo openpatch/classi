@@ -1,0 +1,13 @@
+arguments=--init-script /home/mike/.eclipse/2139989682_linux_gtk_x86_64/configuration/org.eclipse.osgi/1089/0/.cp/gradle/init/init.gradle
+auto.sync=false
+build.scans.enabled=false
+connection.gradle.distribution=GRADLE_DISTRIBUTION(WRAPPER)
+connection.project.dir=
+eclipse.preferences.version=1
+gradle.user.home=
+java.home=/home/mike/.sdkman/candidates/java/17.0.13-tem
+jvm.arguments=
+offline.mode=false
+override.workspace.settings=true
+show.console.view=true
+show.executions.view=true

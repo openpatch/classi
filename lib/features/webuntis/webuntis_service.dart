@@ -6,6 +6,7 @@ import 'webuntis_link.dart';
 import 'webuntis_models.dart';
 import 'webuntis_roster.dart';
 import 'webuntis_settings_service.dart';
+import 'webuntis_timetable.dart';
 
 /// A ready-to-use WebUntis connection: the settings plus the secret that
 /// signs every request.
@@ -182,6 +183,59 @@ class WebUntisService {
         }
       }
       return const [];
+    } finally {
+      api.dispose();
+    }
+  }
+
+  /// Reads dated lessons for an import. Teachers use their own timetable so
+  /// class links do not bring in colleagues' lessons. Other accounts can
+  /// read a linked class's timetable.
+  Future<WebUntisTimetable> loadTimetable({
+    required DateTime start,
+    required DateTime end,
+    WebUntisGroupLink? link,
+  }) async {
+    final session = await _requireSession();
+    final api = _apiFactory(
+      server: session.settings.server,
+      school: session.settings.school,
+    );
+    try {
+      final user = await api.fetchUserData(
+        username: session.settings.username,
+        secret: session.secret,
+      );
+      await _rememberBellTimes(user);
+      final isTeacher = _isTeacher(user);
+      final elementId = isTeacher ? user.elementId : link?.klasseId;
+      if (elementId == null) {
+        throw const WebUntisException(WebUntisErrorCode.noRight);
+      }
+
+      final periods = <WebUntisPeriod>[];
+      final to = DateTime(end.year, end.month, end.day);
+      var from = DateTime(start.year, start.month, start.day);
+      // Keep requests small when importing a term rather than one week.
+      while (!from.isAfter(to)) {
+        final chunkEnd = DateTime(from.year, from.month, from.day + 27);
+        final until = chunkEnd.isAfter(to) ? to : chunkEnd;
+        periods.addAll(
+          await api.fetchTimetable(
+            username: session.settings.username,
+            secret: session.secret,
+            elementId: elementId,
+            elementType: isTeacher
+                ? WebUntisElementType.teacher
+                : WebUntisElementType.klasse,
+            from: from,
+            to: until,
+            masterDataTimestamp: user.masterDataTimestamp,
+          ),
+        );
+        from = DateTime(until.year, until.month, until.day + 1);
+      }
+      return WebUntisTimetable(periods: periods, timeGrid: user.timeGrid);
     } finally {
       api.dispose();
     }

@@ -66,16 +66,21 @@ void main() {
       final timetable = buildWeeklyTimetable(
         weekStart: _weekWednesday, // any day in the week
         groups: [
-          _group(slots: [_slot(weekday: _monday), _slot(weekday: _wednesday)]),
+          _group(
+            slots: [
+              _slot(weekday: _monday),
+              _slot(weekday: _wednesday),
+            ],
+          ),
         ],
         sessions: const [],
       );
 
       expect(timetable.weekStart, _weekMonday);
-      expect(
-        timetable.lessons.map((l) => l.date),
-        [_weekMonday, _weekWednesday],
-      );
+      expect(timetable.lessons.map((l) => l.date), [
+        _weekMonday,
+        _weekWednesday,
+      ]);
     });
 
     test('marks a slot planned when a session covers its period block', () {
@@ -89,9 +94,7 @@ void main() {
             ],
           ),
         ],
-        sessions: [
-          _session(date: _weekMonday, periodStart: 2, periodEnd: 2),
-        ],
+        sessions: [_session(date: _weekMonday, periodStart: 2, periodEnd: 2)],
       );
 
       final monday = timetable.lessons.firstWhere((l) => l.weekday == _monday);
@@ -107,7 +110,9 @@ void main() {
       final timetable = buildWeeklyTimetable(
         weekStart: _weekMonday,
         groups: [
-          _group(slots: [_slot(weekday: _monday, periodStart: 5, periodEnd: 6)]),
+          _group(
+            slots: [_slot(weekday: _monday, periodStart: 5, periodEnd: 6)],
+          ),
         ],
         sessions: [_session(date: _weekMonday)],
       );
@@ -119,7 +124,9 @@ void main() {
       final timetable = buildWeeklyTimetable(
         weekStart: _weekMonday,
         groups: [
-          _group(slots: [_slot(weekday: _monday, periodStart: 1, periodEnd: 2)]),
+          _group(
+            slots: [_slot(weekday: _monday, periodStart: 1, periodEnd: 2)],
+          ),
         ],
         sessions: [
           _session(groupId: 2, date: _weekMonday, periodStart: 1),
@@ -127,7 +134,40 @@ void main() {
         ],
       );
 
-      expect(timetable.lessons.single.planned, isFalse);
+      expect(timetable.lessons.first.planned, isFalse);
+      expect(timetable.lessons.last.date, _weekWednesday);
+      expect(timetable.lessons.last.planned, isTrue);
+    });
+
+    test(
+      'shows dated lessons without a recurring schedule and ignores other weeks',
+      () {
+        final timetable = buildWeeklyTimetable(
+          weekStart: _weekMonday,
+          groups: [_group(slots: [])],
+          sessions: [
+            _session(date: _weekMonday, periodStart: 3, periodEnd: 4),
+            _session(date: DateTime(2026, 8, 31), periodStart: 1),
+          ],
+        );
+        expect(timetable.lessons, hasLength(1));
+        expect(timetable.lessons.single.planned, isTrue);
+        expect(timetable.lessons.single.periodStart, 3);
+        expect(timetable.lessons.single.periodEnd, 4);
+      },
+    );
+
+    test('uses actual dated periods when a session overlaps a weekly slot', () {
+      final timetable = buildWeeklyTimetable(
+        weekStart: _weekMonday,
+        groups: [
+          _group(slots: [_slot()]),
+        ],
+        sessions: [_session(date: _weekMonday, periodStart: 2, periodEnd: 3)],
+      );
+      expect(timetable.lessons, hasLength(1));
+      expect(timetable.lessons.single.periodStart, 2);
+      expect(timetable.lessons.single.periodEnd, 3);
     });
 
     test('columns cover Mon–Fri and stretch to a weekend slot', () {
@@ -174,7 +214,11 @@ void main() {
       final timetable = buildWeeklyTimetable(
         weekStart: _weekMonday,
         groups: [
-          _group(id: 1, name: 'B', slots: [_slot(weekday: _wednesday)]),
+          _group(
+            id: 1,
+            name: 'B',
+            slots: [_slot(weekday: _wednesday)],
+          ),
           _group(
             id: 2,
             name: 'Z',

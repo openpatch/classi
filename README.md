@@ -118,6 +118,14 @@ name, and your WebUntis credentials. Once connected:
   mode shows the topic and the absences WebUntis has for exactly this
   lesson's WebUntis lessons, next to your own, with buttons to take them over
   into Classi.
+- **Sync lesson dates and periods** from a group's weekly schedule card or
+  the timetable's cloud sync button. Choose a date range, review the lessons,
+  and import the ones you want. The timetable imports lessons for linked,
+  active groups in the selected school year. Cancelled WebUntis lessons are
+  excluded, adjacent periods become one lesson, and existing Classi lessons
+  are kept. Repeating an import skips existing lessons; it does not move or
+  delete previously recorded lessons. Imported lessons appear in the group
+  calendar and timetable even without a recurring weekly schedule.
 - **Swipes as in Untis Mobile**: left marks a student absent, right marks
   them late, with Undo. This only changes Classi.
 

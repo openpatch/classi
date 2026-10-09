@@ -14,14 +14,15 @@ import '../../shared/widgets/content_constraints.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../lessons/lesson_periods.dart';
 import '../lessons/lesson_support.dart';
+import '../webuntis/webuntis_lesson_sync_sheet.dart';
 import 'lesson_schedule.dart';
 import 'lesson_schedule_editor_sheet.dart';
 import 'weekly_timetable.dart';
 import 'weekly_timetable_providers.dart';
 
 /// A week of every group's lessons laid out like a school timetable —
-/// weekdays across, school periods down — built from the weekly schedule set
-/// per group. Lessons that the schedule calls for but that have no session
+/// weekdays across, school periods down — built from dated lessons and each
+/// group's recurring schedule. Slots that have no session
 /// yet are drawn hollow so a teacher can see at a glance what is still
 /// unplanned, and tap one to plan it.
 class WeeklyTimetableScreen extends ConsumerStatefulWidget {
@@ -53,6 +54,15 @@ class _WeeklyTimetableScreenState extends ConsumerState<WeeklyTimetableScreen> {
       appBar: AppBar(
         title: Text('timetable'.tr()),
         actions: [
+          if (ref.watch(webUntisConnectionProvider).value != null)
+            IconButton(
+              onPressed: () => showWebUntisLessonSyncSheet(
+                context: context,
+                weekStart: _weekStart,
+              ),
+              icon: const Icon(Icons.cloud_sync_outlined),
+              tooltip: 'webuntis_sync_lessons'.tr(),
+            ),
           if (!_isCurrentWeek)
             IconButton(
               onPressed: _goToThisWeek,

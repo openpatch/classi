@@ -340,8 +340,11 @@ class SessionRepository {
   /// Creates every lesson in [lessons] that does not exist yet and returns how
   /// many were added. Lessons already on the books are left untouched, so
   /// filling a term twice is harmless and never overwrites what was recorded.
+  /// With [skipOverlapping], a timetable import also skips lessons covered by
+  /// an existing period block or a whole-day record in any category.
   Future<int> planLessons({
     required int groupId,
+    bool skipOverlapping = false,
     required List<
       ({
         DateTime date,
@@ -370,17 +373,37 @@ class SessionRepository {
         );
         if (existing != null) continue;
 
-        await _database.into(_database.sessionsTable).insert(
-          SessionsTableCompanion.insert(
-            groupId: groupId,
-            date: normalizedDate,
-            label: lesson.label,
-            categoryId: Value(lesson.categoryId),
-            categoryName: Value(lesson.categoryName),
-            periodStart: Value(lesson.periodStart),
-            periodEnd: Value(lesson.periodEnd),
-          ),
-        );
+        if (skipOverlapping) {
+          final onDate =
+              await (_database.select(_database.sessionsTable)
+                    ..where((t) => t.groupId.equals(groupId))
+                    ..where((t) => t.date.equals(normalizedDate)))
+                  .get();
+          // A timetable import must also keep an existing lesson in another
+          // category, or a whole-day record, rather than duplicating it.
+          if (onDate.any(
+            (session) =>
+                session.periodStart == 0 ||
+                (session.periodStart <= lesson.periodEnd &&
+                    lesson.periodStart <= session.periodEnd),
+          )) {
+            continue;
+          }
+        }
+
+        await _database
+            .into(_database.sessionsTable)
+            .insert(
+              SessionsTableCompanion.insert(
+                groupId: groupId,
+                date: normalizedDate,
+                label: lesson.label,
+                categoryId: Value(lesson.categoryId),
+                categoryName: Value(lesson.categoryName),
+                periodStart: Value(lesson.periodStart),
+                periodEnd: Value(lesson.periodEnd),
+              ),
+            );
         created++;
       }
     });
