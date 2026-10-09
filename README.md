@@ -29,6 +29,8 @@ and portable across devices.
   a grade round that goes through the class one student at a time, with
   keyboard entry on desktop
 - Class attendance statistics per group, for the whole year or one term
+- Random groups in lesson mode, with a selectable maximum group size,
+  balanced groups, and automatic exclusion of students absent for that lesson
 - Export of a group as one OpenDocument spreadsheet (`.ods`) with sheets for
   grades, attendance, homework, material, and a summary per student
 - Avatar editing powered by `avatar_maker`, persisted per student in the local

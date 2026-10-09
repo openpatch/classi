@@ -24,6 +24,7 @@ import '../notes/note_links.dart';
 import '../seating_plan/lesson_seating_view.dart';
 import '../webuntis/webuntis_lesson_day.dart';
 import '../webuntis/webuntis_link.dart';
+import 'group_builder/student_group_builder_sheet.dart';
 import 'lesson_periods.dart';
 import 'lesson_sections.dart';
 import 'lesson_support.dart';
@@ -94,25 +95,53 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     final groupValue = ref.watch(lessonGroupProvider(widget.groupId));
     final studentsValue = ref.watch(lessonStudentsProvider(widget.groupId));
     final materialSelectionsValue = ref.watch(
-      lessonMaterialSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+      lessonMaterialSelectionsProvider((
+        widget.groupId,
+        _selectedDate,
+        _periodStart,
+      )),
     );
     final homeworkSelectionsValue = ref.watch(
-      lessonHomeworkSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+      lessonHomeworkSelectionsProvider((
+        widget.groupId,
+        _selectedDate,
+        _periodStart,
+      )),
     );
     final absenceSelectionsValue = ref.watch(
-      lessonAbsenceSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+      lessonAbsenceSelectionsProvider((
+        widget.groupId,
+        _selectedDate,
+        _periodStart,
+      )),
     );
     final excusedSelectionsValue = ref.watch(
-      lessonExcusedSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+      lessonExcusedSelectionsProvider((
+        widget.groupId,
+        _selectedDate,
+        _periodStart,
+      )),
     );
     final lateSelectionsValue = ref.watch(
-      lessonLateSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+      lessonLateSelectionsProvider((
+        widget.groupId,
+        _selectedDate,
+        _periodStart,
+      )),
     );
     final activitySelectionsValue = ref.watch(
-      lessonActivitySelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+      lessonActivitySelectionsProvider((
+        widget.groupId,
+        _selectedDate,
+        _periodStart,
+      )),
     );
     final examSelectionsValue = ref.watch(
-      lessonExamSelectionsProvider((widget.groupId, _selectedDate, _periodStart)),
+      lessonExamSelectionsProvider((
+        widget.groupId,
+        _selectedDate,
+        _periodStart,
+      )),
     );
     final notesValue = ref.watch(lessonNotesProvider(widget.groupId));
 
@@ -154,6 +183,13 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                   : '${group.name} · $sessionLabel',
             ),
             actions: [
+              IconButton(
+                onPressed: studentsValue.hasValue
+                    ? () => _openGroupBuilder(context)
+                    : null,
+                icon: const Icon(Icons.groups_outlined),
+                tooltip: 'group_builder'.tr(),
+              ),
               IconButton(
                 onPressed: studentsValue.hasValue
                     ? () => _openStudentPicker(context)
@@ -263,7 +299,8 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
               final hasFab = gradeCategories.length > 1;
               final listPadding = hasFab
                   ? appScreenPadding.copyWith(
-                      bottom: appScreenPadding.bottom +
+                      bottom:
+                          appScreenPadding.bottom +
                           kFloatingActionButtonMargin +
                           kExtendedFabHeight,
                     )
@@ -620,11 +657,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     final bellTimes = await ref
         .read(webUntisSettingsServiceProvider)
         .readBellTimes();
-    final lessons = lessonsOnDate(
-      date: date,
-      slots: slots,
-      sessions: sessions,
-    );
+    final lessons = lessonsOnDate(date: date, slots: slots, sessions: sessions);
     if (!mounted || _selectedDate != date) return;
     final picked = pickCurrentLesson(
       lessons: lessons,
@@ -953,10 +986,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
       callName: student.callName,
       sortField: sortField,
     );
-    final body = await showQuickNoteDialog(
-      context: context,
-      studentName: name,
-    );
+    final body = await showQuickNoteDialog(context: context, studentName: name);
     if (body == null || body.trim().isEmpty) return;
 
     await ref
@@ -1246,6 +1276,18 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
           ),
           onClear: (studentId) =>
               _clearGrade(studentId: studentId, category: category),
+        ),
+      ),
+    );
+  }
+
+  void _openGroupBuilder(BuildContext context) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => StudentGroupBuilderSheet(
+          groupId: widget.groupId,
+          date: _selectedDate,
+          periodStart: _periodStart,
         ),
       ),
     );
