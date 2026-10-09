@@ -1,3 +1,4 @@
+import 'package:classi/core/providers/app_providers.dart';
 import 'package:classi/features/schedule/weekly_timetable.dart';
 import 'package:classi/features/schedule/weekly_timetable_providers.dart';
 import 'package:classi/features/schedule/weekly_timetable_screen.dart';
@@ -39,6 +40,7 @@ Future<void> _pumpScreen(WidgetTester tester, WeeklyTimetable timetable) async {
       path: 'assets/translations',
       child: ProviderScope(
         overrides: [
+          webUntisConnectionProvider.overrideWith((ref) async => null),
           weeklyTimetableProvider.overrideWith(
             (ref, arg) => AsyncData(timetable),
           ),

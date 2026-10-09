@@ -572,7 +572,6 @@ class _LessonStudentRow extends StatelessWidget {
                 late: late,
                 activity: activity,
                 exam: exam,
-                noteCount: noteCount,
                 onOpenStudent: onOpenStudent,
                 onToggleExcused: absent ? onToggleExcused : null,
                 onToggleActivity: absent ? onToggleActivity : null,
@@ -617,12 +616,13 @@ class _LessonStudentRow extends StatelessWidget {
   }
 }
 
+enum _AttendanceMenuAction { excused, activity, exam }
+
 class _LessonNameCell extends ConsumerWidget {
   const _LessonNameCell({
     required this.student,
     required this.absent,
     required this.excused,
-    required this.noteCount,
     required this.onOpenStudent,
     this.late = false,
     this.activity = false,
@@ -640,7 +640,6 @@ class _LessonNameCell extends ConsumerWidget {
 
   /// The [activity] is an exam written elsewhere.
   final bool exam;
-  final int noteCount;
   final VoidCallback onOpenStudent;
   final ValueChanged<bool>? onToggleExcused;
   final ValueChanged<bool>? onToggleActivity;
@@ -649,6 +648,33 @@ class _LessonNameCell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sortField = ref.watch(studentSortFieldProvider);
+    final statusIcon = absent && exam
+        ? Icons.quiz_outlined
+        : absent && activity
+        ? Icons.event_outlined
+        : absent
+        ? Icons.person_off_outlined
+        : late
+        ? Icons.schedule_outlined
+        : Icons.check_circle_outline;
+    final statusLabel = [
+      if (absent && exam)
+        'exam_elsewhere'.tr()
+      else if (absent && activity)
+        'activity'.tr()
+      else if (absent)
+        'absent'.tr()
+      else if (late)
+        'late'.tr()
+      else
+        'present'.tr(),
+      if (absent && excused) 'excused'.tr(),
+    ].join(' · ');
+    final statusIndicator = Badge(
+      isLabelVisible: absent && excused,
+      label: const Icon(Icons.check, size: 10),
+      child: Icon(statusIcon, size: 20),
+    );
     return Row(
       children: [
         InkWell(
@@ -659,113 +685,76 @@ class _LessonNameCell extends ConsumerWidget {
             child: StudentAvatar(student: student, size: 48),
           ),
         ),
-        const SizedBox(width: AppSpacing.medium),
+        const SizedBox(width: AppSpacing.small),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                studentDisplayName(
-                  firstName: student.firstName,
-                  lastName: student.lastName,
-                  callName: student.callName,
-                  sortField: sortField,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: AppSpacing.xSmall),
-              Wrap(
-                spacing: AppSpacing.small,
-                runSpacing: AppSpacing.xSmall,
-                children: [
-                  _LessonMetaBadge(
-                    icon: absent && exam
-                        ? Icons.quiz_outlined
-                        : absent && activity
-                        ? Icons.event_outlined
-                        : absent
-                        ? Icons.person_off_outlined
-                        : late
-                        ? Icons.schedule_outlined
-                        : Icons.check_circle_outline,
-                    label: absent && exam
-                        ? 'exam_elsewhere'.tr()
-                        : absent && activity
-                        ? 'activity'.tr()
-                        : absent
-                        ? 'absent'.tr()
-                        : late
-                        ? 'late'.tr()
-                        : 'present'.tr(),
-                  ),
-                  if (student.webuntisStudentId != null)
-                    const WebUntisBadge(tooltip: 'webuntis_student_linked'),
-                  if (absent && onToggleExcused != null)
-                    FilterChip(
-                      label: Text('excused'.tr()),
-                      selected: excused,
-                      onSelected: onToggleExcused,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  if (absent && onToggleActivity != null)
-                    FilterChip(
-                      label: Text('activity'.tr()),
-                      selected: activity && !exam,
-                      onSelected: onToggleActivity,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  if (absent && onToggleExam != null)
-                    FilterChip(
-                      label: Text('exam_elsewhere'.tr()),
-                      selected: exam,
-                      onSelected: onToggleExam,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  if (noteCount > 0)
-                    _LessonMetaBadge(
-                      icon: Icons.sticky_note_2_outlined,
-                      label: '$noteCount',
-                    ),
-                ],
-              ),
-            ],
+          child: Text(
+            studentDisplayName(
+              firstName: student.firstName,
+              lastName: student.lastName,
+              callName: student.callName,
+              sortField: sortField,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleSmall,
           ),
         ),
+        if (student.webuntisStudentId != null) ...[
+          const SizedBox(width: AppSpacing.xSmall),
+          const WebUntisBadge(tooltip: 'webuntis_student_linked'),
+        ],
+        if (absent && onToggleExcused != null)
+          PopupMenuButton<_AttendanceMenuAction>(
+            tooltip: statusLabel,
+            onSelected: (action) {
+              switch (action) {
+                case _AttendanceMenuAction.excused:
+                  onToggleExcused?.call(!excused);
+                case _AttendanceMenuAction.activity:
+                  onToggleActivity?.call(!(activity && !exam));
+                case _AttendanceMenuAction.exam:
+                  onToggleExam?.call(!exam);
+              }
+            },
+            itemBuilder: (context) => [
+              CheckedPopupMenuItem(
+                value: _AttendanceMenuAction.excused,
+                checked: excused,
+                child: Text('excused'.tr()),
+              ),
+              CheckedPopupMenuItem(
+                value: _AttendanceMenuAction.activity,
+                checked: activity && !exam,
+                child: Text('activity'.tr()),
+              ),
+              CheckedPopupMenuItem(
+                value: _AttendanceMenuAction.exam,
+                checked: exam,
+                child: Text('exam_elsewhere'.tr()),
+              ),
+            ],
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  statusIndicator,
+                  const Icon(Icons.arrow_drop_down, size: 16),
+                ],
+              ),
+            ),
+          )
+        else
+          Tooltip(
+            message: statusLabel,
+            child: SizedBox(
+              width: 40,
+              height: 48,
+              child: Center(child: statusIndicator),
+            ),
+          ),
       ],
-    );
-  }
-}
-
-class _LessonMetaBadge extends StatelessWidget {
-  const _LessonMetaBadge({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.small,
-          vertical: AppSpacing.xSmall,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14),
-            const SizedBox(width: AppSpacing.xSmall),
-            Text(label, style: Theme.of(context).textTheme.labelSmall),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -788,10 +777,9 @@ class _LessonGradeCell extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.small),
           backgroundColor: hasGrade
               ? null
-              : Theme.of(context)
-                    .colorScheme
-                    .secondaryContainer
-                    .withValues(alpha: 0.35),
+              : Theme.of(
+                  context,
+                ).colorScheme.secondaryContainer.withValues(alpha: 0.35),
         ),
         child: Text(
           gradeValue ?? 'no_grade'.tr(),

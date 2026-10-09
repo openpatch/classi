@@ -2,7 +2,7 @@ import '../../core/database/app_database.dart';
 import '../lessons/lesson_support.dart';
 import 'lesson_schedule.dart';
 
-/// A group whose weekly slots feed the timetable.
+/// An active group shown in the timetable, with any recurring weekly slots.
 typedef TimetableGroup = ({
   int id,
   String name,
@@ -14,9 +14,8 @@ typedef TimetableGroup = ({
   Map<String, String> categoryNames,
 });
 
-/// One lesson the weekly timetable shows: a slot from a group's weekly
-/// schedule resolved to a concrete date in the shown week, plus whether a
-/// session already covers it.
+/// A dated lesson in the weekly timetable: either a saved session or an
+/// unplanned lesson proposed by a group's recurring schedule.
 class TimetableLesson {
   const TimetableLesson({
     required this.groupId,
@@ -54,8 +53,8 @@ class TimetableLesson {
   final bool planned;
 }
 
-/// The timetable for one week: every lesson the groups' weekly schedules call
-/// for, with the grid dimensions a screen needs to lay them out.
+/// Saved lessons and unplanned weekly slots for one week, with the grid
+/// dimensions a screen needs to lay them out.
 class WeeklyTimetable {
   const WeeklyTimetable({
     required this.weekStart,
@@ -80,11 +79,15 @@ class WeeklyTimetable {
 
   bool get isEmpty => lessons.isEmpty;
 
-  List<TimetableLesson> get unplanned =>
-      [for (final lesson in lessons) if (!lesson.planned) lesson];
+  List<TimetableLesson> get unplanned => [
+    for (final lesson in lessons)
+      if (!lesson.planned) lesson,
+  ];
 
-  List<TimetableLesson> lessonsOn(int weekday) =>
-      [for (final lesson in lessons) if (lesson.weekday == weekday) lesson];
+  List<TimetableLesson> lessonsOn(int weekday) => [
+    for (final lesson in lessons)
+      if (lesson.weekday == weekday) lesson,
+  ];
 }
 
 /// The fewest period rows the grid shows even for a short timetable, so it
@@ -105,6 +108,7 @@ WeeklyTimetable buildWeeklyTimetable({
   final sessionsByGroupDate = <int, Map<DateTime, List<Session>>>{};
   for (final session in sessions) {
     final date = normalizeLessonDate(session.date);
+    if (date.isBefore(monday) || date.isAfter(addDays(monday, 6))) continue;
     sessionsByGroupDate
         .putIfAbsent(session.groupId, () => <DateTime, List<Session>>{})
         .putIfAbsent(date, () => <Session>[])
@@ -113,6 +117,7 @@ WeeklyTimetable buildWeeklyTimetable({
 
   final lessons = <TimetableLesson>[];
   for (final group in groups) {
+    final represented = <int>{};
     for (final slot in group.slots) {
       final date = addDays(monday, slot.weekday - 1);
       final periodEnd = slot.periodEnd < slot.periodStart
@@ -121,6 +126,7 @@ WeeklyTimetable buildWeeklyTimetable({
       final daySessions =
           sessionsByGroupDate[group.id]?[date] ?? const <Session>[];
       final covering = _coveringSession(daySessions, slot);
+      if (covering != null && !represented.add(covering.id)) continue;
       lessons.add(
         TimetableLesson(
           groupId: group.id,
@@ -128,14 +134,41 @@ WeeklyTimetable buildWeeklyTimetable({
           groupColorHex: group.colorHex,
           date: date,
           weekday: slot.weekday,
-          periodStart: slot.periodStart,
-          periodEnd: periodEnd,
-          categoryId: slot.categoryId,
-          categoryName: group.categoryNames[slot.categoryId] ?? slot.categoryId,
+          periodStart: covering?.periodStart ?? slot.periodStart,
+          periodEnd: covering?.periodEnd ?? periodEnd,
+          categoryId: covering?.categoryId ?? slot.categoryId,
+          categoryName:
+              covering?.categoryName ??
+              group.categoryNames[slot.categoryId] ??
+              slot.categoryId,
           label: covering?.label ?? '',
           planned: covering != null,
         ),
       );
+    }
+    // Dated lessons also belong in the timetable when no recurring slot
+    // covers them, including lessons imported from WebUntis.
+    for (final day
+        in sessionsByGroupDate[group.id]?.entries ??
+            const <MapEntry<DateTime, List<Session>>>[]) {
+      for (final session in day.value) {
+        if (!represented.add(session.id)) continue;
+        lessons.add(
+          TimetableLesson(
+            groupId: group.id,
+            groupName: group.name,
+            groupColorHex: group.colorHex,
+            date: day.key,
+            weekday: day.key.weekday,
+            periodStart: session.periodStart,
+            periodEnd: session.periodEnd,
+            categoryId: session.categoryId,
+            categoryName: session.categoryName,
+            label: session.label,
+            planned: true,
+          ),
+        );
+      }
     }
   }
 
@@ -167,8 +200,9 @@ WeeklyTimetable buildWeeklyTimetable({
 /// in which case sharing the date is taken as covering the slot. Returns null
 /// when nothing covers it.
 Session? _coveringSession(List<Session> daySessions, LessonSlotDraft slot) {
-  final slotEnd =
-      slot.periodEnd < slot.periodStart ? slot.periodStart : slot.periodEnd;
+  final slotEnd = slot.periodEnd < slot.periodStart
+      ? slot.periodStart
+      : slot.periodEnd;
   Session? periodless;
   for (final session in daySessions) {
     if (session.periodStart <= 0) {

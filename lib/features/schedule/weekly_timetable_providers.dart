@@ -41,15 +41,12 @@ final weeklyTimetableProvider = Provider.autoDispose
         final timetableGroups = <TimetableGroup>[];
         for (final group in groups) {
           final slots = slotsByGroup[group.id] ?? const <LessonSlot>[];
-          if (slots.isEmpty) continue;
           final categories = parseGradeCategories(group.gradeCategoriesJson);
           timetableGroups.add((
             id: group.id,
             name: group.name,
             colorHex: group.colorHex,
-            slots: [
-              for (final slot in slots) LessonSlotDraft.fromSlot(slot),
-            ],
+            slots: [for (final slot in slots) LessonSlotDraft.fromSlot(slot)],
             categoryNames: {
               for (final category in categories) category.id: category.name,
             },

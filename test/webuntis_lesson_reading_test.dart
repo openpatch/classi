@@ -238,6 +238,7 @@ void main() {
 
     ({WebUntisService service, List<Map<String, dynamic>> calls}) buildService({
       List<Map<String, dynamic>> absences = const [],
+      bool teacher = true,
     }) {
       final calls = <Map<String, dynamic>>[];
       settings = _FakeSettingsService();
@@ -263,7 +264,10 @@ void main() {
 
         final result = switch (body['method']) {
           'getUserData2017' => {
-            'userData': {'elemType': 'TEACHER', 'elemId': 7},
+            'userData': {
+              'elemType': teacher ? 'TEACHER' : 'STUDENT',
+              'elemId': 7,
+            },
             'masterData': {
               'timeStamp': 1,
               // 2026-09-25 is a Friday. Periods 1 and 2 as in the timetable.
@@ -347,6 +351,66 @@ void main() {
         built.calls.map((call) => call['method']),
         everyElement(startsWith('get')),
       );
+    });
+
+    test(
+      'timetable imports read the teacher and split a term into date ranges',
+      () async {
+        final built = buildService();
+        final timetable = await built.service.loadTimetable(
+          start: DateTime(2026, 9, 25),
+          end: DateTime(2026, 10, 25),
+          link: const WebUntisGroupLink.klasse(11),
+        );
+        final calls = built.calls
+            .where((call) => call['method'] == 'getTimetable2017')
+            .toList();
+        expect(calls, hasLength(2));
+        expect(calls.first['id'], 7);
+        expect(calls.first['type'], 'TEACHER');
+        expect(calls.first['startDate'], '2026-09-25');
+        expect(calls.first['endDate'], '2026-10-22');
+        expect(calls.last['startDate'], '2026-10-23');
+        expect(calls.last['endDate'], '2026-10-25');
+        expect(timetable.timeGrid.isEmpty, isFalse);
+        expect(settings.storedBellTimes, isNotNull);
+        expect(
+          built.calls.map((call) => call['method']),
+          everyElement(startsWith('get')),
+        );
+      },
+    );
+
+    test('non-teacher imports read only the linked class', () async {
+      final built = buildService(teacher: false);
+      await built.service.loadTimetable(
+        start: start,
+        end: start,
+        link: const WebUntisGroupLink.klasse(11),
+      );
+      final call = built.calls.last;
+      expect(call['method'], 'getTimetable2017');
+      expect(call['id'], 11);
+      expect(call['type'], 'CLASS');
+    });
+
+    test('non-teachers cannot import another teacher course', () async {
+      final built = buildService(teacher: false);
+      await expectLater(
+        built.service.loadTimetable(
+          start: start,
+          end: start,
+          link: const WebUntisGroupLink.course({50}),
+        ),
+        throwsA(
+          isA<WebUntisException>().having(
+            (error) => error.errorCode,
+            'error code',
+            WebUntisErrorCode.noRight,
+          ),
+        ),
+      );
+      expect(built.calls, hasLength(1));
     });
   });
 

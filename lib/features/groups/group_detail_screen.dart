@@ -61,6 +61,7 @@ import '../students/student_sorting.dart';
 import '../webuntis/webuntis_badge.dart';
 import '../webuntis/webuntis_link.dart';
 import '../webuntis/webuntis_link_picker.dart';
+import '../webuntis/webuntis_lesson_sync_sheet.dart';
 import '../webuntis/webuntis_student_import_sheet.dart';
 import 'group_form.dart';
 import 'group_picker_sheet.dart';
@@ -398,6 +399,9 @@ class GroupDetailScreen extends ConsumerWidget {
                     schoolYearId: group.schoolYearId,
                     categories: categories,
                     archived: archived,
+                    onSyncWebUntis: archived || !webUntisConnected
+                        ? null
+                        : () => _syncWebUntisLessons(context, ref, group),
                   ),
                   const SizedBox(height: AppSpacing.large),
                   _LessonCalendarCard(
@@ -449,7 +453,8 @@ class GroupDetailScreen extends ConsumerWidget {
                                 _importWebUntisStudents(context, ref, group.id),
                       onCopyStudents: archived
                           ? null
-                          : () => _copyStudentsFromGroup(context, ref, group.id),
+                          : () =>
+                                _copyStudentsFromGroup(context, ref, group.id),
                       onSyncWebUntisStudents: archived || !webUntisConnected
                           ? null
                           : () => _syncWebUntisStudents(context, ref, group),
@@ -546,7 +551,14 @@ class GroupDetailScreen extends ConsumerWidget {
         error: e,
         stackTrace: st,
       );
-      if (context.mounted) showErrorSnackBar(context, 'generic_error'.tr(), error: e, stackTrace: st);
+      if (context.mounted) {
+        showErrorSnackBar(
+          context,
+          'generic_error'.tr(),
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 
@@ -721,6 +733,16 @@ class GroupDetailScreen extends ConsumerWidget {
       return;
     }
     await _importWebUntisRoster(context, ref, group.id, link);
+  }
+
+  Future<void> _syncWebUntisLessons(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    final link = await _resolveLink(context, ref, group);
+    if (link == null || !context.mounted) return;
+    await showWebUntisLessonSyncSheet(context: context, groupId: group.id);
   }
 
   Future<void> _importWebUntisRoster(
@@ -1705,12 +1727,14 @@ class _LessonScheduleCard extends ConsumerWidget {
     required this.schoolYearId,
     required this.categories,
     required this.archived,
+    this.onSyncWebUntis,
   });
 
   final int groupId;
   final int? schoolYearId;
   final List<GradeCategory> categories;
   final bool archived;
+  final VoidCallback? onSyncWebUntis;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1799,6 +1823,12 @@ class _LessonScheduleCard extends ConsumerWidget {
                 spacing: AppSpacing.small,
                 runSpacing: AppSpacing.small,
                 children: [
+                  if (onSyncWebUntis != null)
+                    OutlinedButton.icon(
+                      onPressed: onSyncWebUntis,
+                      icon: const Icon(Icons.cloud_sync_outlined),
+                      label: Text('webuntis_sync_lessons'.tr()),
+                    ),
                   FilledButton.tonalIcon(
                     onPressed: () => planNextLesson(
                       context: context,
@@ -3089,9 +3119,8 @@ class _StudentsSectionState extends ConsumerState<_StudentsSection> {
                               ? 'hide_seating_fit_colors'.tr()
                               : 'show_seating_fit_colors'.tr(),
                           visualDensity: VisualDensity.compact,
-                          onPressed: () => setState(
-                            () => _showFitColors = !_showFitColors,
-                          ),
+                          onPressed: () =>
+                              setState(() => _showFitColors = !_showFitColors),
                         ),
                         IconButton(
                           icon: const Icon(Icons.fullscreen),
