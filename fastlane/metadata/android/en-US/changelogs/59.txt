@@ -1,5 +1,7 @@
 Features
 
 - Track activities and exams elsewhere apart from absences
+- Add randomized group builder
+- Sync WebUntis lessons and streamline lesson attendance
 
 
