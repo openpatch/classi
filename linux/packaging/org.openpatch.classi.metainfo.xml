@@ -83,6 +83,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.24.0" date="2026-10-09">
+      <description>
+        <ul>
+          <li>Track activities and exams elsewhere apart from absences</li>
+          <li>Add randomized group builder</li>
+          <li>Sync WebUntis lessons and streamline lesson attendance</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.23.0" date="2026-09-28">
       <description>
         <ul>
