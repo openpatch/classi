@@ -11,21 +11,28 @@ class GradeSystemDefinition {
     required this.id,
     required this.name,
     required this.entries,
+    this.gradesPerRow,
   });
 
   final String id;
   final String name;
   final List<GradeScaleEntry> entries;
 
+  /// How many grades the grade picker shows side-by-side per row before
+  /// starting a new one. `null` lets the picker wrap automatically.
+  final int? gradesPerRow;
+
   GradeSystemDefinition copyWith({
     String? id,
     String? name,
     List<GradeScaleEntry>? entries,
+    int? gradesPerRow,
   }) {
     return GradeSystemDefinition(
       id: id ?? this.id,
       name: name ?? this.name,
       entries: entries ?? this.entries,
+      gradesPerRow: gradesPerRow ?? this.gradesPerRow,
     );
   }
 
@@ -33,6 +40,7 @@ class GradeSystemDefinition {
     'id': id,
     'name': name,
     'entries': [for (final entry in entries) entry.toJson()],
+    if (gradesPerRow != null) 'gradesPerRow': gradesPerRow as Object,
   };
 
   static GradeSystemDefinition? fromJson(Object? raw) {
@@ -72,7 +80,19 @@ class GradeSystemDefinition {
       return null;
     }
 
-    return GradeSystemDefinition(id: id, name: name, entries: entries);
+    final gradesPerRowRaw = raw['gradesPerRow'];
+    final gradesPerRow = gradesPerRowRaw is num
+        ? gradesPerRowRaw.toInt()
+        : int.tryParse(gradesPerRowRaw?.toString() ?? '');
+
+    return GradeSystemDefinition(
+      id: id,
+      name: name,
+      entries: entries,
+      gradesPerRow: gradesPerRow != null && gradesPerRow > 0
+          ? gradesPerRow
+          : null,
+    );
   }
 }
 
@@ -163,9 +183,17 @@ class GradeSystemController extends ChangeNotifier {
     return null;
   }
 
+  /// The number of grades the picker shows side-by-side for groups using
+  /// [entries], from the matching grade system. `null` when no system matches
+  /// or the system leaves the value unset.
+  int? gradesPerRowFor(List<GradeScaleEntry> entries) {
+    return matchingSystem(entries)?.gradesPerRow;
+  }
+
   Future<void> addSystem({
     required String name,
     required List<GradeScaleEntry> entries,
+    int? gradesPerRow,
   }) async {
     _systems = [
       ..._systems,
@@ -173,6 +201,7 @@ class GradeSystemController extends ChangeNotifier {
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         name: name.trim(),
         entries: entries,
+        gradesPerRow: gradesPerRow,
       ),
     ];
     await _persist();
@@ -183,11 +212,17 @@ class GradeSystemController extends ChangeNotifier {
     required String id,
     required String name,
     required List<GradeScaleEntry> entries,
+    int? gradesPerRow,
   }) async {
     _systems = [
       for (final system in _systems)
         if (system.id == id)
-          system.copyWith(name: name.trim(), entries: entries)
+          GradeSystemDefinition(
+            id: system.id,
+            name: name.trim(),
+            entries: entries,
+            gradesPerRow: gradesPerRow,
+          )
         else
           system,
     ];
@@ -242,6 +277,7 @@ class GradeSystemController extends ChangeNotifier {
       id: 'default-points',
       name: '15-0',
       entries: defaultPointGradeScaleEntries,
+      gradesPerRow: 3,
     ),
   ];
 }

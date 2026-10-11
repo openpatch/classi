@@ -485,6 +485,9 @@ class _TimeframeStudentRow extends ConsumerWidget {
     final result = await showGradePickerDialog(
       context: context,
       gradeScale: gradeScale,
+      gradesPerRow: ref
+          .read(gradeSystemControllerProvider)
+          .gradesPerRowFor(gradeScaleEntries),
       initialValue: finalGrade,
     );
     if (result == null || !result.confirmed) return;

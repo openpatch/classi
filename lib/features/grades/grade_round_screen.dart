@@ -224,33 +224,7 @@ class _GradeRoundScreenState extends ConsumerState<GradeRoundScreen> {
           ),
         ],
         const SizedBox(height: AppSpacing.xxLarge),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: AppSpacing.small,
-          runSpacing: AppSpacing.small,
-          children: [
-            for (final label in labels)
-              SizedBox(
-                width: 72,
-                height: 56,
-                child: label == current
-                    ? FilledButton(
-                        onPressed: () => _grade(roster, student, label),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: widget.color,
-                          foregroundColor: widget.color == null
-                              ? null
-                              : onColorForBackground(widget.color!),
-                        ),
-                        child: Text(label),
-                      )
-                    : FilledButton.tonal(
-                        onPressed: () => _grade(roster, student, label),
-                        child: Text(label),
-                      ),
-              ),
-          ],
-        ),
+        _gradeButtonGrid(labels, current, roster, student),
         if (_typed.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.small),
           Text(
@@ -291,6 +265,72 @@ class _GradeRoundScreenState extends ConsumerState<GradeRoundScreen> {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _gradeButtonGrid(
+    List<String> labels,
+    String? current,
+    List<Student> roster,
+    Student student,
+  ) {
+    Widget button(String label) => SizedBox(
+      width: 72,
+      height: 56,
+      child: label == current
+          ? FilledButton(
+              onPressed: () => _grade(roster, student, label),
+              style: FilledButton.styleFrom(
+                backgroundColor: widget.color,
+                foregroundColor: widget.color == null
+                    ? null
+                    : onColorForBackground(widget.color!),
+              ),
+              child: Text(label),
+            )
+          : FilledButton.tonal(
+              onPressed: () => _grade(roster, student, label),
+              child: Text(label),
+            ),
+    );
+
+    final gradesPerRow = ref
+        .read(gradeSystemControllerProvider)
+        .gradesPerRowFor(widget.gradeScale);
+    if (gradesPerRow == null || gradesPerRow < 1) {
+      return Wrap(
+        alignment: WrapAlignment.center,
+        spacing: AppSpacing.small,
+        runSpacing: AppSpacing.small,
+        children: [for (final label in labels) button(label)],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var start = 0; start < labels.length; start += gradesPerRow)
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: start + gradesPerRow < labels.length
+                  ? AppSpacing.small
+                  : 0,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (
+                  var index = start;
+                  index < start + gradesPerRow && index < labels.length;
+                  index++
+                ) ...[
+                  if (index > start) const SizedBox(width: AppSpacing.small),
+                  button(labels[index]),
+                ],
+              ],
+            ),
+          ),
       ],
     );
   }

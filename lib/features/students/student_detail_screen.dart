@@ -798,6 +798,15 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
     );
   }
 
+  int? get _gradesPerRow {
+    final gradeScaleEntries = widget.gradeScaleJson == null
+        ? defaultGradeScaleEntries
+        : parseGradeScaleEntries(widget.gradeScaleJson!);
+    return ref
+        .read(gradeSystemControllerProvider)
+        .gradesPerRowFor(gradeScaleEntries);
+  }
+
   void _syncCategorySelection(List<GradeCategory> categories) {
     final categoryIds = {for (final category in categories) category.id};
     if (!_initializedCategorySelection) {
@@ -825,6 +834,7 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
       context: context,
       gradeScale: gradeScale,
       gradeCategories: gradeCategories,
+      gradesPerRow: _gradesPerRow,
       initialDate: grade.date,
       initialSessionLabel: grade.sessionLabel,
       initialValue: grade.value,
@@ -857,6 +867,7 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
       context: context,
       gradeScale: gradeScale,
       gradeCategories: gradeCategories,
+      gradesPerRow: _gradesPerRow,
       title: 'add_grade'.tr(),
     );
     if (result == null) {
