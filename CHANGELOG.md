@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.24.0] - 2026-10-09
+
+### Features
+
+- *(attendance)* Track activities and exams elsewhere apart from absences
+- *(lessons)* Add randomized group builder
+- Sync WebUntis lessons and streamline lesson attendance
+
+
 ## [1.23.0] - 2026-09-28
 
 ### Bug Fixes
