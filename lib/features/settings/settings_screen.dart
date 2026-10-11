@@ -353,7 +353,11 @@ class _GradeSystemsSection extends ConsumerWidget {
 
     await ref
         .read(gradeSystemControllerProvider)
-        .addSystem(name: result.name, entries: result.entries);
+        .addSystem(
+          name: result.name,
+          entries: result.entries,
+          gradesPerRow: result.gradesPerRow,
+        );
   }
 
   Future<void> _editSystem(
@@ -365,6 +369,7 @@ class _GradeSystemsSection extends ConsumerWidget {
       context: context,
       initialName: system.name,
       initialEntries: system.entries,
+      initialGradesPerRow: system.gradesPerRow,
       title: 'edit_grade_system'.tr(),
     );
     if (result == null) {
@@ -377,6 +382,7 @@ class _GradeSystemsSection extends ConsumerWidget {
           id: system.id,
           name: result.name,
           entries: result.entries,
+          gradesPerRow: result.gradesPerRow,
         );
     await ref
         .read(groupRepositoryProvider)

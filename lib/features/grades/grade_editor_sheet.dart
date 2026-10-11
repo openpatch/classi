@@ -17,6 +17,7 @@ Future<GradeEditorResult?> showGradeEditorSheet({
   required BuildContext context,
   required List<String> gradeScale,
   required List<GradeCategory> gradeCategories,
+  int? gradesPerRow,
   DateTime? initialDate,
   String? initialSessionLabel,
   String? initialValue,
@@ -30,6 +31,7 @@ Future<GradeEditorResult?> showGradeEditorSheet({
     showDragHandle: true,
     builder: (context) => _GradeEditorSheet(
       gradeScale: gradeScale,
+      gradesPerRow: gradesPerRow,
       gradeCategories: gradableCategories(
         gradeCategories,
         keep: initialCategoryId,
@@ -47,6 +49,7 @@ class _GradeEditorSheet extends StatefulWidget {
   const _GradeEditorSheet({
     required this.gradeScale,
     required this.gradeCategories,
+    this.gradesPerRow,
     this.initialDate,
     this.initialSessionLabel,
     this.initialValue,
@@ -56,6 +59,7 @@ class _GradeEditorSheet extends StatefulWidget {
 
   final List<String> gradeScale;
   final List<GradeCategory> gradeCategories;
+  final int? gradesPerRow;
   final DateTime? initialDate;
   final String? initialSessionLabel;
   final String? initialValue;
@@ -283,6 +287,7 @@ class _GradeEditorSheetState extends State<_GradeEditorSheet> {
     final result = await showGradePickerDialog(
       context: context,
       gradeScale: gradeOptions,
+      gradesPerRow: widget.gradesPerRow,
       initialValue: field.value,
     );
     if (result == null || !result.confirmed) {

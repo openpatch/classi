@@ -161,7 +161,6 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
         final selectedCategory = _resolveSelectedCategory(gradeCategories);
 
         final gradeScaleEntries = parseGradeScaleEntries(group.gradeScaleJson);
-        final gradeScale = [for (final entry in gradeScaleEntries) entry.label];
         final sessionLabel = _sessionController.text.trim();
         final gradeSelectionsValue = ref.watch(
           lessonGradeSelectionsProvider((
@@ -488,7 +487,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                           currentValue:
                               gradeSelections[student.id] ??
                               _noGradeSelectionValue,
-                          gradeScale: gradeScale,
+                          gradeScaleEntries: gradeScaleEntries,
                         ),
                         onOpenNotes: (student) => _showStudentNotes(
                           context: context,
@@ -566,7 +565,7 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
                           currentValue:
                               gradeSelections[student.id] ??
                               _noGradeSelectionValue,
-                          gradeScale: gradeScale,
+                          gradeScaleEntries: gradeScaleEntries,
                         ),
                         onOpenNotes: (student) => _showStudentNotes(
                           context: context,
@@ -1224,11 +1223,14 @@ class _LessonModeScreenState extends ConsumerState<LessonModeScreen> {
     required int studentId,
     required GradeCategory category,
     required String currentValue,
-    required List<String> gradeScale,
+    required List<GradeScaleEntry> gradeScaleEntries,
   }) async {
     final result = await showGradePickerDialog(
       context: context,
-      gradeScale: gradeScale,
+      gradeScale: [for (final entry in gradeScaleEntries) entry.label],
+      gradesPerRow: ref
+          .read(gradeSystemControllerProvider)
+          .gradesPerRowFor(gradeScaleEntries),
       initialValue: currentValue == _noGradeSelectionValue
           ? null
           : currentValue,
