@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.25.0] - 2026-10-11
+
+### Features
+
+- Add grades-per-row setting to grade systems
+
+
 ## [1.24.0] - 2026-10-09
 
 ### Features
