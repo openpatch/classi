@@ -151,6 +151,15 @@ class DatabasePathService {
       if (await currentFile.exists()) {
         await currentFile.delete();
       }
+
+      final documents = Directory(documentsDirectoryFor(currentFile.path));
+      if (await documents.exists()) {
+        await _copyDirectory(
+          documents,
+          Directory(documentsDirectoryFor(targetFile.path)),
+        );
+        await documents.delete(recursive: true);
+      }
     }
 
     await setDatabaseFilePath(targetPath);
@@ -221,6 +230,16 @@ class DatabasePathService {
       return p.join(path, _internalDbFileName);
     }
     return path;
+  }
+
+  /// Folder for files a library keeps outside its encrypted database (exam
+  /// PDFs): `documents/` inside a package, `<file>.documents` next to a bare
+  /// database file.
+  static String documentsDirectoryFor(String path) {
+    if (isPackagePath(path)) {
+      return p.join(path, 'documents');
+    }
+    return '$path.documents';
   }
 
   static String projectSettingsPathFor(String path) =>

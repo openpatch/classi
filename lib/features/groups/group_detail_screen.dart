@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import '../exams/ui/exams_card.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/utils/grade_categories.dart';
@@ -386,6 +387,8 @@ class GroupDetailScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.large),
+                  ExamsCard(group: group, archived: archived),
                   const SizedBox(height: AppSpacing.large),
                   _TimeframesCard(
                     groupId: group.id,

@@ -12,6 +12,10 @@ import 'package:drift/src/runtime/executor/stream_queries.dart';
 import 'cipher_opener.dart';
 import 'database_indexes.dart';
 import 'tables/attendance_logs_table.dart';
+import 'tables/exam_expectations_table.dart';
+import 'tables/exam_participants_table.dart';
+import 'tables/exam_scores_table.dart';
+import 'tables/exams_table.dart';
 import 'tables/grade_entries_table.dart';
 import 'tables/groups_table.dart';
 import 'tables/homework_logs_table.dart';
@@ -46,6 +50,10 @@ typedef TimeframeGrade = TimeframeGradesTableData;
 @DriftDatabase(
   tables: [
     AttendanceLogsTable,
+    ExamsTable,
+    ExamExpectationsTable,
+    ExamParticipantsTable,
+    ExamScoresTable,
     GroupsTable,
     StudentsTable,
     StudentRelationsTable,
@@ -93,7 +101,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Exposed statically so callers can compare it against the version on disk
   /// before opening (and therefore migrating) a library.
-  static const int currentSchemaVersion = 35;
+  static const int currentSchemaVersion = 36;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -385,6 +393,26 @@ class AppDatabase extends _$AppDatabase {
           );
         }
       }
+
+      if (from < 36) {
+        // Exams graded per expectation, and grade entries computed from them.
+        for (final table in <TableInfo>[
+          examsTable,
+          examExpectationsTable,
+          examParticipantsTable,
+          examScoresTable,
+        ]) {
+          if (!await _hasTable(table.actualTableName)) {
+            await migrator.createTable(table);
+          }
+        }
+        if (await _hasTable('grade_entries_table') &&
+            !await _hasColumn('grade_entries_table', 'exam_id')) {
+          await migrator.addColumn(gradeEntriesTable, gradeEntriesTable.examId);
+        }
+        await _createIndexes();
+        await _createUpdatedAtTriggers();
+      }
     },
   );
 
@@ -414,6 +442,10 @@ class AppDatabase extends _$AppDatabase {
   /// during the v28 migration.
   static const List<String> _tablesWithCreatedAt = [
     'attendance_logs_table',
+    'exam_expectations_table',
+    'exam_participants_table',
+    'exam_scores_table',
+    'exams_table',
     'grade_entries_table',
     'groups_table',
     'homework_logs_table',

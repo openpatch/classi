@@ -12,11 +12,16 @@ class GradeSystemDefinition {
     required this.name,
     required this.entries,
     this.gradesPerRow,
+    this.thresholds,
   });
 
   final String id;
   final String name;
   final List<GradeScaleEntry> entries;
+
+  /// Lowest percentage of an exam's points per grade label. Makes the grade
+  /// system a template for exam grading schemes; `null` when not set.
+  final Map<String, double>? thresholds;
 
   /// How many grades the grade picker shows side-by-side per row before
   /// starting a new one. `null` lets the picker wrap automatically.
@@ -27,12 +32,14 @@ class GradeSystemDefinition {
     String? name,
     List<GradeScaleEntry>? entries,
     int? gradesPerRow,
+    Map<String, double>? thresholds,
   }) {
     return GradeSystemDefinition(
       id: id ?? this.id,
       name: name ?? this.name,
       entries: entries ?? this.entries,
       gradesPerRow: gradesPerRow ?? this.gradesPerRow,
+      thresholds: thresholds ?? this.thresholds,
     );
   }
 
@@ -41,6 +48,11 @@ class GradeSystemDefinition {
     'name': name,
     'entries': [for (final entry in entries) entry.toJson()],
     if (gradesPerRow != null) 'gradesPerRow': gradesPerRow as Object,
+    if (thresholds != null)
+      'thresholds': [
+        for (final e in thresholds!.entries)
+          {'label': e.key, 'minPercent': e.value},
+      ],
   };
 
   static GradeSystemDefinition? fromJson(Object? raw) {
@@ -85,6 +97,14 @@ class GradeSystemDefinition {
         ? gradesPerRowRaw.toInt()
         : int.tryParse(gradesPerRowRaw?.toString() ?? '');
 
+    final thresholdsRaw = raw['thresholds'];
+    final thresholds = <String, double>{
+      if (thresholdsRaw is List)
+        for (final t in thresholdsRaw)
+          if (t is Map && t['label'] != null && t['minPercent'] is num)
+            '${t['label']}': (t['minPercent'] as num).toDouble(),
+    };
+
     return GradeSystemDefinition(
       id: id,
       name: name,
@@ -92,6 +112,7 @@ class GradeSystemDefinition {
       gradesPerRow: gradesPerRow != null && gradesPerRow > 0
           ? gradesPerRow
           : null,
+      thresholds: thresholds.isEmpty ? null : thresholds,
     );
   }
 }
@@ -194,6 +215,7 @@ class GradeSystemController extends ChangeNotifier {
     required String name,
     required List<GradeScaleEntry> entries,
     int? gradesPerRow,
+    Map<String, double>? thresholds,
   }) async {
     _systems = [
       ..._systems,
@@ -202,6 +224,7 @@ class GradeSystemController extends ChangeNotifier {
         name: name.trim(),
         entries: entries,
         gradesPerRow: gradesPerRow,
+        thresholds: thresholds,
       ),
     ];
     await _persist();
@@ -213,6 +236,7 @@ class GradeSystemController extends ChangeNotifier {
     required String name,
     required List<GradeScaleEntry> entries,
     int? gradesPerRow,
+    Map<String, double>? thresholds,
   }) async {
     _systems = [
       for (final system in _systems)
@@ -222,6 +246,7 @@ class GradeSystemController extends ChangeNotifier {
             name: name.trim(),
             entries: entries,
             gradesPerRow: gradesPerRow,
+            thresholds: thresholds,
           )
         else
           system,
@@ -267,17 +292,54 @@ class GradeSystemController extends ChangeNotifier {
       id: 'default-1-6',
       name: '1-6',
       entries: defaultGradeScaleEntries,
+      thresholds: {'1': 87, '2': 73, '3': 59, '4': 45, '5': 18, '6': 0},
     ),
     GradeSystemDefinition(
       id: 'default-extended',
       name: '1+/1/1-/.../6',
       entries: defaultExtendedGradeScaleEntries,
+      thresholds: {
+        '1+': 95,
+        '1': 90,
+        '1-': 85,
+        '2+': 80,
+        '2': 75,
+        '2-': 70,
+        '3+': 65,
+        '3': 60,
+        '3-': 55,
+        '4+': 50,
+        '4': 45,
+        '4-': 40,
+        '5+': 33,
+        '5': 27,
+        '5-': 20,
+        '6': 0,
+      },
     ),
     GradeSystemDefinition(
       id: 'default-points',
       name: '15-0',
       entries: defaultPointGradeScaleEntries,
       gradesPerRow: 3,
+      thresholds: {
+        '15': 95,
+        '14': 90,
+        '13': 85,
+        '12': 80,
+        '11': 75,
+        '10': 70,
+        '9': 65,
+        '8': 60,
+        '7': 55,
+        '6': 50,
+        '5': 45,
+        '4': 40,
+        '3': 33,
+        '2': 27,
+        '1': 20,
+        '0': 0,
+      },
     ),
   ];
 }

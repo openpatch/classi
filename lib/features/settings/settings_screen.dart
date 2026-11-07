@@ -17,6 +17,8 @@ import '../../shared/utils/formatting.dart';
 import '../../shared/widgets/app_updater.dart';
 import '../../shared/widgets/app_error_state.dart';
 import '../../shared/widgets/content_constraints.dart';
+import '../exams/typst/typst_service.dart';
+import '../exams/ui/typst_settings_section.dart';
 import '../setup/database_selection_sheet.dart';
 import '../webuntis/webuntis_settings_section.dart';
 import 'backup_conflict_screen.dart';
@@ -87,6 +89,13 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             const _SectionCard(title: '', child: _GradeSystemsSection()),
             const SizedBox(height: 16),
+            if (TypstService.isSupportedPlatform) ...[
+              _SectionCard(
+                title: 'typst_settings'.tr(),
+                child: const TypstSettingsSection(),
+              ),
+              const SizedBox(height: 16),
+            ],
             _SectionCard(
               title: 'school_years'.tr(),
               child: ListTile(
@@ -357,6 +366,7 @@ class _GradeSystemsSection extends ConsumerWidget {
           name: result.name,
           entries: result.entries,
           gradesPerRow: result.gradesPerRow,
+          thresholds: result.thresholds,
         );
   }
 
@@ -370,6 +380,7 @@ class _GradeSystemsSection extends ConsumerWidget {
       initialName: system.name,
       initialEntries: system.entries,
       initialGradesPerRow: system.gradesPerRow,
+      initialThresholds: system.thresholds,
       title: 'edit_grade_system'.tr(),
     );
     if (result == null) {
@@ -383,6 +394,7 @@ class _GradeSystemsSection extends ConsumerWidget {
           name: result.name,
           entries: result.entries,
           gradesPerRow: result.gradesPerRow,
+          thresholds: result.thresholds,
         );
     await ref
         .read(groupRepositoryProvider)

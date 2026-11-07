@@ -7,6 +7,9 @@ typedef GradeSystemEditorResult = ({
   String name,
   List<GradeScaleEntry> entries,
   int? gradesPerRow,
+
+  /// Exam thresholds per label; `null` when no grade has one.
+  Map<String, double>? thresholds,
 });
 
 Future<GradeSystemEditorResult?> showGradeSystemEditorSheet({
@@ -14,6 +17,7 @@ Future<GradeSystemEditorResult?> showGradeSystemEditorSheet({
   String? initialName,
   List<GradeScaleEntry>? initialEntries,
   int? initialGradesPerRow,
+  Map<String, double>? initialThresholds,
   String? title,
 }) {
   return showModalBottomSheet<GradeSystemEditorResult>(
@@ -25,6 +29,7 @@ Future<GradeSystemEditorResult?> showGradeSystemEditorSheet({
       initialName: initialName,
       initialEntries: initialEntries,
       initialGradesPerRow: initialGradesPerRow,
+      initialThresholds: initialThresholds,
       title: title,
     ),
   );
@@ -35,12 +40,14 @@ class _GradeSystemEditorSheet extends StatefulWidget {
     this.initialName,
     this.initialEntries,
     this.initialGradesPerRow,
+    this.initialThresholds,
     this.title,
   });
 
   final String? initialName;
   final List<GradeScaleEntry>? initialEntries;
   final int? initialGradesPerRow;
+  final Map<String, double>? initialThresholds;
   final String? title;
 
   @override
@@ -63,7 +70,10 @@ class _GradeSystemEditorSheetState extends State<_GradeSystemEditorSheet> {
     );
     _entries = [
       for (final entry in widget.initialEntries ?? defaultGradeScaleEntries)
-        _EditableScaleEntry.fromEntry(entry),
+        _EditableScaleEntry.fromEntry(
+          entry,
+          minPercent: widget.initialThresholds?[entry.label],
+        ),
     ];
   }
 
@@ -108,6 +118,11 @@ class _GradeSystemEditorSheetState extends State<_GradeSystemEditorSheet> {
                     : null,
               ),
               const SizedBox(height: 16),
+              Text(
+                'exam_thresholds_hint'.tr(),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
               for (var index = 0; index < _entries.length; index++) ...[
                 Row(
                   children: [
@@ -137,6 +152,29 @@ class _GradeSystemEditorSheetState extends State<_GradeSystemEditorSheet> {
                             double.tryParse((value ?? '').trim()) == null
                             ? 'grade_numeric_value'.tr()
                             : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _entries[index].minPercentController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'exam_threshold_percent'.tr(),
+                          suffixText: '%',
+                        ),
+                        validator: (value) {
+                          final trimmed = (value ?? '').trim();
+                          if (trimmed.isEmpty) return null;
+                          final parsed = double.tryParse(
+                            trimmed.replaceAll(',', '.'),
+                          );
+                          return parsed == null || parsed < 0 || parsed > 100
+                              ? 'exam_threshold_percent'.tr()
+                              : null;
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -286,6 +324,13 @@ class _GradeSystemEditorSheetState extends State<_GradeSystemEditorSheet> {
       return;
     }
 
+    final thresholds = <String, double>{
+      for (final entry in _entries)
+        entry.labelController.text.trim(): ?double.tryParse(
+          entry.minPercentController.text.trim().replaceAll(',', '.'),
+        ),
+    };
+
     final gradesPerRowText = _gradesPerRowController.text.trim();
     final parsedGradesPerRow = gradesPerRowText.isEmpty
         ? null
@@ -305,6 +350,7 @@ class _GradeSystemEditorSheetState extends State<_GradeSystemEditorSheet> {
       gradesPerRow: parsedGradesPerRow != null && parsedGradesPerRow > 0
           ? parsedGradesPerRow
           : null,
+      thresholds: thresholds.isEmpty ? null : thresholds,
     ));
   }
 }
@@ -313,13 +359,20 @@ class _EditableScaleEntry {
   _EditableScaleEntry({
     required this.labelController,
     required this.numericValueController,
+    required this.minPercentController,
   });
 
-  factory _EditableScaleEntry.fromEntry(GradeScaleEntry entry) {
+  factory _EditableScaleEntry.fromEntry(
+    GradeScaleEntry entry, {
+    double? minPercent,
+  }) {
     return _EditableScaleEntry(
       labelController: TextEditingController(text: entry.label),
       numericValueController: TextEditingController(
         text: formatNumber(entry.numericValue),
+      ),
+      minPercentController: TextEditingController(
+        text: minPercent == null ? '' : formatNumber(minPercent),
       ),
     );
   }
@@ -328,14 +381,17 @@ class _EditableScaleEntry {
     return _EditableScaleEntry(
       labelController: TextEditingController(),
       numericValueController: TextEditingController(),
+      minPercentController: TextEditingController(),
     );
   }
 
   final TextEditingController labelController;
   final TextEditingController numericValueController;
+  final TextEditingController minPercentController;
 
   void dispose() {
     labelController.dispose();
     numericValueController.dispose();
+    minPercentController.dispose();
   }
 }

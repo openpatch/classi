@@ -154,6 +154,7 @@ class GradeRepository {
       FROM grade_entries_table g
       JOIN students_table s ON s.id = g.student_id
       WHERE s.group_id = ? AND g.session_label = ? AND g.date = ? AND g.category_id = ?
+        AND g.exam_id IS NULL
       ''',
           variables: [
             Variable.withInt(groupId),
@@ -184,6 +185,7 @@ class GradeRepository {
       FROM grade_entries_table g
       JOIN students_table s ON s.id = g.student_id
       WHERE s.group_id = ? AND g.session_label = ? AND g.date = ? AND g.category_id = ?
+        AND g.exam_id IS NULL
       ''',
           variables: [
             Variable.withInt(groupId),
@@ -220,6 +222,7 @@ class GradeRepository {
           FROM grade_entries_table g
           JOIN students_table s ON s.id = g.student_id
           WHERE s.group_id = ? AND g.date = ? AND g.category_id = ?
+            AND g.exam_id IS NULL
           GROUP BY g.session_label
           ORDER BY entry_count DESC, g.session_label ASC
           LIMIT 1
@@ -271,6 +274,8 @@ class GradeRepository {
               )
               ..where((table) => table.categoryId.equals(normalizedCategoryId))
               ..where((table) => table.date.equals(normalizedDate))
+              // Grades computed by an exam are owned by the exam.
+              ..where((table) => table.examId.isNull())
               ..orderBy([(table) => OrderingTerm.asc(table.id)]))
             .get();
     final existing = matches.isEmpty ? null : matches.first;
@@ -322,7 +327,8 @@ class GradeRepository {
           ..where((table) => table.studentId.equals(studentId))
           ..where((table) => table.date.equals(normalizedDate))
           ..where((table) => table.sessionLabel.equals(normalizedSessionLabel))
-          ..where((table) => table.categoryId.equals(normalizedCategoryId)))
+          ..where((table) => table.categoryId.equals(normalizedCategoryId))
+          ..where((table) => table.examId.isNull()))
         .go();
   }
 
@@ -347,7 +353,8 @@ class GradeRepository {
                 (table) => table.sessionLabel.equals(normalizedSessionLabel),
               )
               ..where((table) => table.categoryId.equals(normalizedCategoryId))
-              ..where((table) => table.date.equals(normalizedDate)))
+              ..where((table) => table.date.equals(normalizedDate))
+              ..where((table) => table.examId.isNull()))
             .get();
 
     GradeEntry? duplicate;

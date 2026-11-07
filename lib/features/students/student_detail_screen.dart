@@ -8,6 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 import 'package:go_router/go_router.dart';
 
+import '../exams/exam_providers.dart';
+import '../exams/ui/exam_actions.dart' show examLocation;
+import '../exams/ui/student_exam_results_card.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
 import '../../features/attendance/attendance_state.dart';
@@ -318,6 +321,7 @@ class StudentDetailScreen extends ConsumerWidget {
                           gradeScaleJson: groupValue.value?.gradeScaleJson,
                           gradeCategoriesJson:
                               groupValue.value?.gradeCategoriesJson,
+                          groupId: groupValue.value?.id,
                           classAverage: classAverage,
                         ),
                         _MaterialTab(
@@ -552,10 +556,12 @@ class _GradesTab extends ConsumerStatefulWidget {
     required this.gradesValue,
     required this.gradeScaleJson,
     required this.gradeCategoriesJson,
+    this.groupId,
     this.classAverage,
   });
 
   final int studentId;
+  final int? groupId;
   final AsyncValue<List<GradeEntry>> gradesValue;
   final String? gradeScaleJson;
   final String? gradeCategoriesJson;
@@ -733,6 +739,11 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
               ),
             if (numericGrades.isNotEmpty && average != null)
               const SizedBox(height: 16),
+            if (widget.groupId != null)
+              StudentExamResultsCard(
+                groupId: widget.groupId!,
+                studentId: widget.studentId,
+              ),
             // Timeframe grades section (displayed above grades table)
             if (filteredTimeframeGrades.isNotEmpty) ...[
               const SizedBox(height: 16),
@@ -830,6 +841,11 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
     List<String> gradeScale,
     List<GradeCategory> gradeCategories,
   ) async {
+    // A grade computed by an exam is changed through the exam's points.
+    if (grade.examId != null) {
+      await _openExam(context, grade.examId!);
+      return;
+    }
     final result = await showGradeEditorSheet(
       context: context,
       gradeScale: gradeScale,
@@ -856,6 +872,12 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
           categoryId: result.categoryId,
           categoryName: result.categoryName,
         );
+  }
+
+  Future<void> _openExam(BuildContext context, int examId) async {
+    final exam = await ref.read(examRepositoryProvider).getExam(examId);
+    if (exam == null || !context.mounted) return;
+    context.push(examLocation(exam.groupId, exam.id));
   }
 
   Future<void> _addGrade(
@@ -898,6 +920,7 @@ class _GradesTabState extends ConsumerState<_GradesTab> {
         await _editGrade(context, grade, gradeScale, gradeCategories);
         return;
       case _GradeRowAction.delete:
+        if (grade.examId != null) return;
         final confirmed = await showConfirmDialog(
           context: context,
           title: 'confirm_delete'.tr(namedArgs: {'name': grade.value}),
@@ -1036,9 +1059,23 @@ class _GradeTableRow extends StatelessWidget {
           children: [
             SizedBox(
               width: 52,
-              child: Text(
-                grade.value,
-                style: Theme.of(context).textTheme.titleSmall,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      grade.value,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  if (grade.examId != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Tooltip(
+                        message: 'exam_grade_from_exam'.tr(),
+                        child: const Icon(Icons.assignment_outlined, size: 14),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(width: 12),
@@ -1077,12 +1114,17 @@ class _GradeTableRow extends StatelessWidget {
                     itemBuilder: (context) => [
                       PopupMenuItem(
                         value: _GradeRowAction.edit,
-                        child: Text('edit'.tr()),
+                        child: Text(
+                          grade.examId == null
+                              ? 'edit'.tr()
+                              : 'exam_open'.tr(),
+                        ),
                       ),
-                      PopupMenuItem(
-                        value: _GradeRowAction.delete,
-                        child: Text('delete'.tr()),
-                      ),
+                      if (grade.examId == null)
+                        PopupMenuItem(
+                          value: _GradeRowAction.delete,
+                          child: Text('delete'.tr()),
+                        ),
                     ],
                   ),
                 ],

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import 'exams_table.dart';
 import 'students_table.dart';
 
 class GradeEntriesTable extends Table {
@@ -19,6 +20,14 @@ class GradeEntriesTable extends Table {
 
   TextColumn get categoryName =>
       text().withDefault(const Constant('Sonstige Mitarbeit'))();
+
+  /// The exam this grade was computed from. Such entries are owned by the
+  /// exam: it creates, updates and deletes them.
+  IntColumn get examId => integer().nullable().references(
+    ExamsTable,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 

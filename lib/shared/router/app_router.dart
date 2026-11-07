@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers/app_providers.dart';
 import '../../core/session/app_session_controller.dart';
+import '../../features/exams/ui/exam_screen.dart';
+import '../../features/exams/ui/exam_student_screen.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/groups/groups_screen.dart';
 import '../../features/lessons/lesson_mode_screen.dart';
@@ -181,6 +183,25 @@ final routerProvider = Provider<GoRouter>((ref) {
                       );
                       return uri.toString();
                     },
+                  ),
+                  GoRoute(
+                    path: 'exams/:examId',
+                    builder: (_, state) => ExamScreen(
+                      groupId: int.parse(state.pathParameters['groupId']!),
+                      examId: int.parse(state.pathParameters['examId']!),
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'students/:studentId',
+                        builder: (_, state) => ExamStudentScreen(
+                          groupId: int.parse(state.pathParameters['groupId']!),
+                          examId: int.parse(state.pathParameters['examId']!),
+                          studentId: int.parse(
+                            state.pathParameters['studentId']!,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'lists',

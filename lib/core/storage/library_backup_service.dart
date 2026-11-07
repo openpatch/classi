@@ -121,6 +121,12 @@ class WebDavBackupDeviceInfo {
   final String? revision;
 }
 
+const String _documentsEntryPrefix = 'documents/';
+
+/// Whether [name] is a stored document: `<sha256>.<ext>`, nothing else.
+bool isDocumentFileName(String name) =>
+    RegExp(r'^[0-9a-f]{64}\.[a-z0-9]{1,8}$').hasMatch(name);
+
 class LibraryBackupService {
   /// Builds a `.classi-backup` ZIP archive from the current database files
   /// and returns the raw bytes.
@@ -173,6 +179,22 @@ class LibraryBackupService {
       archive.addFile(ArchiveFile(entry.value, bytes.length, bytes));
     }
 
+    // Exam PDFs live next to the database, not in it.
+    final documents = Directory(
+      DatabasePathService.documentsDirectoryFor(normalizedSourcePath),
+    );
+    if (await documents.exists()) {
+      await for (final entity in documents.list()) {
+        if (entity is! File) continue;
+        final name = p.basename(entity.path);
+        if (!isDocumentFileName(name)) continue;
+        final bytes = await entity.readAsBytes();
+        archive.addFile(
+          ArchiveFile('$_documentsEntryPrefix$name', bytes.length, bytes),
+        );
+      }
+    }
+
     final encoded = Uint8List.fromList(ZipEncoder().encode(archive));
     developer.log(
       'buildBackupArchive: archive size=${encoded.length} bytes',
@@ -216,6 +238,10 @@ class LibraryBackupService {
         final file = File(artifactPath);
         if (await file.exists()) await file.delete();
       }
+      final documents = Directory(
+        DatabasePathService.documentsDirectoryFor(destinationDatabasePath),
+      );
+      if (await documents.exists()) await documents.delete(recursive: true);
     }
 
     final destinationByEntryName = {
@@ -230,6 +256,22 @@ class LibraryBackupService {
 
     for (final file in archive.files) {
       if (!file.isFile || file.name == _backupManifestFileName) continue;
+
+      if (file.name.startsWith(_documentsEntryPrefix)) {
+        final name = file.name.substring(_documentsEntryPrefix.length);
+        // Only plain content-addressed names: an archive must not be able to
+        // write outside the documents folder.
+        if (!isDocumentFileName(name)) continue;
+        final target = File(
+          p.join(
+            DatabasePathService.documentsDirectoryFor(destinationDatabasePath),
+            name,
+          ),
+        );
+        await target.parent.create(recursive: true);
+        await target.writeAsBytes(file.content as List<int>, flush: true);
+        continue;
+      }
 
       final destinationPath = destinationByEntryName[file.name];
       if (destinationPath == null) continue;

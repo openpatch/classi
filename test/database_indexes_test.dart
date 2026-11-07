@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// The index names the app expects to exist, parsed out of the DDL so the two
 /// can never disagree.
 Set<String> _expectedIndexNames() {
-  final pattern = RegExp(r'CREATE INDEX IF NOT EXISTS (\w+)');
+  final pattern = RegExp(r'CREATE (?:UNIQUE )?INDEX IF NOT EXISTS (\w+)');
   return {
     for (final statement in databaseIndexStatements)
       pattern.firstMatch(statement)!.group(1)!,

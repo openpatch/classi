@@ -49,6 +49,21 @@ const List<String> databaseIndexStatements = [
   'CREATE INDEX IF NOT EXISTS idx_material_logs_date '
       'ON material_logs_table (date)',
 
+  // Exams are listed per group; their rows are read per exam.
+  'CREATE INDEX IF NOT EXISTS idx_exams_group_id_date '
+      'ON exams_table (group_id, date)',
+  'CREATE INDEX IF NOT EXISTS idx_exam_expectations_exam_id '
+      'ON exam_expectations_table (exam_id, sort_order)',
+  'CREATE INDEX IF NOT EXISTS idx_exam_participants_exam_id '
+      'ON exam_participants_table (exam_id)',
+  'CREATE INDEX IF NOT EXISTS idx_exam_scores_exam_id_student_id '
+      'ON exam_scores_table (exam_id, student_id)',
+  'CREATE INDEX IF NOT EXISTS idx_exam_scores_student_id '
+      'ON exam_scores_table (student_id)',
+  // An exam owns at most one grade entry per student.
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_grade_entries_exam_id_student_id '
+      'ON grade_entries_table (exam_id, student_id) WHERE exam_id IS NOT NULL',
+
   // Sessions drive the timetable and lesson mode.
   'CREATE INDEX IF NOT EXISTS idx_sessions_group_id_date '
       'ON sessions_table (group_id, date)',
