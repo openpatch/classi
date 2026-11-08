@@ -111,6 +111,62 @@ void main() {
     }
   });
 
+  test('renders documents that get assessio from a template', () async {
+    final assessio = _assessioDir();
+    if (assessio == null || !await _hasTypst()) {
+      markTestSkipped('typst or typst-assessio not available');
+      return;
+    }
+    final project = await Directory.systemTemp.createTemp('assessio-template');
+    addTearDown(() => project.delete(recursive: true));
+    for (final name in ['lib.typ', 'i18n.typ', 'grades.typ']) {
+      await File(p.join(assessio, name)).copy(p.join(project.path, name));
+    }
+    // A school template (like magistera's klausur) that passes assessio on.
+    await File(
+      p.join(project.path, 'template.typ'),
+    ).writeAsString('#import "lib.typ": *\n#let school = "Test"\n');
+    final main = File(p.join(project.path, 'exam.typ'));
+    await main.writeAsString('''
+#import "template.typ": *
+#set text(lang: "de")
+#task(1)[Rechne. #expectation(points: 2, [Ergebnis richtig.])]
+''');
+    final link = TypstLink(mainFile: main.path, root: project.path);
+    final workflow = ExamTypstWorkflow(TypstService());
+    expect(
+      ExamTypstWorkflow.findAssessioImport(await main.readAsString()),
+      isNull,
+    );
+
+    final result = await workflow.read(link);
+    addTearDown(result.dispose);
+    expect(result.exam.items.single.maxPoints, 2);
+    expect((await result.rubric.readAsBytes()).take(4), '%PDF'.codeUnits);
+    final text = await _pdfText(result.rubric);
+    if (text != null) {
+      expect(text, contains('Ergebnis richtig.'));
+      expect(text, isNot(contains('Rechne.')));
+    }
+  });
+
+  test('explains a document without any assessio', () async {
+    if (!await _hasTypst()) {
+      markTestSkipped('typst not available');
+      return;
+    }
+    final project = await Directory.systemTemp.createTemp('no-assessio');
+    addTearDown(() => project.delete(recursive: true));
+    final main = File(p.join(project.path, 'exam.typ'));
+    await main.writeAsString('= Just a document\n');
+    await expectLater(
+      ExamTypstWorkflow(
+        TypstService(),
+      ).read(TypstLink(mainFile: main.path, root: project.path)),
+      throwsA(isA<TypstFailureException>()),
+    );
+  });
+
   test('large student data goes through a temporary file', () async {
     final assessio = _assessioDir();
     if (assessio == null || !await _hasTypst()) {

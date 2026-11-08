@@ -180,13 +180,11 @@ class ExamTypstWorkflow {
     required File output,
   }) async {
     final main = File(link.mainFile);
-    final importTarget = findAssessioImport(await main.readAsString());
-    if (importTarget == null) {
-      throw const TypstFailureException(
-        'The document does not import assessio, so classi cannot render its '
-        'Erwartungshorizont.',
-      );
-    }
+    // Import assessio as the exam does. Documents built on a template that
+    // re-exports assessio (`#import "@local/magistera:0.1.0": *`) have no
+    // assessio import of their own: take the functions from the exam module.
+    final directImport = findAssessioImport(await main.readAsString());
+    final importTarget = directImport ?? jsonEncode(p.basename(main.path));
     final folder = p.dirname(main.path);
     final token =
         '${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(1 << 30)}';
@@ -209,12 +207,25 @@ class ExamTypstWorkflow {
         ),
         flush: true,
       );
-      final start = await typst.queryValue(
-        main: wrapper,
-        root: Directory(link.root),
-        label: 'assessio-rubric-start',
-        inputs: inputs,
-      );
+      final String start;
+      try {
+        start = await typst.queryValue(
+          main: wrapper,
+          root: Directory(link.root),
+          label: 'assessio-rubric-start',
+          inputs: inputs,
+        );
+      } on TypstFailureException catch (error) {
+        if (directImport == null &&
+            error.details.contains('unresolved import')) {
+          throw TypstFailureException(
+            'The document does not import assessio, and its template does not '
+            'pass assessio on. Import assessio (or the template) with `*`.',
+            details: error.details,
+          );
+        }
+        rethrow;
+      }
       final startPage = int.tryParse(start.trim());
       if (startPage == null) {
         throw TypstFailureException(

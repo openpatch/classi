@@ -6,21 +6,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../shared/theme/app_ui.dart';
 import '../data/exam_repository.dart';
+import '../domain/exam_calculator.dart';
 import '../domain/exam_structure.dart';
 import '../exam_providers.dart';
 import 'exam_format.dart';
 
 const double _nameWidth = 200;
 const double _cellWidth = 64;
-const double _rowHeight = 44;
+const double _rowHeight = 40;
 const double _headerHeight = 60;
-const double _totalWidth = 96;
+const double _totalWidth = 112;
 const double _gradeWidth = 64;
 
-/// Keyboard-driven point entry for wide screens: one row per student, one
-/// column per expectation. Enter and Tab move right (wrapping to the next
-/// student), the up and down arrows move between students. A value is saved
-/// when the field is left.
+typedef _Cell = ({int row, int column});
+
+/// Keyboard-driven point entry for wide screens, like a spreadsheet: one row
+/// per student, one column per expectation.
+///
+/// Cells are plain text; only the selected cell is a text field. Rows are
+/// built lazily. Enter and Tab move right (wrapping to the next student), the
+/// up and down arrows move between students, Escape discards the typed
+/// value. A value is saved when the cell is left.
 class ExamPointsGrid extends ConsumerStatefulWidget {
   const ExamPointsGrid({
     required this.snapshot,
@@ -36,143 +42,267 @@ class ExamPointsGrid extends ConsumerStatefulWidget {
 }
 
 class _ExamPointsGridState extends ConsumerState<ExamPointsGrid> {
-  final _header = ScrollController();
-  final _body = ScrollController();
-  final _controllers = <(int, int), TextEditingController>{};
-  final _focus = <(int, int), FocusNode>{};
-  final _invalid = <(int, int)>{};
+  final _headerScroll = ScrollController();
+  final _bodyScroll = ScrollController();
+  final _namesScroll = ScrollController();
+  final _rowsScroll = ScrollController();
+  final _editor = TextEditingController();
 
-  List<ExamItem> get _items => [
-    for (final item in widget.snapshot.items)
-      if (item.kind.isScored && item.id != null) item,
-  ];
+  /// Focus of the open cell. Every cell gets a fresh node: a text field only
+  /// opens its text input connection when its node *gains* focus, so reusing
+  /// an already focused node for the next cell would swallow all typing.
+  late FocusNode _editorFocus = _newEditorFocus();
+
+  _Cell? _selected;
+  bool _invalid = false;
+
+  /// Values written but not yet back from the database, so a saved cell does
+  /// not flash its old value.
+  final _pending = <(int, int), double?>{};
+
+  /// Built rows by student, reused while nothing in the row changed: saving
+  /// one value then rebuilds one row, not the whole class.
+  final _rowCache = <int, (String, Widget)>{};
+
+  late List<ExamItem> _items;
+  late List<Student> _students;
+  late ExamCalculator _calculator;
 
   @override
   void initState() {
     super.initState();
-    _body.addListener(() {
-      if (_header.hasClients) _header.jumpTo(_body.offset);
+    _derive();
+    _bodyScroll.addListener(() {
+      if (_headerScroll.hasClients) _headerScroll.jumpTo(_bodyScroll.offset);
+    });
+    _rowsScroll.addListener(() {
+      if (_namesScroll.hasClients) _namesScroll.jumpTo(_rowsScroll.offset);
     });
   }
 
+  static bool _sameItems(ExamSnapshot a, ExamSnapshot b) {
+    if (a.items.length != b.items.length) return false;
+    for (var i = 0; i < a.items.length; i++) {
+      final x = a.items[i];
+      final y = b.items[i];
+      if (x.id != y.id || x.maxPoints != y.maxPoints || x.kind != y.kind) {
+        return false;
+      }
+    }
+    return a.meta.sameAs(b.meta);
+  }
+
+  FocusNode _newEditorFocus() {
+    late final FocusNode node;
+    node = FocusNode()
+      ..addListener(() {
+        // Clicking somewhere outside the grid saves the open cell.
+        if (identical(node, _editorFocus) &&
+            !node.hasFocus &&
+            _selected != null) {
+          _commit();
+        }
+      });
+    return node;
+  }
+
+  void _derive() {
+    _items = [
+      for (final item in widget.snapshot.items)
+        if (item.kind.isScored && item.id != null) item,
+    ];
+    _students = [
+      for (final s in widget.students)
+        if (widget.snapshot.attendanceOf(s.id) == ExamAttendance.present) s,
+    ];
+    _calculator = widget.snapshot.calculator;
+    _rowCache.clear();
+  }
+
+  String _rowSignature(int row, Student student) {
+    final selected = _selected;
+    final inRow = selected != null && selected.row == row;
+    final buffer = StringBuffer()
+      ..write(row)
+      ..write(inRow ? 'S${selected.column}$_invalid' : '-')
+      ..write(widget.snapshot.participants[student.id]?.gradeOverride);
+    for (final item in _items) {
+      buffer
+        ..write('|')
+        ..write(_value(student.id, item.id!));
+    }
+    return buffer.toString();
+  }
+
   @override
-  void dispose() {
-    _header.dispose();
-    _body.dispose();
-    for (final c in _controllers.values) {
-      c.dispose();
-    }
-    for (final f in _focus.values) {
-      f.dispose();
-    }
-    super.dispose();
-  }
-
-  String _stored(int studentId, int itemId) {
-    final value = widget.snapshot.scoresOf(studentId)[itemId];
-    return value == null ? '' : formatPoints(context, value);
-  }
-
-  TextEditingController _controller(int studentId, int itemId) {
-    return _controllers.putIfAbsent((
-      studentId,
-      itemId,
-    ), () => TextEditingController(text: _stored(studentId, itemId)));
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Theme or language changed: cached rows are stale.
+    _rowCache.clear();
   }
 
   @override
   void didUpdateWidget(covariant ExamPointsGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Follow changes made elsewhere (another device, the per-student
-    // screen), but never overwrite what is being typed or a rejected value.
-    for (final entry in _controllers.entries) {
-      final key = entry.key;
-      if ((_focus[key]?.hasFocus ?? false) || _invalid.contains(key)) continue;
-      final stored = _stored(key.$1, key.$2);
-      if (parsePoints(entry.value.text) != parsePoints(stored)) {
-        entry.value.text = stored;
-      }
+    final sameShape =
+        _sameItems(oldWidget.snapshot, widget.snapshot) &&
+        oldWidget.snapshot.scheme.sameAs(widget.snapshot.scheme) &&
+        identical(oldWidget.students, widget.students);
+    final cache = Map.of(_rowCache);
+    _derive();
+    // Rows only depend on the student's own values (part of the signature)
+    // as long as structure, scheme and students stay the same.
+    if (sameShape) _rowCache.addAll(cache);
+    // Drop pending values the database has caught up with.
+    _pending.removeWhere(
+      (key, value) => widget.snapshot.scoresOf(key.$1)[key.$2] == value,
+    );
+    final selected = _selected;
+    if (selected != null &&
+        (selected.row >= _students.length ||
+            selected.column >= _items.length)) {
+      _selected = null;
     }
   }
 
-  FocusNode _node(int studentId, int itemId, ExamItem item) {
-    return _focus.putIfAbsent((studentId, itemId), () {
-      final node = FocusNode();
-      node.addListener(() {
-        if (!node.hasFocus) _commit(studentId, item);
-      });
-      return node;
+  @override
+  void dispose() {
+    for (final c in [_headerScroll, _bodyScroll, _namesScroll, _rowsScroll]) {
+      c.dispose();
+    }
+    _editor.dispose();
+    _editorFocus.dispose();
+    super.dispose();
+  }
+
+  double? _value(int studentId, int itemId) {
+    final key = (studentId, itemId);
+    if (_pending.containsKey(key)) return _pending[key];
+    return widget.snapshot.scoresOf(studentId)[itemId];
+  }
+
+  Map<int, double> _scoresWithPending(int studentId) {
+    final scores = {...widget.snapshot.scoresOf(studentId)};
+    for (final entry in _pending.entries) {
+      if (entry.key.$1 != studentId) continue;
+      if (entry.value == null) {
+        scores.remove(entry.key.$2);
+      } else {
+        scores[entry.key.$2] = entry.value!;
+      }
+    }
+    return scores;
+  }
+
+  void _select(_Cell cell) {
+    final student = _students[cell.row];
+    final item = _items[cell.column];
+    final value = _value(student.id, item.id!);
+    final previous = _editorFocus;
+    _editorFocus = _newEditorFocus();
+    // The old field is gone after this frame; release its node then.
+    WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+    setState(() {
+      _selected = cell;
+      _invalid = false;
+      _editor.text = value == null ? '' : formatPoints(context, value);
+      _editor.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _editor.text.length,
+      );
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _selected == cell) _editorFocus.requestFocus();
     });
   }
 
-  Future<void> _commit(int studentId, ExamItem item) async {
-    final key = (studentId, item.id!);
-    final text = _controllers[key]?.text ?? '';
+  /// Saves the open cell. Returns `false` (and keeps the cell open) when the
+  /// typed value is not a valid number of points.
+  bool _commit() {
+    final cell = _selected;
+    if (cell == null) return true;
+    final student = _students[cell.row];
+    final item = _items[cell.column];
+    final text = _editor.text;
     final value = parsePoints(text);
     final valid =
         text.trim().isEmpty ||
         (value != null && value >= 0 && value <= item.maxPoints + 1e-9);
     if (!valid) {
-      setState(() => _invalid.add(key));
-      return;
+      setState(() => _invalid = true);
+      return false;
     }
-    if (_invalid.remove(key)) setState(() {});
-    final current = widget.snapshot.scoresOf(studentId)[item.id];
-    if (current == value) return;
-    try {
-      await ref
-          .read(examRepositoryProvider)
-          .setScore(
-            examId: widget.snapshot.exam.id,
-            expectationId: item.id!,
-            studentId: studentId,
-            points: value,
-          );
-    } on RangeError {
-      if (mounted) setState(() => _invalid.add(key));
-    }
+    final key = (student.id, item.id!);
+    if (_value(student.id, item.id!) == value) return true;
+    setState(() => _pending[key] = value);
+    ref
+        .read(examRepositoryProvider)
+        .setScore(
+          examId: widget.snapshot.exam.id,
+          expectationId: item.id!,
+          studentId: student.id,
+          points: value,
+        )
+        .catchError((Object _) {
+          if (mounted) setState(() => _pending.remove(key));
+        });
+    return true;
   }
 
-  void _move(int row, int column, {required int dRow, required int dColumn}) {
-    final items = _items;
-    var r = row;
-    var c = column + dColumn;
-    if (dColumn != 0) {
-      if (c >= items.length) {
-        c = 0;
-        r++;
-      } else if (c < 0) {
-        c = items.length - 1;
-        r--;
+  void _move({int dRow = 0, int dColumn = 0}) {
+    final cell = _selected;
+    if (cell == null || !_commit()) return;
+    var row = cell.row;
+    var column = cell.column + dColumn;
+    if (column >= _items.length) {
+      column = 0;
+      row++;
+    } else if (column < 0) {
+      column = _items.length - 1;
+      row--;
+    }
+    row += dRow;
+    if (row < 0 || row >= _students.length) return;
+    _select((row: row, column: column));
+    _reveal(row, column);
+  }
+
+  /// Scrolls so the selected cell is visible.
+  void _reveal(int row, int column) {
+    if (_rowsScroll.hasClients) {
+      final top = row * _rowHeight;
+      final viewport = _rowsScroll.position.viewportDimension;
+      final offset = _rowsScroll.offset;
+      if (top < offset) {
+        _rowsScroll.jumpTo(top);
+      } else if (top + _rowHeight > offset + viewport) {
+        _rowsScroll.jumpTo(top + _rowHeight - viewport);
       }
     }
-    r += dRow;
-    final present = _presentStudents;
-    if (r < 0 || r >= present.length) return;
-    final target = _focus[(present[r].id, items[c].id!)];
-    target?.requestFocus();
-    final controller = _controllers[(present[r].id, items[c].id!)];
-    if (controller != null) {
-      controller.selection = TextSelection(
-        baseOffset: 0,
-        extentOffset: controller.text.length,
-      );
+    if (_bodyScroll.hasClients) {
+      final left = column * _cellWidth;
+      final viewport = _bodyScroll.position.viewportDimension;
+      final offset = _bodyScroll.offset;
+      if (left < offset) {
+        _bodyScroll.jumpTo(left);
+      } else if (left + _cellWidth > offset + viewport) {
+        _bodyScroll.jumpTo(left + _cellWidth - viewport);
+      }
     }
   }
 
-  List<Student> get _presentStudents => [
-    for (final s in widget.students)
-      if (widget.snapshot.attendanceOf(s.id) == ExamAttendance.present) s,
-  ];
+  void _cancel() {
+    final cell = _selected;
+    if (cell == null) return;
+    _select(cell);
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final items = _items;
-    final students = _presentStudents;
-    final absent = widget.students.length - students.length;
-    final calculator = widget.snapshot.calculator;
-    final tableWidth = items.length * _cellWidth + _totalWidth + _gradeWidth;
+    final absent = widget.students.length - _students.length;
+    final tableWidth = _items.length * _cellWidth + _totalWidth + _gradeWidth;
+    final border = BorderSide(color: theme.dividerColor);
 
     Widget headerCell(ExamItem item) => Tooltip(
       message:
@@ -182,10 +312,7 @@ class _ExamPointsGridState extends ConsumerState<ExamPointsGrid> {
         height: _headerHeight,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          border: Border(
-            left: BorderSide(color: theme.dividerColor),
-            bottom: BorderSide(color: theme.dividerColor),
-          ),
+          border: Border(left: border, bottom: border),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -208,20 +335,14 @@ class _ExamPointsGridState extends ConsumerState<ExamPointsGrid> {
       ),
     );
 
-    Widget fixed(
-      String text,
-      double width, {
-      TextStyle? style,
-      Alignment align = Alignment.center,
-    }) => Container(
+    Widget plain(String text, double width, {TextStyle? style}) => Container(
       width: width,
-      height: _rowHeight,
-      alignment: align,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.small),
+      height: _headerHeight,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        border: Border(left: BorderSide(color: theme.dividerColor)),
+        border: Border(left: border, bottom: border),
       ),
-      child: Text(text, style: style, overflow: TextOverflow.ellipsis),
+      child: Text(text, style: style),
     );
 
     return Column(
@@ -232,7 +353,7 @@ class _ExamPointsGridState extends ConsumerState<ExamPointsGrid> {
             AppSpacing.large,
             AppSpacing.medium,
             AppSpacing.large,
-            0,
+            AppSpacing.small,
           ),
           child: Text(
             absent > 0
@@ -241,7 +362,6 @@ class _ExamPointsGridState extends ConsumerState<ExamPointsGrid> {
             style: theme.textTheme.bodySmall,
           ),
         ),
-        const SizedBox(height: AppSpacing.small),
         Row(
           children: [
             SizedBox(
@@ -260,182 +380,192 @@ class _ExamPointsGridState extends ConsumerState<ExamPointsGrid> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                controller: _header,
+                controller: _headerScroll,
                 scrollDirection: Axis.horizontal,
                 physics: const NeverScrollableScrollPhysics(),
-                child: SizedBox(
-                  width: tableWidth,
-                  child: Row(
-                    children: [
-                      for (final item in items) headerCell(item),
-                      fixed(
-                        'exam_total'.tr(),
-                        _totalWidth,
-                        style: theme.textTheme.labelLarge,
-                      ),
-                      fixed(
-                        'grade'.tr(),
-                        _gradeWidth,
-                        style: theme.textTheme.labelLarge,
-                      ),
-                    ],
-                  ),
+                child: Row(
+                  children: [
+                    for (final item in _items) headerCell(item),
+                    plain(
+                      'exam_total'.tr(),
+                      _totalWidth,
+                      style: theme.textTheme.labelLarge,
+                    ),
+                    plain(
+                      'grade'.tr(),
+                      _gradeWidth,
+                      style: theme.textTheme.labelLarge,
+                    ),
+                  ],
                 ),
               ),
             ),
           ],
         ),
         Expanded(
-          child: SingleChildScrollView(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: _nameWidth,
-                  child: Column(
-                    children: [
-                      for (final (index, student) in students.indexed)
-                        Container(
-                          height: _rowHeight,
-                          color: index.isOdd
-                              ? theme.colorScheme.surfaceContainerLow
-                              : null,
-                          padding: const EdgeInsets.only(
-                            left: AppSpacing.large,
-                          ),
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            studentName(student),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Scrollbar(
-                    controller: _body,
-                    child: SingleChildScrollView(
-                      controller: _body,
-                      scrollDirection: Axis.horizontal,
-                      child: SizedBox(
-                        width: tableWidth,
-                        child: Column(
-                          children: [
-                            for (final (row, student) in students.indexed)
-                              Container(
-                                color: row.isOdd
-                                    ? theme.colorScheme.surfaceContainerLow
-                                    : null,
-                                child: Row(
-                                  children: [
-                                    for (final (column, item) in items.indexed)
-                                      _cell(row, column, student, item),
-                                    () {
-                                      final result = calculator.compute(
-                                        widget.snapshot.scoresOf(student.id),
-                                      );
-                                      final override = widget
-                                          .snapshot
-                                          .participants[student.id]
-                                          ?.gradeOverride;
-                                      return Row(
-                                        children: [
-                                          fixed(
-                                            '${formatPoints(context, result.total)} (${formatPercent(context, result.percent)} %)',
-                                            _totalWidth,
-                                          ),
-                                          fixed(
-                                            override ??
-                                                (result.complete
-                                                    ? (result.grade ?? '–')
-                                                    : '(${result.grade ?? '–'})'),
-                                            _gradeWidth,
-                                            style: theme.textTheme.titleSmall,
-                                          ),
-                                        ],
-                                      );
-                                    }(),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: _nameWidth,
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(
+                    context,
+                  ).copyWith(scrollbars: false),
+                  child: ListView.builder(
+                    controller: _namesScroll,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemExtent: _rowHeight,
+                    itemCount: _students.length,
+                    itemBuilder: (context, row) => Container(
+                      color: row.isOdd
+                          ? theme.colorScheme.surfaceContainerLow
+                          : null,
+                      padding: const EdgeInsets.only(left: AppSpacing.large),
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        studentName(_students[row]),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+              Expanded(
+                child: Scrollbar(
+                  controller: _bodyScroll,
+                  child: SingleChildScrollView(
+                    controller: _bodyScroll,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: tableWidth,
+                      child: ListView.builder(
+                        controller: _rowsScroll,
+                        itemExtent: _rowHeight,
+                        itemCount: _students.length,
+                        itemBuilder: (context, row) {
+                          final student = _students[row];
+                          final signature = _rowSignature(row, student);
+                          final cached = _rowCache[student.id];
+                          if (cached != null && cached.$1 == signature) {
+                            return cached.$2;
+                          }
+                          final built = _row(theme, row);
+                          _rowCache[student.id] = (signature, built);
+                          return built;
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _cell(int row, int column, Student student, ExamItem item) {
-    final theme = Theme.of(context);
-    final key = (student.id, item.id!);
-    final invalid = _invalid.contains(key);
+  Widget _row(ThemeData theme, int row) {
+    final student = _students[row];
+    final result = _calculator.compute(_scoresWithPending(student.id));
+    final override = widget.snapshot.participants[student.id]?.gradeOverride;
+    final border = BorderSide(color: theme.dividerColor);
+    Widget fixed(String text, double width, {TextStyle? style}) => Container(
+      width: width,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(border: Border(left: border)),
+      child: Text(text, style: style, overflow: TextOverflow.ellipsis),
+    );
+
     return Container(
-      width: _cellWidth,
-      height: _rowHeight,
-      decoration: BoxDecoration(
-        border: Border(left: BorderSide(color: theme.dividerColor)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: CallbackShortcuts(
-        bindings: {
-          const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-              _move(row, column, dRow: 1, dColumn: 0),
-          const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-              _move(row, column, dRow: -1, dColumn: 0),
-        },
-        child: TextField(
-          controller: _controller(student.id, item.id!),
-          focusNode: _node(student.id, item.id!, item),
-          textAlign: TextAlign.center,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-          ],
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => _move(row, column, dRow: 0, dColumn: 1),
-          onTap: () {
-            final c = _controllers[key]!;
-            c.selection = TextSelection(
-              baseOffset: 0,
-              extentOffset: c.text.length,
-            );
-          },
-          style: theme.textTheme.bodyMedium,
-          decoration: InputDecoration(
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            border: const OutlineInputBorder(),
-            enabledBorder: invalid
-                ? OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.error,
-                      width: 2,
-                    ),
-                  )
-                : OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.outlineVariant,
-                    ),
-                  ),
-            focusedBorder: invalid
-                ? OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.error,
-                      width: 2,
-                    ),
-                  )
-                : null,
-            filled: invalid,
-            fillColor: invalid ? theme.colorScheme.errorContainer : null,
+      color: row.isOdd ? theme.colorScheme.surfaceContainerLow : null,
+      child: Row(
+        children: [
+          for (var column = 0; column < _items.length; column++)
+            _cell(theme, row, column, student),
+          fixed(
+            '${formatPoints(context, result.total)} '
+            '(${formatPercent(context, result.percent)} %)',
+            _totalWidth,
           ),
+          fixed(
+            override ??
+                (result.complete
+                    ? (result.grade ?? '–')
+                    : '(${result.grade ?? '–'})'),
+            _gradeWidth,
+            style: theme.textTheme.titleSmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cell(ThemeData theme, int row, int column, Student student) {
+    final item = _items[column];
+    final selected = _selected == (row: row, column: column);
+    final border = BorderSide(color: theme.dividerColor);
+
+    if (selected) {
+      final color = _invalid
+          ? theme.colorScheme.error
+          : theme.colorScheme.primary;
+      return Container(
+        width: _cellWidth,
+        decoration: BoxDecoration(
+          color: _invalid ? theme.colorScheme.errorContainer : null,
+          border: Border.all(color: color, width: 2),
+        ),
+        child: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+                _move(dRow: 1),
+            const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+                _move(dRow: -1),
+            const SingleActivator(LogicalKeyboardKey.tab): () =>
+                _move(dColumn: 1),
+            const SingleActivator(LogicalKeyboardKey.tab, shift: true): () =>
+                _move(dColumn: -1),
+            const SingleActivator(LogicalKeyboardKey.escape): _cancel,
+          },
+          child: TextField(
+            controller: _editor,
+            focusNode: _editorFocus,
+            textAlign: TextAlign.center,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => _move(dColumn: 1),
+            onChanged: (_) {
+              if (_invalid) setState(() => _invalid = false);
+            },
+            style: theme.textTheme.bodyMedium,
+            decoration: const InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(vertical: 10),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final value = _value(student.id, item.id!);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        if (_commit()) _select((row: row, column: column));
+      },
+      child: Container(
+        width: _cellWidth,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(border: Border(left: border)),
+        child: Text(
+          value == null ? '' : formatPoints(context, value),
+          style: theme.textTheme.bodyMedium,
         ),
       ),
     );

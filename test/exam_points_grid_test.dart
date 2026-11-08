@@ -125,31 +125,80 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final fields = find.byType(TextField);
-    // 2 students x 3 expectations; Grace already has 2 points for item 10.
-    expect(fields, findsNWidgets(6));
-    expect(find.widgetWithText(TextField, '2'), findsOneWidget);
+    // Cells are plain text until selected: no text field yet.
+    expect(find.byType(TextField), findsNothing);
+    final editor = find.byType(TextField);
 
-    await tester.tap(fields.at(0));
-    await tester.enterText(fields.at(0), '1,5');
+    // Grace already has 2 points for item 10; open that cell.
+    await tester.tap(
+      find.descendant(
+        of: find.byType(GestureDetector),
+        matching: find.text('2'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(editor, findsOneWidget);
+    expect(tester.widget<TextField>(editor).controller!.text, '2');
+
+    await type(tester, '1,5');
     await tester.testTextInput.receiveAction(TextInputAction.next);
-    await tester.pump();
-    expect(repository.saved, [(10, 1, 1.5)]);
+    await tester.pumpAndSettle();
+    expect(repository.saved, [(10, 2, 1.5)]);
+    // The saved value stays visible until the database reports it back.
+    expect(
+      find.descendant(
+        of: find.byType(GestureDetector),
+        matching: find.text('1.5'),
+      ),
+      findsOneWidget,
+    );
 
-    // Focus moved to Ada's second expectation (max 3): too many points.
-    await tester.enterText(fields.at(1), '5');
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
+    // Enter moved to Grace's second expectation (max 3): too many points.
+    await type(tester, '5');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
     expect(
       repository.saved,
       hasLength(1),
-      reason: 'invalid value is not saved',
+      reason: 'invalid value is not saved and the cell stays open',
     );
 
-    // Now in Grace's second field: clear-and-type a valid value.
-    await tester.enterText(fields.at(4), '3');
-    await tester.testTextInput.receiveAction(TextInputAction.next);
-    await tester.pump();
+    await type(tester, '3');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
     expect(repository.saved.last, (11, 2, 3.0));
+
+    // Tab and Shift+Tab move sideways; typing lands in the new cell.
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+    await type(tester, '2');
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+    expect(repository.saved.last, (12, 1, 2.0));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pumpAndSettle();
+
+    // Back on Ada's last expectation: Escape discards what was typed.
+    await type(tester, '1');
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(editor).controller!.text, '2');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(repository.saved, hasLength(3));
   });
+}
+
+/// Types into whatever has keyboard focus, like a real keyboard (unlike
+/// `tester.enterText`, which focuses the field first).
+Future<void> type(WidgetTester tester, String text) async {
+  expect(
+    tester.testTextInput.hasAnyClients,
+    isTrue,
+    reason: 'no field accepts typing',
+  );
+  tester.testTextInput.enterText(text);
+  await tester.pump();
 }
