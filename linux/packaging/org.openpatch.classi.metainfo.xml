@@ -83,6 +83,17 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.25.1" date="2026-11-25">
+      <description>
+        <ul>
+          <li>Count a student's attendance against the group's lessons</li>
+          <li>Add grades-per-row setting to grade systems</li>
+          <li>Grade exams per expectation</li>
+          <li>Sync topic and attendance of WebUntis lessons</li>
+          <li>Update pubspec.yaml</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.25.0" date="2026-11-25">
       <description>
         <ul>
