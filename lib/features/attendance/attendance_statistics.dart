@@ -36,6 +36,9 @@ class StudentAttendanceStats {
 
   int get unexcused => absent - excused;
 
+  /// Lessons the student was in the room for, late ones included.
+  int get present => lessons - absent - activity - exam;
+
   /// Share of [lessons] attended, 0–1. `null` when no lesson was held.
   double? get attendanceRate =>
       lessons == 0 ? null : (lessons - absent) / lessons;
@@ -65,6 +68,21 @@ class GroupAttendanceStats {
     return rates.reduce((a, b) => a + b) / rates.length;
   }
 }
+
+/// [studentId]'s attendance, counted against every lesson the group held,
+/// exactly as the group's attendance card counts it.
+///
+/// A student's own entries are not enough: when attendance is taken over
+/// from WebUntis or only absences are recorded, present students get no
+/// entry for that lesson, and counting only their own entries would leave
+/// those lessons out and understate how often they were there.
+StudentAttendanceStats studentAttendanceStats({
+  required int studentId,
+  required Iterable<AttendanceLog> groupLogs,
+}) => computeGroupAttendanceStats(
+  studentIds: [studentId],
+  logs: groupLogs,
+).students.single;
 
 /// Counts [logs] per student of [studentIds].
 ///

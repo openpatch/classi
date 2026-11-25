@@ -93,6 +93,28 @@ void main() {
     expect(stats.students.single.absent, 1);
   });
 
+  test('counts a student against every lesson the group held', () {
+    // Attendance taken over from WebUntis only writes absences: student 1
+    // has an entry for the one lesson they missed and none for the three
+    // they attended, which the group still held.
+    final logs = [
+      log(1, monday, period: 1, absent: true),
+      log(2, monday, period: 3, absent: true),
+      log(2, tuesday, period: 1, absent: true, excused: true),
+      log(3, tuesday, period: 5, late: true),
+    ];
+    final stats = studentAttendanceStats(studentId: 1, groupLogs: logs);
+    expect(stats.lessons, 4);
+    expect(stats.absent, 1);
+    expect(stats.present, 3);
+    expect(stats.attendanceRate, 0.75);
+    final groupRate = computeGroupAttendanceStats(
+      studentIds: [1, 2, 3],
+      logs: logs,
+    ).students.firstWhere((student) => student.studentId == 1).attendanceRate;
+    expect(stats.attendanceRate, groupRate);
+  });
+
   test('has no rate before any lesson was held', () {
     final stats = computeGroupAttendanceStats(studentIds: [1], logs: const []);
 

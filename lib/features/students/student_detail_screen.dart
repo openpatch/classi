@@ -14,6 +14,8 @@ import '../exams/ui/student_exam_results_card.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
 import '../../features/attendance/attendance_state.dart';
+import '../../features/attendance/attendance_statistics.dart';
+import '../../features/attendance/group_attendance_card.dart';
 import '../../features/grades/grade_editor_sheet.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/homework/homework_log_editor.dart';
@@ -206,12 +208,18 @@ class StudentDetailScreen extends ConsumerWidget {
         final groupForeground = groupColor == null
             ? null
             : onColorForBackground(groupColor);
-        final attendanceLogs = attendanceValue.value ?? const <AttendanceLog>[];
-        final totalLogs = attendanceLogs.length;
-        final presentCount = attendanceLogs.where((l) => !l.isMissed).length;
-        final attendancePercent = totalLogs > 0
-            ? (presentCount / totalLogs * 100).round()
-            : null;
+        // Counted against the group's lessons, like the group's attendance
+        // card, so both show the same rate.
+        final groupAttendance =
+            ref.watch(groupAttendanceProvider(student.groupId)).value ??
+            const <AttendanceLog>[];
+        final attendanceRate = studentAttendanceStats(
+          studentId: student.id,
+          groupLogs: groupAttendance,
+        ).attendanceRate;
+        final attendancePercent = attendanceRate == null
+            ? null
+            : (attendanceRate * 100).round();
         final attendanceSubtitle = attendancePercent != null
             ? '$attendancePercent% ${'present'.tr()}'
             : null;
@@ -314,6 +322,12 @@ class StudentDetailScreen extends ConsumerWidget {
                         _AttendanceTab(
                           studentId: student.id,
                           attendanceValue: filteredAttendanceValue,
+                          stats: studentAttendanceStats(
+                            studentId: student.id,
+                            groupLogs: groupAttendance.where(
+                              (log) => dateFilter.includes(log.date),
+                            ),
+                          ),
                         ),
                         _GradesTab(
                           studentId: student.id,
@@ -2158,7 +2172,13 @@ class _AttendanceTab extends ConsumerWidget {
   const _AttendanceTab({
     required this.studentId,
     required this.attendanceValue,
+    required this.stats,
   });
+
+  /// The student's attendance counted against the group's lessons, which
+  /// is where the present count comes from: present students often have no
+  /// entry of their own.
+  final StudentAttendanceStats stats;
 
   final int studentId;
   final AsyncValue<List<AttendanceLog>> attendanceValue;
@@ -2171,7 +2191,6 @@ class _AttendanceTab extends ConsumerWidget {
         final absentLogs = logs.where((l) => l.isMissed).toList();
         final activityCount = logs.where((l) => l.isAwayAtActivity).length;
         final examCount = logs.where((l) => l.isAwayAtExam).length;
-        final presentLogs = logs.where((l) => !l.isAbsent).toList();
         final excusedCount = absentLogs.where((l) => l.isExcused).length;
         final unexcusedCount = absentLogs.length - excusedCount;
 
@@ -2190,7 +2209,7 @@ class _AttendanceTab extends ConsumerWidget {
                           'absent': absentLogs.length.toString(),
                           'excused': excusedCount.toString(),
                           'unexcused': unexcusedCount.toString(),
-                          'present': presentLogs.length.toString(),
+                          'present': stats.present.toString(),
                         },
                       ),
                     ),

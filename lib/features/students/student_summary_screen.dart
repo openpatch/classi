@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
-import '../../features/attendance/attendance_state.dart';
+import '../../features/attendance/attendance_statistics.dart';
+import '../../features/attendance/group_attendance_card.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../shared/theme/app_ui.dart';
@@ -33,7 +34,6 @@ class StudentSummaryScreen extends ConsumerWidget {
 
         final groupValue = ref.watch(groupProvider(student.groupId));
         final gradesValue = ref.watch(studentGradesProvider(studentId));
-        final attendanceValue = ref.watch(studentAttendanceProvider(studentId));
         final homeworkValue = ref.watch(studentHomeworkProvider(studentId));
         final materialValue = ref.watch(studentMaterialProvider(studentId));
         final notesValue = ref.watch(studentNotesProvider(studentId));
@@ -52,7 +52,6 @@ class StudentSummaryScreen extends ConsumerWidget {
         final categories = parseGradeCategories(group?.gradeCategoriesJson);
 
         final allGrades = gradesValue.value ?? const [];
-        final allAttendance = attendanceValue.value ?? const [];
         final allHomework = homeworkValue.value ?? const [];
         final allMaterial = materialValue.value ?? const [];
         final allNotes = notesValue.value ?? const [];
@@ -60,9 +59,13 @@ class StudentSummaryScreen extends ConsumerWidget {
         final grades = dateFilter.isAll
             ? allGrades
             : allGrades.where((g) => dateFilter.includes(g.date)).toList();
-        final attendance = dateFilter.isAll
-            ? allAttendance
-            : allAttendance.where((a) => dateFilter.includes(a.date)).toList();
+        final attendanceStats = studentAttendanceStats(
+          studentId: student.id,
+          groupLogs:
+              (ref.watch(groupAttendanceProvider(student.groupId)).value ??
+                      const <AttendanceLog>[])
+                  .where((log) => dateFilter.includes(log.date)),
+        );
         final homework = dateFilter.isAll
             ? allHomework
             : allHomework.where((h) => dateFilter.includes(h.date)).toList();
@@ -111,7 +114,7 @@ class StudentSummaryScreen extends ConsumerWidget {
                   dateFilter: dateFilter,
                 ),
                 const SizedBox(height: AppSpacing.large),
-                _SummaryAttendanceCard(attendance: attendance),
+                _SummaryAttendanceCard(stats: attendanceStats),
                 const SizedBox(height: AppSpacing.large),
                 _SummaryGradesCard(
                   studentAverage: studentAverage,
@@ -265,20 +268,21 @@ class _SummaryHeader extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _SummaryAttendanceCard extends StatelessWidget {
-  const _SummaryAttendanceCard({required this.attendance});
+  const _SummaryAttendanceCard({required this.stats});
 
-  final List<AttendanceLog> attendance;
+  /// Counted against the group's lessons, like the group's attendance card.
+  final StudentAttendanceStats stats;
 
   @override
   Widget build(BuildContext context) {
-    final total = attendance.length;
-    final presentCount = attendance.where((l) => !l.isMissed).length;
-    final absentLogs = attendance.where((l) => l.isMissed).toList();
-    final excusedCount = absentLogs.where((l) => l.isExcused).length;
-    final unexcusedCount = absentLogs.length - excusedCount;
-    final activityCount = attendance.where((l) => l.isAwayAtActivity).length;
-    final examCount = attendance.where((l) => l.isAwayAtExam).length;
-    final percent = total > 0 ? (presentCount / total * 100).round() : null;
+    final total = stats.lessons;
+    final presentCount = stats.present;
+    final excusedCount = stats.excused;
+    final unexcusedCount = stats.unexcused;
+    final activityCount = stats.activity;
+    final examCount = stats.exam;
+    final rate = stats.attendanceRate;
+    final percent = rate == null ? null : (rate * 100).round();
 
     return Card(
       child: Padding(
@@ -318,7 +322,7 @@ class _SummaryAttendanceCard extends StatelessWidget {
                     child: _StatChip(
                       icon: Icons.cancel_outlined,
                       label: 'absent'.tr(),
-                      value: absentLogs.length.toString(),
+                      value: stats.absent.toString(),
                       color: Theme.of(context).colorScheme.error,
                     ),
                   ),
