@@ -1,7 +1,13 @@
+Bug Fixes
+
+- Count a student's attendance against the group's lessons
+
+
 Features
 
 - Add grades-per-row setting to grade systems
 - Grade exams per expectation
+- Sync topic and attendance of WebUntis lessons
 
 
 Miscellaneous Tasks
