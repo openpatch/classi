@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.25.0] - 2026-11-25
+
+### Bug Fixes
+
+- Count a student's attendance against the group's lessons
+
+
+### Features
+
+- Add grades-per-row setting to grade systems
+- Grade exams per expectation
+- Sync topic and attendance of WebUntis lessons
+
+
+### Miscellaneous Tasks
+
+- Update pubspec.yaml
+
+
 ## [1.24.0] - 2026-10-09
 
 ### Features
