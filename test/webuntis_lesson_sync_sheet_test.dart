@@ -10,6 +10,7 @@ import 'package:classi/features/schedule/weekly_timetable_screen.dart';
 import 'package:classi/features/webuntis/webuntis_api.dart';
 import 'package:classi/features/webuntis/webuntis_lesson_sync.dart';
 import 'package:classi/features/webuntis/webuntis_lesson_sync_sheet.dart';
+import 'package:classi/features/webuntis/webuntis_models.dart';
 import 'package:classi/features/webuntis/webuntis_service.dart';
 import 'package:classi/features/webuntis/webuntis_settings_service.dart';
 import 'package:drift/native.dart';
@@ -79,7 +80,21 @@ class _FakeSync extends WebUntisLessonSync {
                   ),
                   categoryId: 'sonstige-mitarbeit',
                   categoryName: 'Participation',
-                  alreadyExists: existingPeriods.contains(period),
+                  existing: existingPeriods.contains(period)
+                      ? Session(
+                          id: period,
+                          groupId: 1,
+                          date: start,
+                          label: '',
+                          categoryId: 'sonstige-mitarbeit',
+                          categoryName: 'Participation',
+                          periodStart: period,
+                          periodEnd: period + 1,
+                          createdAt: start,
+                          updatedAt: start,
+                        )
+                      : null,
+                  periods: const <WebUntisPeriod>[],
                 ),
             ]
           : <WebUntisLessonImport>[],
@@ -87,11 +102,12 @@ class _FakeSync extends WebUntisLessonSync {
   }
 
   @override
-  Future<({int added, int skipped})> importLessons(
+  Future<WebUntisLessonSyncResult> importLessons(
     List<WebUntisLessonImport> lessons,
   ) async {
     imported = lessons;
-    return (added: lessons.length, skipped: 0);
+    final updated = lessons.where((lesson) => lesson.alreadyExists).length;
+    return (added: lessons.length - updated, updated: updated, skipped: 0);
   }
 }
 
@@ -107,6 +123,18 @@ Future<void> _pump(
       overrides: [
         webUntisLessonSyncProvider.overrideWithValue(sync),
         activeSchoolYearIdProvider.overrideWithValue(1),
+        schoolYearProvider.overrideWith(
+          (ref, id) => Stream.value(
+            SchoolYear(
+              id: id,
+              label: '2025/26',
+              startDate: DateTime(2025, 8, 1),
+              endDate: DateTime(2026, 7, 31),
+              createdAt: DateTime(2025, 8, 1),
+              updatedAt: DateTime(2025, 8, 1),
+            ),
+          ),
+        ),
         bellTimesProvider.overrideWith((ref) async => {}),
         webUntisConnectionProvider.overrideWith(
           (ref) async => connected
@@ -207,24 +235,24 @@ void main() {
     expect(sync.loadedEnd, DateTime(2026, 10, 11));
     expect(find.byType(CheckboxListTile), findsNWidgets(2));
     expect(find.text('Create'), findsNWidgets(2));
-    expect(find.text('Create (2)'), findsOneWidget);
+    expect(find.text('Sync (2)'), findsOneWidget);
     expect(sync.imported, isNull);
+    await tester.ensureVisible(find.byType(CheckboxListTile).last);
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(CheckboxListTile).last);
     await tester.pump();
-    await tester.tap(find.text('Create (1)'));
+    await tester.tap(find.text('Sync (1)'));
     await tester.pumpAndSettle();
     expect(sync.imported, hasLength(1));
     expect(sync.imported!.single.lesson.periodStart, 1);
     expect(
-      find.text(
-        '1 lessons created, 0 skipped because they already exist in Classi.',
-      ),
+      find.text('1 lessons created, 0 updated, 0 unchanged.'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('labels existing lessons and selects only lessons to create', (
+  testWidgets('labels existing lessons and selects them for updating', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -236,31 +264,44 @@ void main() {
     await tester.tap(find.text('Open sync'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Already in Classi'), findsOneWidget);
+    expect(find.text('Update'), findsOneWidget);
     expect(find.text('Create'), findsOneWidget);
-    expect(find.text('Create (1)'), findsOneWidget);
+    expect(find.text('Sync (2)'), findsOneWidget);
     final existing = tester.widget<CheckboxListTile>(
       find.byType(CheckboxListTile).first,
     );
-    expect(existing.value, isFalse);
-    expect(existing.onChanged, isNull);
+    expect(existing.value, isTrue);
+    expect(existing.onChanged, isNotNull);
+    await tester.ensureVisible(find.byType(CheckboxListTile).last);
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(CheckboxListTile).last);
     await tester.pump();
-    expect(find.text('Create (0)'), findsOneWidget);
+    await tester.ensureVisible(find.byType(CheckboxListTile).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(CheckboxListTile).first);
+    await tester.pump();
+    expect(find.text('Sync (0)'), findsOneWidget);
     expect(
       tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
       isNull,
     );
-    await tester.tap(find.byType(CheckboxListTile).last);
+    await tester.ensureVisible(find.byType(CheckboxListTile).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(CheckboxListTile).first);
     await tester.pump();
-    await tester.tap(find.text('Create (1)'));
+    await tester.tap(find.text('Sync (1)'));
     await tester.pumpAndSettle();
     expect(sync.imported, hasLength(1));
-    expect(sync.imported!.single.lesson.periodStart, 5);
+    expect(sync.imported!.single.lesson.periodStart, 1);
+    expect(sync.imported!.single.alreadyExists, isTrue);
+    expect(
+      find.text('0 lessons created, 1 updated, 0 unchanged.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('disables creation when all lessons exist in German on a phone', (
+  testWidgets('offers updating when all lessons exist in German on a phone', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -272,13 +313,25 @@ void main() {
     await tester.tap(find.text('Open sync'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Bereits in Classi'), findsNWidgets(2));
-    expect(find.text('Anlegen (0)'), findsOneWidget);
-    expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNull,
-    );
-    expect(sync.imported, isNull);
+    expect(find.text('Aktualisieren'), findsWidgets);
+    expect(find.text('Anlegen'), findsNothing);
+    expect(find.text('Abgleichen (2)'), findsOneWidget);
+    await tester.tap(find.text('Abgleichen (2)'));
+    await tester.pumpAndSettle();
+    expect(sync.imported, hasLength(2));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('syncs the whole school year with one tap', (tester) async {
+    await _pump(tester, sync);
+    await tester.tap(find.text('Open sync'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('School year'));
+    await tester.pumpAndSettle();
+    // The year is over, so the range runs to its last day.
+    expect(sync.loadedStart, DateTime(2025, 8, 1));
+    expect(sync.loadedEnd, DateTime(2026, 7, 31));
+    expect(sync.loads, 2);
     expect(tester.takeException(), isNull);
   });
 
@@ -303,7 +356,7 @@ void main() {
     await tester.tap(find.text('Open sync'));
     await tester.pumpAndSettle();
     expect(find.textContaining('No connection to WebUntis.'), findsOneWidget);
-    expect(find.text('Create (0)'), findsOneWidget);
+    expect(find.text('Sync (0)'), findsOneWidget);
     sync.fail = false;
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();

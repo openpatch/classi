@@ -69,4 +69,23 @@ class WebUntisTimetable {
     }
     return (lessons: lessons, unmapped: unmapped);
   }
+
+  /// The periods of [link] that make up [lesson], in time order: those on its
+  /// day whose school periods fall within its block. Cancelled lessons are
+  /// left out, as in [lessonsFor].
+  List<WebUntisPeriod> periodsOf({
+    required WebUntisGroupLink link,
+    required WebUntisScheduledLesson lesson,
+  }) {
+    final date = normalizeLessonDate(lesson.date);
+    return [
+      for (final period in periods)
+        if (!period.cancelled &&
+            link.includes(period) &&
+            normalizeLessonDate(period.startDateTime) == date)
+          if (timeGrid.periodAt(period.startDateTime) case final number?
+              when number >= lesson.periodStart && number <= lesson.periodEnd)
+            period,
+    ]..sort((a, b) => a.startDateTime.compareTo(b.startDateTime));
+  }
 }

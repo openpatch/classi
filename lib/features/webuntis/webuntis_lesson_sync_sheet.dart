@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/providers/app_providers.dart';
 import '../../shared/theme/app_ui.dart';
 import '../../shared/widgets/empty_state.dart';
@@ -16,8 +17,9 @@ Future<void> showWebUntisLessonSyncSheet({
   required BuildContext context,
   int? groupId,
   DateTime? weekStart,
+  int? schoolYearId,
 }) async {
-  final result = await showModalBottomSheet<({int added, int skipped})>(
+  final result = await showModalBottomSheet<WebUntisLessonSyncResult>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -25,6 +27,7 @@ Future<void> showWebUntisLessonSyncSheet({
     builder: (context) => _WebUntisLessonSyncSheet(
       groupId: groupId,
       weekStart: mondayOf(weekStart ?? DateTime.now()),
+      schoolYearId: schoolYearId,
     ),
   );
   if (result != null && context.mounted) {
@@ -34,6 +37,7 @@ Future<void> showWebUntisLessonSyncSheet({
           'webuntis_lessons_synced'.tr(
             namedArgs: {
               'added': '${result.added}',
+              'updated': '${result.updated}',
               'skipped': '${result.skipped}',
             },
           ),
@@ -44,10 +48,18 @@ Future<void> showWebUntisLessonSyncSheet({
 }
 
 class _WebUntisLessonSyncSheet extends ConsumerStatefulWidget {
-  const _WebUntisLessonSyncSheet({required this.weekStart, this.groupId});
+  const _WebUntisLessonSyncSheet({
+    required this.weekStart,
+    this.groupId,
+    this.schoolYearId,
+  });
 
   final DateTime weekStart;
   final int? groupId;
+
+  /// The school year the quick "whole school year" range uses; the active
+  /// one when `null`.
+  final int? schoolYearId;
 
   @override
   ConsumerState<_WebUntisLessonSyncSheet> createState() =>
@@ -86,15 +98,17 @@ class _WebUntisLessonSyncSheetState
             start: _range.start,
             end: _range.end,
             groupId: widget.groupId,
-            schoolYearId: ref.read(activeSchoolYearIdProvider),
+            schoolYearId:
+                widget.schoolYearId ?? ref.read(activeSchoolYearIdProvider),
           );
       if (!mounted) return;
       ref.invalidate(bellTimesProvider);
       setState(() {
         _preview = preview;
+        // Existing lessons are selected too: updating one only takes over
+        // what its WebUntis register says, and does nothing when it is empty.
         _selected.addAll([
-          for (var index = 0; index < preview.lessons.length; index++)
-            if (!preview.lessons[index].alreadyExists) index,
+          for (var index = 0; index < preview.lessons.length; index++) index,
         ]);
       });
     } catch (error, stackTrace) {
@@ -132,6 +146,23 @@ class _WebUntisLessonSyncSheetState
     await _load();
   }
 
+  /// Sets the range to the school year so far: from its first day up to
+  /// today, or its last day once it is over. Lessons still to come are left
+  /// out, since WebUntis has no topic or attendance for them yet.
+  Future<void> _chooseSchoolYear(SchoolYear year) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final start = DateUtils.dateOnly(year.startDate);
+    final yearEnd = DateUtils.dateOnly(year.endDate);
+    final end = today.isBefore(yearEnd) ? today : yearEnd;
+    setState(
+      () => _range = DateTimeRange(
+        start: start,
+        end: end.isBefore(start) ? start : end,
+      ),
+    );
+    await _load();
+  }
+
   Future<void> _import() async {
     setState(() => _importing = true);
     try {
@@ -151,6 +182,11 @@ class _WebUntisLessonSyncSheetState
   @override
   Widget build(BuildContext context) {
     final material = MaterialLocalizations.of(context);
+    final schoolYearId =
+        widget.schoolYearId ?? ref.watch(activeSchoolYearIdProvider);
+    final schoolYear = schoolYearId == null
+        ? null
+        : ref.watch(schoolYearProvider(schoolYearId)).value;
     return PopScope(
       canPop: !_importing,
       child: Padding(
@@ -167,13 +203,31 @@ class _WebUntisLessonSyncSheetState
               const SizedBox(height: AppSpacing.small),
               Text('webuntis_sync_lessons_hint'.tr()),
               const SizedBox(height: AppSpacing.medium),
-              OutlinedButton.icon(
-                onPressed: _loading || _importing ? null : _chooseRange,
-                icon: const Icon(Icons.date_range_outlined),
-                label: Text(
-                  '${material.formatMediumDate(_range.start)}'
-                  ' – ${material.formatMediumDate(_range.end)}',
-                ),
+              Wrap(
+                spacing: AppSpacing.small,
+                runSpacing: AppSpacing.small,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _loading || _importing ? null : _chooseRange,
+                    icon: const Icon(Icons.date_range_outlined),
+                    label: Text(
+                      '${material.formatMediumDate(_range.start)}'
+                      ' – ${material.formatMediumDate(_range.end)}',
+                    ),
+                  ),
+                  if (schoolYear != null)
+                    Tooltip(
+                      message: 'webuntis_sync_school_year_hint'.tr(),
+                      child: TextButton.icon(
+                        onPressed: _loading || _importing
+                            ? null
+                            : () => _chooseSchoolYear(schoolYear),
+                        icon: const Icon(Icons.school_outlined),
+                        label: Text('webuntis_sync_school_year'.tr()),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: AppSpacing.small),
               if (_preview case final preview?
@@ -219,7 +273,7 @@ class _WebUntisLessonSyncSheetState
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Text(
-                            'webuntis_create_selected_lessons'.tr(
+                            'webuntis_sync_selected_lessons'.tr(
                               namedArgs: {'count': '${_selected.length}'},
                             ),
                           ),
@@ -238,21 +292,23 @@ class _WebUntisLessonSyncSheetState
     final preview = _preview;
     if (preview == null) return const SizedBox.shrink();
     if (!preview.hasLinkedGroups || preview.lessons.isEmpty) {
-      return EmptyState(
-        icon: Icons.event_busy_outlined,
-        title:
-            (preview.unmapped > 0
-                    ? 'webuntis_lessons_unmapped_title'
-                    : 'webuntis_roster_no_lessons')
-                .tr(),
-        body: preview.unmapped > 0
-            ? 'webuntis_lessons_unmapped'.tr(
-                namedArgs: {'count': '${preview.unmapped}'},
-              )
-            : (preview.hasLinkedGroups
-                      ? 'webuntis_sync_lessons_empty'
-                      : 'webuntis_sync_lessons_no_groups')
+      return SingleChildScrollView(
+        child: EmptyState(
+          icon: Icons.event_busy_outlined,
+          title:
+              (preview.unmapped > 0
+                      ? 'webuntis_lessons_unmapped_title'
+                      : 'webuntis_roster_no_lessons')
                   .tr(),
+          body: preview.unmapped > 0
+              ? 'webuntis_lessons_unmapped'.tr(
+                  namedArgs: {'count': '${preview.unmapped}'},
+                )
+              : (preview.hasLinkedGroups
+                        ? 'webuntis_sync_lessons_empty'
+                        : 'webuntis_sync_lessons_no_groups')
+                    .tr(),
+        ),
       );
     }
     return ListView.builder(
@@ -265,7 +321,7 @@ class _WebUntisLessonSyncSheetState
         );
         return CheckboxListTile(
           value: _selected.contains(index),
-          onChanged: _importing || item.alreadyExists
+          onChanged: _importing
               ? null
               : (selected) => setState(() {
                   if (selected == true) {
@@ -281,14 +337,12 @@ class _WebUntisLessonSyncSheetState
               const SizedBox(height: AppSpacing.xSmall),
               Chip(
                 avatar: Icon(
-                  item.alreadyExists
-                      ? Icons.check_circle_outline
-                      : Icons.add_circle_outline,
+                  item.alreadyExists ? Icons.sync : Icons.add_circle_outline,
                   size: 18,
                 ),
                 label: Text(
                   (item.alreadyExists
-                          ? 'webuntis_lesson_already_exists'
+                          ? 'webuntis_lesson_update'
                           : 'webuntis_lesson_create')
                       .tr(),
                 ),

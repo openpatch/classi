@@ -1,10 +1,12 @@
 import 'package:classi/core/database/app_database.dart';
+import 'package:classi/features/attendance/attendance_repository.dart';
 import 'package:classi/core/security/key_service.dart';
 import 'package:classi/core/storage/database_path_service.dart';
 import 'package:classi/features/groups/group_repository.dart';
 import 'package:classi/features/schedule/lesson_schedule.dart';
 import 'package:classi/features/schedule/lesson_slot_repository.dart';
 import 'package:classi/features/sessions/session_repository.dart';
+import 'package:classi/features/students/student_repository.dart';
 import 'package:classi/features/webuntis/webuntis_lesson_sync.dart';
 import 'package:classi/features/webuntis/webuntis_link.dart';
 import 'package:classi/features/webuntis/webuntis_models.dart';
@@ -12,6 +14,7 @@ import 'package:classi/features/webuntis/webuntis_service.dart';
 import 'package:classi/features/webuntis/webuntis_settings_service.dart';
 import 'package:classi/features/webuntis/webuntis_timetable.dart';
 import 'package:classi/shared/utils/formatting.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -53,6 +56,31 @@ WebUntisPeriod _period({
   );
 }
 
+WebUntisPeriodData _register(
+  int id, {
+  String? topic,
+  Map<int, bool> absent = const {},
+  bool checked = true,
+}) => WebUntisPeriodData(
+  ttId: id,
+  absenceChecked: checked,
+  studentIds: const [901, 902],
+  topic: topic,
+  absences: [
+    for (final MapEntry(key: studentId, value: excused) in absent.entries)
+      WebUntisAbsence(
+        id: studentId,
+        studentId: studentId,
+        klasseId: 11,
+        startDateTime: DateTime(_monday.year, _monday.month, _monday.day, 7),
+        endDateTime: DateTime(_monday.year, _monday.month, _monday.day, 16),
+        excused: excused,
+        absenceReason: '',
+        text: '',
+      ),
+  ],
+);
+
 class _FakeService extends WebUntisService {
   _FakeService()
     : super(
@@ -73,6 +101,17 @@ class _FakeService extends WebUntisService {
   }) async {
     loads++;
     return timetable;
+  }
+
+  Map<int, WebUntisPeriodData> registers = {};
+  final requestedRegisters = <int>[];
+
+  @override
+  Future<Map<int, WebUntisPeriodData>> loadRegisters(
+    Iterable<int> periodIds,
+  ) async {
+    requestedRegisters.addAll(periodIds);
+    return {for (final id in periodIds) id: ?registers[id]};
   }
 
   @override
@@ -159,6 +198,8 @@ void main() {
     late LessonSlotRepository slots;
     late SessionRepository sessions;
     late _FakeService service;
+    late StudentRepository students;
+    late AttendanceRepository attendance;
     late WebUntisLessonSync sync;
     late int groupId;
 
@@ -167,6 +208,8 @@ void main() {
       groups = GroupRepository(database);
       slots = LessonSlotRepository(database);
       sessions = SessionRepository(database);
+      students = StudentRepository(database);
+      attendance = AttendanceRepository(database);
       service = _FakeService();
       sync = WebUntisLessonSync(service: service, database: database);
       groupId = await groups.createGroup(
@@ -176,7 +219,7 @@ void main() {
         schoolYearId: 1,
       );
       service.timetable = WebUntisTimetable(
-        periods: [_period(), _period(start: 530, end: 575)],
+        periods: [_period(), _period(id: 2, start: 530, end: 575)],
         timeGrid: _grid,
       );
     });
@@ -207,12 +250,14 @@ void main() {
         expect(preview.lessons.single.alreadyExists, isFalse);
         expect(await sync.importLessons(preview.lessons), (
           added: 1,
+          updated: 0,
           skipped: 0,
         ));
         final imported = (await sessions.sessionsForGroup(groupId)).single;
         expect((imported.periodStart, imported.periodEnd), (1, 2));
         expect(await sync.importLessons(preview.lessons), (
           added: 0,
+          updated: 0,
           skipped: 1,
         ));
         expect(await sessions.sessionsForGroup(groupId), hasLength(1));
@@ -246,6 +291,7 @@ void main() {
         );
         expect(await sync.importLessons(preview.lessons), (
           added: 0,
+          updated: 0,
           skipped: 1,
         ));
         expect(preview.lessons.single.alreadyExists, isTrue);
@@ -303,6 +349,7 @@ void main() {
         );
         expect(await sync.importLessons(preview.lessons), (
           added: 3,
+          updated: 0,
           skipped: 1,
         ));
       },
@@ -329,7 +376,11 @@ void main() {
         groupId: groupId,
       );
       expect(preview.lessons.map((item) => item.alreadyExists), [true, false]);
-      expect(await sync.importLessons(preview.lessons), (added: 1, skipped: 1));
+      expect(await sync.importLessons(preview.lessons), (
+        added: 1,
+        updated: 0,
+        skipped: 1,
+      ));
       expect(await sessions.sessionsForGroup(groupId), hasLength(2));
     });
 
@@ -384,7 +435,11 @@ void main() {
         otherGroup,
       ]);
       expect(service.loads, 1);
-      expect(await sync.importLessons(preview.lessons), (added: 2, skipped: 0));
+      expect(await sync.importLessons(preview.lessons), (
+        added: 2,
+        updated: 0,
+        skipped: 0,
+      ));
       expect(await sessions.sessionsForGroup(groupId), hasLength(1));
       expect(
         (await sessions.sessionsForGroup(otherGroup)).single.periodStart,
@@ -406,7 +461,8 @@ void main() {
         lesson: valid.lesson,
         categoryId: valid.categoryId,
         categoryName: valid.categoryName,
-        alreadyExists: false,
+        existing: null,
+        periods: valid.periods,
       );
       await expectLater(
         sync.importLessons([valid, invalid]),
@@ -415,6 +471,186 @@ void main() {
       expect(await sessions.sessionsForGroup(groupId), isEmpty);
       expect(service.syncs, 0);
     });
+
+    test('updates an existing lesson with its topic and attendance', () async {
+      final ada = await students.addStudent(
+        groupId: groupId,
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+      );
+      final alan = await students.addStudent(
+        groupId: groupId,
+        firstName: 'Alan',
+        lastName: 'Turing',
+      );
+      await (database.update(database.studentsTable)
+            ..where((t) => t.id.equals(ada)))
+          .write(const StudentsTableCompanion(webuntisStudentId: Value(901)));
+      await (database.update(database.studentsTable)
+            ..where((t) => t.id.equals(alan)))
+          .write(const StudentsTableCompanion(webuntisStudentId: Value(902)));
+      // Alan was marked absent by mistake; WebUntis says only Ada was.
+      await attendance.applyAttendanceForDate(
+        date: _monday,
+        periodStart: 1,
+        studentIds: {alan},
+        absences: {alan: false},
+      );
+      final local = await sessions.upsertSession(
+        groupId: groupId,
+        date: _monday,
+        periodStart: 1,
+        periodEnd: 2,
+        categoryId: 'sonstige-mitarbeit',
+        categoryName: 'Participation',
+        label: '',
+        description: 'Keep this note',
+      );
+      service.registers = {
+        1: _register(1, topic: 'Fractions\nadding', absent: {901: true}),
+        2: _register(2, topic: 'Fractions\nadding'),
+      };
+
+      final preview = await sync.load(
+        start: _monday,
+        end: _monday,
+        groupId: groupId,
+      );
+      expect(preview.lessons.single.existing?.id, local.id);
+      expect(preview.lessons.single.periods.map((period) => period.id), [1, 2]);
+      expect(await sync.importLessons(preview.lessons), (
+        added: 0,
+        updated: 1,
+        skipped: 0,
+      ));
+      final updated = (await sessions.sessionsForGroup(groupId)).single;
+      expect(updated.label, 'Fractions adding');
+      expect(updated.description, 'Keep this note');
+      expect(
+        await attendance
+            .watchGroupSelections(
+              groupId: groupId,
+              date: _monday,
+              periodStart: 1,
+            )
+            .first,
+        {ada},
+      );
+      expect(
+        await attendance
+            .watchExcusedSelections(
+              groupId: groupId,
+              date: _monday,
+              periodStart: 1,
+            )
+            .first,
+        {ada},
+      );
+
+      // A second sync finds nothing new.
+      expect(await sync.importLessons(preview.lessons), (
+        added: 0,
+        updated: 0,
+        skipped: 1,
+      ));
+      expect(service.syncs, 2);
+    });
+
+    test(
+      'keeps the local topic and attendance when WebUntis has none',
+      () async {
+        final alan = await students.addStudent(
+          groupId: groupId,
+          firstName: 'Alan',
+          lastName: 'Turing',
+        );
+        await (database.update(database.studentsTable)
+              ..where((t) => t.id.equals(alan)))
+            .write(const StudentsTableCompanion(webuntisStudentId: Value(902)));
+        await attendance.applyAttendanceForDate(
+          date: _monday,
+          periodStart: 1,
+          studentIds: {alan},
+          absences: {alan: false},
+        );
+        await sessions.upsertSession(
+          groupId: groupId,
+          date: _monday,
+          periodStart: 1,
+          periodEnd: 2,
+          categoryId: 'sonstige-mitarbeit',
+          categoryName: 'Participation',
+          label: 'My own topic',
+        );
+        service.registers = {1: _register(1, checked: false)};
+        final preview = await sync.load(
+          start: _monday,
+          end: _monday,
+          groupId: groupId,
+        );
+        expect(await sync.importLessons(preview.lessons), (
+          added: 0,
+          updated: 0,
+          skipped: 1,
+        ));
+        expect(
+          (await sessions.sessionsForGroup(groupId)).single.label,
+          'My own topic',
+        );
+        expect(
+          await attendance
+              .watchGroupSelections(
+                groupId: groupId,
+                date: _monday,
+                periodStart: 1,
+              )
+              .first,
+          {alan},
+        );
+      },
+    );
+
+    test(
+      'fills a newly created lesson with its topic and attendance',
+      () async {
+        final ada = await students.addStudent(
+          groupId: groupId,
+          firstName: 'Ada',
+          lastName: 'Lovelace',
+        );
+        await (database.update(database.studentsTable)
+              ..where((t) => t.id.equals(ada)))
+            .write(const StudentsTableCompanion(webuntisStudentId: Value(901)));
+        service.registers = {
+          1: _register(1, topic: 'Fractions', absent: {901: false}),
+          2: _register(2, topic: 'Fractions'),
+        };
+        final preview = await sync.load(
+          start: _monday,
+          end: _monday,
+          groupId: groupId,
+        );
+        expect(preview.lessons.single.alreadyExists, isFalse);
+        expect(await sync.importLessons(preview.lessons), (
+          added: 1,
+          updated: 0,
+          skipped: 0,
+        ));
+        expect(service.requestedRegisters, containsAll([1, 2]));
+        final created = (await sessions.sessionsForGroup(groupId)).single;
+        expect(created.label, 'Fractions');
+        expect(
+          await attendance
+              .watchGroupSelections(
+                groupId: groupId,
+                date: _monday,
+                periodStart: created.periodStart,
+              )
+              .first,
+          {ada},
+        );
+      },
+    );
 
     test(
       'explains missing group links without requesting a timetable',

@@ -422,6 +422,9 @@ class GroupDetailScreen extends ConsumerWidget {
                     onAddSession: archived
                         ? null
                         : () => _addSession(context, ref, group.id, categories),
+                    onSyncWebUntis: archived || !webUntisConnected
+                        ? null
+                        : () => _syncWebUntisLessons(context, ref, group),
                     onEditSession: archived
                         ? null
                         : (summary) =>
@@ -745,7 +748,11 @@ class GroupDetailScreen extends ConsumerWidget {
   ) async {
     final link = await _resolveLink(context, ref, group);
     if (link == null || !context.mounted) return;
-    await showWebUntisLessonSyncSheet(context: context, groupId: group.id);
+    await showWebUntisLessonSyncSheet(
+      context: context,
+      groupId: group.id,
+      schoolYearId: group.schoolYearId,
+    );
   }
 
   Future<void> _importWebUntisRoster(
@@ -3422,6 +3429,7 @@ class _SessionsOverviewCard extends StatelessWidget {
     required this.onAddSession,
     required this.onEditSession,
     required this.onDeleteSession,
+    this.onSyncWebUntis,
   });
 
   final int groupId;
@@ -3430,6 +3438,10 @@ class _SessionsOverviewCard extends StatelessWidget {
   final AsyncValue<List<SessionSummary>> sessionSummariesValue;
   final bool archived;
   final VoidCallback? onAddSession;
+
+  /// Opens the WebUntis lesson sync for this group; `null` when the library
+  /// has no WebUntis connection or the group is archived.
+  final VoidCallback? onSyncWebUntis;
   final ValueChanged<SessionSummary>? onEditSession;
   final ValueChanged<SessionSummary>? onDeleteSession;
 
@@ -3449,6 +3461,17 @@ class _SessionsOverviewCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
+                if (onSyncWebUntis != null) ...[
+                  Tooltip(
+                    message: 'webuntis_sync_lessons'.tr(),
+                    child: OutlinedButton.icon(
+                      onPressed: onSyncWebUntis,
+                      icon: const Icon(Icons.cloud_sync_outlined),
+                      label: Text('webuntis'.tr()),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.small),
+                ],
                 if (onAddSession != null)
                   FilledButton.tonal(
                     onPressed: onAddSession,

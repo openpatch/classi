@@ -422,6 +422,37 @@ class WebUntisService {
     return matchPeriods ? lessonDay.asMatched() : lessonDay;
   }
 
+  /// The class registers of [periodIds], keyed by period id: their topics
+  /// and absences. Asked for in chunks so a term's worth of lessons does not
+  /// go out as one huge request.
+  Future<Map<int, WebUntisPeriodData>> loadRegisters(
+    Iterable<int> periodIds,
+  ) async {
+    final ids = periodIds.toSet().toList(growable: false);
+    if (ids.isEmpty) return const {};
+    final session = await _requireSession();
+    final api = _apiFactory(
+      server: session.settings.server,
+      school: session.settings.school,
+    );
+    try {
+      final registers = <int, WebUntisPeriodData>{};
+      for (var index = 0; index < ids.length; index += _registerChunkSize) {
+        final data = await api.fetchPeriodData(
+          username: session.settings.username,
+          secret: session.secret,
+          periodIds: ids.skip(index).take(_registerChunkSize),
+        );
+        registers.addAll(data.dataByTtId);
+      }
+      return registers;
+    } finally {
+      api.dispose();
+    }
+  }
+
+  static const int _registerChunkSize = 40;
+
   /// Keeps the school's bell times in the library, so lesson mode can tell
   /// which lesson is running without asking WebUntis.
   Future<void> _rememberBellTimes(WebUntisUserData user) async {
